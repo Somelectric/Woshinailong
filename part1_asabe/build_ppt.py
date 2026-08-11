@@ -1,6 +1,7 @@
 """
 Part 1 PPT 生成器：ASABE 2025 经验分享
 12 页，简洁通用风格，含流程图/框图。
+叙事主线：任务拆解（解耦 → 选型 → 耦合）。
 """
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -71,7 +72,7 @@ def title_bar(s, title, sub=None):
         sb = s.shapes.add_textbox(Inches(1.3), Inches(0.92), Inches(11.5), Inches(0.32))
         p2 = sb.text_frame.paragraphs[0]
         r2 = p2.add_run(); r2.text = sub
-        r2.font.size = Pt(14); r2.font.name = FONT
+        r2.font.size = Pt(16); r2.font.name = FONT
         r2.font.bold = True
         r2.font.color.rgb = INK_SOFT
     return bar
@@ -80,8 +81,8 @@ def page_number(s, n):
     tb = s.shapes.add_textbox(Inches(12.6), Inches(7.0), Inches(0.7), Inches(0.3))
     p = tb.text_frame.paragraphs[0]
     p.alignment = PP_ALIGN.RIGHT
-    r = p.add_run(); r.text = f"{n} / 10"
-    r.font.size = Pt(10); r.font.color.rgb = INK_SOFT; r.font.name = FONT
+    r = p.add_run(); r.text = f"{n} / 12"
+    r.font.size = Pt(12); r.font.color.rgb = INK_SOFT; r.font.name = FONT
 
 def textbox(s, x, y, w, h, text, size=14, color=INK, bold=False, align=PP_ALIGN.LEFT, font=FONT):
     tb = s.shapes.add_textbox(x, y, w, h)
@@ -138,7 +139,7 @@ def arrow(s, x1, y1, x2, y2, color=INK_SOFT, width=1.5):
     tailEnd.set('w', 'med'); tailEnd.set('h', 'med')
     return conn
 
-def card(s, x, y, w, h, title, body, color=ACCENT, title_size=16, body_size=14):
+def card(s, x, y, w, h, title, body, color=ACCENT, title_size=16, body_size=13):
     """卡片：标题 + 正文"""
     box(s, x, y, w, h, fill=WHITE, line_color=color, line_w=1.5)
     # 左侧色条
@@ -190,8 +191,8 @@ textbox(s, Inches(5.0), Inches(2.4), Inches(8), Inches(0.5),
         "——从鸡蛋分拣任务讲起", size=22, color=INK_SOFT)
 
 # 副标题：自我介绍
-textbox(s, Inches(5.0), Inches(4.5), Inches(8), Inches(0.4),
-        "分享人：宋在扬 / 马庆一", size=14, color=INK)
+textbox(s, Inches(0.5), Inches(4.5), Inches(8), Inches(0.4),
+        "分享人：宋在扬", size=16, color=INK)
 textbox(s, Inches(5.0), Inches(4.9), Inches(8), Inches(0.4),
         "ASABE 2025 国际大学生机器人大赛 · 标准组", size=14, color=INK_SOFT)
 
@@ -415,7 +416,72 @@ card(s, Inches(0.5), y_dec, Inches(12.3), Inches(1.4),
 
 page_number(s, 5)
 
-# === Slide 6：耦合页 ===
+# === Slide 6：耦合方案对比（不止一种解法） ===
+s = slide(); bg(s)
+title_bar(s, "耦合不止一种：两组方案对照", "同样把「收集 + 分拣」合并，思路可以很不一样")
+
+# 左栏：友组方案（蓝）
+left_x = Inches(0.5); col_w = Inches(6.0)
+box(s, left_x, Inches(1.3), col_w, Inches(0.6), fill=BLUE)
+textbox(s, left_x, Inches(1.35), col_w, Inches(0.6),
+        "友组 · 网兜拾取 + 丝线分拣",
+        size=18, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+# 两张图左右并排
+img_y = Inches(2.05); img_h = Inches(3.0)
+half_w = Inches(2.9)
+# 左图：采集框
+box(s, left_x, img_y, half_w, img_h, fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "friend-collection.png"),
+          left_x + Inches(0.1), img_y + Inches(0.1), half_w - Inches(0.2), img_h - Inches(0.4))
+textbox(s, left_x, img_y + img_h - Inches(0.3), half_w, Inches(0.3),
+        "网兜收集框", size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+# 右图：分选上视图
+img_x2 = left_x + half_w + Inches(0.2)
+box(s, img_x2, img_y, half_w, img_h, fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "friend-sorting.png"),
+          img_x2 + Inches(0.1), img_y + Inches(0.1), half_w - Inches(0.2), img_h - Inches(0.4))
+textbox(s, img_x2, img_y + img_h - Inches(0.3), half_w, Inches(0.3),
+        "丝线分选（上视）", size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+# 友组要点
+bullets(s, left_x, Inches(5.2), col_w, Inches(1.5),
+        ["收集与分拣用两个独立机构",
+         "丝线按紧度分选：重蛋穿线落下，轻蛋弹开",
+         "构思巧妙，机构之间互不干扰"],
+        size=14)
+
+# 右栏：我们方案（红）
+right_x = Inches(6.8)
+box(s, right_x, Inches(1.3), col_w, Inches(0.6), fill=ACCENT)
+textbox(s, right_x, Inches(1.35), col_w, Inches(0.6),
+        "我们 · 刮板 + 压力传感器 一体化",
+        size=18, color=WHITE, bold=True, align=PP_ALIGN.CENTER)
+
+# 用一张已有图代表我们方案
+box(s, right_x, Inches(2.05), col_w, Inches(3.0), fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "end-effector-picking.png"),
+          right_x + Inches(0.15), Inches(2.2), col_w - Inches(0.3), Inches(2.7))
+textbox(s, right_x, Inches(4.75), col_w, Inches(0.3),
+        "末端执行器（刮板 + 蜂窝筐 + 压力传感器）",
+        size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+# 我们要点
+bullets(s, right_x, Inches(5.2), col_w, Inches(1.5),
+        ["收集与分拣合并到同一结构件",
+         "刮板扫入 → 蜂窝筐底部压力传感器即称重",
+         "一个机构同时完成两个子任务"],
+        size=14)
+
+# 底部结论
+card(s, Inches(0.5), Inches(6.55), Inches(12.3), Inches(0.8),
+     "殊途同归",
+     "耦合没有标准答案——关键是找到子问题的「共享点」。下页详述我们的耦合方案。",
+     color=ACCENT, title_size=15, body_size=13)
+
+page_number(s, 6)
+
+# === Slide 7：耦合页（我们的方案详述） ===
 s = slide(); bg(s)
 title_bar(s, "耦合：刮板 + 压力传感器 一体化", "两个子问题的解在这里合并")
 
@@ -460,9 +526,9 @@ textbox(s, right_x, Inches(5.7), right_w, Inches(1.2),
         "不是为了省零件而合并，\n而是因为两个子任务在物理上共享同一个执行点（鸡蛋被夹持的位置）。\n机构设计要找的就是这种「共享点」。",
         size=14, color=INK)
 
-page_number(s, 6)
+page_number(s, 7)
 
-# === Slide 7：整机 3D 总览 ===
+# === Slide 8：整机 3D 总览 ===
 s = slide(); bg(s)
 title_bar(s, "整机总览：模块化标注", "5 个子系统，每个都有对应的机构设计点")
 
@@ -493,9 +559,9 @@ for i, (k, v, col) in enumerate(modules):
     textbox(s, right_x + Inches(0.1), y + Inches(0.42), right_w - Inches(0.2), Inches(0.4),
             v, size=17, color=INK)
 
-page_number(s, 7)
+page_number(s, 8)
 
-# === Slide 8：释放机构（合并页） ===
+# === Slide 9：释放机构（合并页） ===
 s = slide(); bg(s)
 title_bar(s, "释放机构：好蛋 + 坏蛋", "两种独立机构，对应两种释放逻辑")
 
@@ -527,9 +593,9 @@ bullets(s, right_x, Inches(5.6), right_w, Inches(1.5),
         ["软织物平时张紧成斜坡",
          "舵机收紧 → 坡度增加 → 坏蛋滑出",
          "柔顺机构思路（无刚性结构）"],
-        size=11)
+        size=14)
 
-page_number(s, 8)
+page_number(s, 9)
 
 # === Slide 10：比赛演示视频 ===
 s = slide(); bg(s)
@@ -538,7 +604,7 @@ title_bar(s, "比赛演示视频", "整机集成后的实际运行")
 # 视频占位
 video_x, video_y = Inches(2.0), Inches(1.4)
 video_w, video_h = Inches(9.3), Inches(5.2)
-box(s, video_x, video_y, video_w, video_h, fill=BLACK if False else RGBColor(0x22,0x22,0x22), line_color=ACCENT, line_w=2)
+box(s, video_x, video_y, video_w, video_h, fill=RGBColor(0x22,0x22,0x22), line_color=ACCENT, line_w=2)
 
 if os.path.exists(VIDEO):
     s.shapes.add_movie(VIDEO, video_x + Inches(0.1), video_y + Inches(0.1),
@@ -552,11 +618,55 @@ else:
 
 textbox(s, Inches(0.5), Inches(6.8), Inches(12.3), Inches(0.4),
         "关注：自主运行、5 min 内的节奏、收集-称重-释放的完整循环",
-        size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+        size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-page_number(s, 9)
+page_number(s, 10)
 
-# === Slide 10：桥段 + Q&A ===
+# === Slide 11：方法论总结（通用流程图） ===
+s = slide(); bg(s)
+title_bar(s, "方法论回顾：解耦 → 选型 → 耦合", "一套可复用的机构设计思路，不止用于鸡蛋分拣")
+
+# 纵向流程图：5 个阶段框，居中排列
+flow_x = Inches(4.5); flow_w = Inches(4.3); flow_h = Inches(0.7)
+stages = [
+    ("复杂任务",     "一个看起来很难下手的大问题",   PANEL, INK),
+    ("① 解耦",       "拆成可独立思考的子问题",       ACCENT, WHITE),
+    ("② 选型",       "每个子问题穷举候选 → 用约束筛选", ACCENT, WHITE),
+    ("③ 耦合",       "找子问题之间的「共享点」合并",   ACCENT, WHITE),
+    ("一体化机构",   "一个结构同时完成多个子任务 ✓",   GOOD,  WHITE),
+]
+
+# 框的纵向起始与间距
+top_y = Inches(1.35)
+gap = Inches(0.95)  # 框高 0.7 + 箭头空间 0.25
+
+for i, (name, desc, fill_col, txt_col) in enumerate(stages):
+    y = top_y + int(gap) * i
+    # 阶段框
+    is_start = (i == 0)
+    is_end = (i == len(stages) - 1)
+    if is_start or is_end:
+        box(s, flow_x, y, flow_w, flow_h, fill=fill_col, line_color=fill_col, line_w=1.5)
+    else:
+        box(s, flow_x, y, flow_w, flow_h, fill=fill_col, line_color=fill_col, line_w=1.5)
+    textbox(s, flow_x, y + Inches(0.05), flow_w, flow_h,
+            name, size=18, color=txt_col, bold=True, align=PP_ALIGN.CENTER)
+    # 右侧说明
+    textbox(s, flow_x + flow_w + Inches(0.3), y + Inches(0.12), Inches(4.0), Inches(0.5),
+            desc, size=15, color=INK_SOFT)
+    # 除最后一个外，画向下箭头
+    if not is_end:
+        arrow_x = flow_x + flow_w // 2
+        arrow(s, arrow_x, y + flow_h, arrow_x, y + gap, color=INK_SOFT, width=1.75)
+
+# 左侧留白区：用一句话点题
+textbox(s, Inches(0.5), Inches(2.4), Inches(3.7), Inches(2.0),
+        "解耦让问题\n变简单\n\n选型让方案\n有依据\n\n耦合让结构\n更精炼",
+        size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+page_number(s, 11)
+
+# === Slide 12：桥段 + Q&A ===
 s = slide(); bg(s)
 title_bar(s, "桥段回顾 → 进入 Part 2", "下面是 HTML 互动页面，可以现场调参数")
 
@@ -595,9 +705,9 @@ textbox(s, Inches(0.8), qa_y + Inches(0.7), Inches(11.5), Inches(1.3),
         "• 任何机构的选择理由\n"
         "• 实物制作中的具体问题（材料、加工、装配）\n"
         "• ASABE 比赛相关",
-        size=14, color=INK)
+        size=15, color=INK)
 
-page_number(s, 10)
+page_number(s, 12)
 
 # === 保存 ===
 prs.save(OUT)
