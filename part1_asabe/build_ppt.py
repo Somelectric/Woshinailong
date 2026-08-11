@@ -190,10 +190,10 @@ textbox(s, Inches(5.0), Inches(1.5), Inches(8), Inches(0.6),
 textbox(s, Inches(5.0), Inches(2.4), Inches(8), Inches(0.5),
         "——从鸡蛋分拣任务讲起", size=22, color=INK_SOFT)
 
-# 副标题：自我介绍
-textbox(s, Inches(0.5), Inches(4.5), Inches(8), Inches(0.4),
-        "分享人：宋在扬", size=16, color=INK)
-textbox(s, Inches(5.0), Inches(4.9), Inches(8), Inches(0.4),
+# 分享人（紧接副标题下方）
+textbox(s, Inches(5.0), Inches(3.2), Inches(8), Inches(0.4),
+        "分享人：宋在扬", size=18, color=INK)
+textbox(s, Inches(5.0), Inches(3.7), Inches(8), Inches(0.4),
         "ASABE 2025 国际大学生机器人大赛 · 标准组", size=14, color=INK_SOFT)
 
 # 底部一行话
