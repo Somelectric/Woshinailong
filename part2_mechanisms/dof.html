@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>自由度 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+
+    <main class="main">
+      <h1 class="page-title">自由度 <span class="en">Degrees of Freedom</span></h1>
+      <p class="need-hint">
+        <strong>为什么要先讲自由度？</strong> 它是判断一个机构"能不能动"和"怎么动"的基本工具。
+        机构设计的第一个问题永远是：这个机构有几个自由度？需要几个原动件？
+      </p>
+
+      <div class="stage">
+        <h3 style="margin:0 0 12px; font-size:18px;">平面机构自由度公式</h3>
+        <div style="background:var(--bg); padding:18px 24px; border-radius:6px; text-align:center; font-size:24px; font-family:var(--mono); margin-bottom:16px;">
+          F = 3n − 2P<sub>L</sub> − P<sub>H</sub>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:12px;">
+          <div style="padding:12px; background:var(--bg); border-radius:4px;">
+            <strong style="color:var(--accent);">n</strong> · 活动构件数<br>
+            <span style="font-size:13px; color:var(--ink-soft);">不含机架</span>
+          </div>
+          <div style="padding:12px; background:var(--bg); border-radius:4px;">
+            <strong style="color:var(--accent);">P<sub>L</sub></strong> · 低副数<br>
+            <span style="font-size:13px; color:var(--ink-soft);">转动副、移动副（面接触）</span>
+          </div>
+          <div style="padding:12px; background:var(--bg); border-radius:4px;">
+            <strong style="color:var(--accent);">P<sub>H</sub></strong> · 高副数<br>
+            <span style="font-size:13px; color:var(--ink-soft);">齿轮副、凸轮副（点/线接触）</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <h3 style="margin:0 0 16px; font-size:18px;">交互计算器 · 试试看</h3>
+        <div class="dof-playground">
+          <svg id="dof-svg" viewBox="0 0 600 320" style="background:#fafaf7; border-radius:4px;"></svg>
+          <div class="dof-stats">
+            <div style="font-size:13px; color:var(--ink-soft);">当前机构的自由度</div>
+            <div class="big-number" id="dof-f">3</div>
+            <div class="formula">F = 3n − 2P<sub>L</sub> − P<sub>H</sub><br>
+              = 3 × <span id="dof-n">3</span> − 2 × <span id="dof-pl">3</span> − <span id="dof-ph">0</span> = <span id="dof-result">3</span>
+            </div>
+            <div id="dof-meaning" style="font-size:13px; line-height:1.6;">
+              F = 3：需要 <strong>3 个原动件</strong>才能确定运动。这是典型串联机械臂的配置——每个关节配一个电机。
+            </div>
+            <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px;">
+              <button class="btn secondary" data-preset="arm">3-DOF 串联机械臂（我们的机器人）</button>
+              <button class="btn secondary" data-preset="fourbar">四杆机构（1 自由度）</button>
+              <button class="btn secondary" data-preset="fivebar">五杆机构（2 自由度）</button>
+              <button class="btn secondary" data-preset="locked">超约束结构（0 自由度）</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-card good">
+          <h4>F = 0</h4>
+          <ul>
+            <li>结构，不是机构</li>
+            <li>没有可动件，受载荷而不动</li>
+            <li>例子：桁架、桥梁</li>
+          </ul>
+        </div>
+        <div class="info-card use">
+          <h4>F = 1</h4>
+          <ul>
+            <li>最常见——单原动件机构</li>
+            <li>一个电机/舵机驱动，运动规律完全确定</li>
+            <li>例子：四杆、凸轮、齿轮系</li>
+          </ul>
+        </div>
+        <div class="info-card bad">
+          <h4>F ≥ 2</h4>
+          <ul>
+            <li>多自由度机构</li>
+            <li>需要多个原动件协同</li>
+            <li>例子：串联机械臂（F=DOF 数）</li>
+          </ul>
+        </div>
+        <div class="info-card bad">
+          <h4>F &lt; 0</h4>
+          <ul>
+            <li>超约束</li>
+            <li>装配时需要变形才能装上</li>
+            <li>例子：双联轴承（设计需谨慎）</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="robot-callout">
+        <img src="../assets/asabe/end-effector-picking.png" alt="3-DOF arm">
+        <div class="text">
+          <strong>在我们的机器人上</strong>
+          3-DOF 机械臂：3 个活动构件 + 3 个转动副，F = 3×3 − 2×3 − 0 = <strong>3</strong>。
+          这就是为什么我们需要 3 个舵机来控制它——每个自由度对应一个独立电机。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="index.html">← 首页</a>
+        <a href="motion-linear.html">直线运动 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { svg, line, circle, clear, toSvg } from './common/controls.js';
+
+    injectSidebar('dof');
+
+    const dofSvg = document.getElementById('dof-svg');
+
+    const PRESETS = {
+      arm: {
+        n: 3, pL: 3, pH: 0,
+        meaning: 'F = 3：需要 <strong>3 个原动件</strong>才能确定运动。这是典型串联机械臂的配置——每个关节配一个电机。',
+        draw: (svgEl) => {
+          // 画 3-DOF 串联臂
+          const base = { x: 100, y: 280 };
+          const j1 = base;
+          const j2 = { x: 220, y: 200 };
+          const j3 = { x: 340, y: 140 };
+          const j4 = { x: 460, y: 100 };
+
+          // 机架（底座）
+          svgEl.appendChild(svg('polygon', {
+            points: `${base.x-30},${base.y} ${base.x+30},${base.y} ${base.x+20},${base.y+20} ${base.x-20},${base.y+20}`,
+            fill: '#333',
+          }));
+          svgEl.appendChild(line(base.x-40, base.y+20, base.x+40, base.y+20, { stroke:'#333', 'stroke-width':2 }));
+
+          // 三段臂
+          svgEl.appendChild(line(j1.x, j1.y, j2.x, j2.y, { stroke: '#c8442a', 'stroke-width': 6 }));
+          svgEl.appendChild(line(j2.x, j2.y, j3.x, j3.y, { stroke: '#c8442a', 'stroke-width': 6 }));
+          svgEl.appendChild(line(j3.x, j3.y, j4.x, j4.y, { stroke: '#c8442a', 'stroke-width': 6 }));
+
+          // 关节
+          [j1, j2, j3].forEach(j => {
+            svgEl.appendChild(circle(j.x, j.y, 9, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+            svgEl.appendChild(circle(j.x, j.y, 3, { fill: '#c8442a' }));
+          });
+          // 末端
+          svgEl.appendChild(circle(j4.x, j4.y, 6, { fill: '#2a5c8a' }));
+
+          // 标签
+          const lbl = (p, t, dx=0, dy=20) => {
+            const e = svg('text', { x: p.x+dx, y: p.y+dy, fill:'#555', 'font-size':11, 'font-family':'monospace', 'text-anchor':'middle' });
+            e.textContent = t;
+            svgEl.appendChild(e);
+          };
+          lbl(j1, '转动副①');
+          lbl(j2, '转动副②');
+          lbl(j3, '转动副③');
+          lbl(j4, '末端', 0, 14);
+
+          // 说明
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '3 个活动构件 + 3 个转动副';
+          svgEl.appendChild(t);
+        }
+      },
+      fourbar: {
+        n: 3, pL: 4, pH: 0,
+        meaning: 'F = 1：只需 <strong>1 个原动件</strong>。曲柄一转，整个机构运动完全确定。这是为什么四杆是工程上最常用的机构之一。',
+        draw: (svgEl) => {
+          const A = { x: 140, y: 240 };
+          const D = { x: 460, y: 240 };
+          const B = { x: 200, y: 140 };
+          const C = { x: 400, y: 140 };
+
+          // 机架
+          svgEl.appendChild(svg('polygon', { points: `${A.x-20},${A.y+5} ${A.x+20},${A.y+5} ${A.x+15},${A.y+20} ${A.x-15},${A.y+20}`, fill:'#333' }));
+          svgEl.appendChild(svg('polygon', { points: `${D.x-20},${D.y+5} ${D.x+20},${D.y+5} ${D.x+15},${D.y+20} ${D.x-15},${D.y+20}`, fill:'#333' }));
+          svgEl.appendChild(line(A.x, A.y, D.x, D.y, { stroke:'#333', 'stroke-width':3 }));
+          svgEl.appendChild(line(A.x-30, A.y+20, A.x+30, A.y+20, { stroke:'#333', 'stroke-width':2 }));
+          svgEl.appendChild(line(D.x-30, D.y+20, D.x+30, D.y+20, { stroke:'#333', 'stroke-width':2 }));
+
+          // 4 根杆
+          svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#c8442a', 'stroke-width':5 }));
+          svgEl.appendChild(line(B.x, B.y, C.x, C.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
+          svgEl.appendChild(line(D.x, D.y, C.x, C.y, { stroke:'#2a7c4a', 'stroke-width':5 }));
+
+          // 关节
+          [A, B, C, D].forEach(p => {
+            svgEl.appendChild(circle(p.x, p.y, 7, { fill:'white', stroke:'#333', 'stroke-width':2 }));
+          });
+
+          // 标签
+          const lbl = (p, t) => {
+            const e = svg('text', { x:p.x, y:p.y-12, fill:'#555', 'font-size':11, 'font-family':'monospace', 'text-anchor':'middle' });
+            e.textContent = t;
+            svgEl.appendChild(e);
+          };
+          lbl(A, 'A·副1');
+          lbl(B, 'B·副2');
+          lbl(C, 'C·副3');
+          lbl(D, 'D·副4');
+
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '3 个活动构件 + 4 个转动副';
+          svgEl.appendChild(t);
+        }
+      },
+      fivebar: {
+        n: 4, pL: 5, pH: 0,
+        meaning: 'F = 2：需要 <strong>2 个原动件</strong>。常见于并联机构和需要轨迹规划的场合。',
+        draw: (svgEl) => {
+          const A = { x: 180, y: 250 };
+          const E = { x: 420, y: 250 };
+          const B = { x: 140, y: 130 };
+          const D = { x: 460, y: 130 };
+          const C = { x: 300, y: 80 };
+
+          // 机架
+          svgEl.appendChild(line(A.x, A.y, E.x, E.y, { stroke:'#333', 'stroke-width':3 }));
+          svgEl.appendChild(svg('polygon', { points: `${A.x-20},${A.y+5} ${A.x+20},${A.y+5} ${A.x+15},${A.y+20} ${A.x-15},${A.y+20}`, fill:'#333' }));
+          svgEl.appendChild(svg('polygon', { points: `${E.x-20},${E.y+5} ${E.x+20},${E.y+5} ${E.x+15},${E.y+20} ${E.x-15},${E.y+20}`, fill:'#333' }));
+
+          svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#c8442a', 'stroke-width':5 }));
+          svgEl.appendChild(line(B.x, B.y, C.x, C.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
+          svgEl.appendChild(line(C.x, C.y, D.x, D.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
+          svgEl.appendChild(line(D.x, D.y, E.x, E.y, { stroke:'#c8442a', 'stroke-width':5 }));
+
+          [A, B, C, D, E].forEach(p => {
+            svgEl.appendChild(circle(p.x, p.y, 7, { fill:'white', stroke:'#333', 'stroke-width':2 }));
+          });
+
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '4 个活动构件 + 5 个转动副';
+          svgEl.appendChild(t);
+        }
+      },
+      locked: {
+        n: 2, pL: 3, pH: 0,
+        meaning: 'F = 0：<strong>结构而非机构</strong>——受力但不运动。设计成机构会卡死。',
+        draw: (svgEl) => {
+          // 三角形（最稳定的结构）
+          const A = { x: 150, y: 240 };
+          const B = { x: 450, y: 240 };
+          const C = { x: 300, y: 80 };
+          svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#333', 'stroke-width':5 }));
+          svgEl.appendChild(line(A.x, A.y, C.x, C.y, { stroke:'#a13030', 'stroke-width':5 }));
+          svgEl.appendChild(line(B.x, B.y, C.x, C.y, { stroke:'#a13030', 'stroke-width':5 }));
+          svgEl.appendChild(svg('polygon', { points: `${A.x-20},${A.y+5} ${A.x+20},${A.y+5} ${A.x+15},${A.y+20} ${A.x-15},${A.y+20}`, fill:'#333' }));
+          svgEl.appendChild(svg('polygon', { points: `${B.x-20},${B.y+5} ${B.x+20},${B.y+5} ${B.x+15},${B.y+20} ${B.x-15},${B.y+20}`, fill:'#333' }));
+          [A, B, C].forEach(p => {
+            svgEl.appendChild(circle(p.x, p.y, 7, { fill:'white', stroke:'#333', 'stroke-width':2 }));
+          });
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '2 个活动构件 + 3 个转动副（三角形=结构）';
+          svgEl.appendChild(t);
+        }
+      },
+    };
+
+    function renderPreset(name) {
+      const preset = PRESETS[name];
+      clear(dofSvg);
+      preset.draw(dofSvg);
+
+      const F = 3 * preset.n - 2 * preset.pL - preset.pH;
+      document.getElementById('dof-n').textContent = preset.n;
+      document.getElementById('dof-pl').textContent = preset.pL;
+      document.getElementById('dof-ph').textContent = preset.pH;
+      document.getElementById('dof-result').textContent = F;
+      document.getElementById('dof-f').textContent = F;
+      document.getElementById('dof-meaning').innerHTML = preset.meaning;
+
+      const fEl = document.getElementById('dof-f');
+      fEl.style.color = F === 0 ? 'var(--bad)' : F === 1 ? 'var(--accent)' : F >= 2 ? 'var(--good)' : 'var(--bad)';
+    }
+
+    document.querySelectorAll('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => renderPreset(btn.dataset.preset));
+    });
+
+    renderPreset('arm');
+  </script>
+</body>
+</html>

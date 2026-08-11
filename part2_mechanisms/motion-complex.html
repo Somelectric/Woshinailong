@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>复杂曲线运动 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">复杂曲线运动 <span class="en">Complex Motion</span></h1>
+      <p class="need-hint">
+        <strong>什么时候需要这种运动？</strong> 末端要走一条**无法用单自由度机构生成的 2D 曲线**——比如一行字、一个不规则形状、或者要躲避障碍的轨迹。
+        工程上有两种思路：① 用更多杆组合（多连杆、五杆）；② 用并联机构（Delta、Stewart）。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="hero">五杆机构 ★</button>
+        <button class="tab" data-tab="multi">多连杆组合</button>
+        <button class="tab" data-tab="camlink">凸轮+连杆</button>
+        <button class="tab" data-tab="delta">Delta 并联</button>
+      </div>
+
+      <section id="tab-hero" class="tab-panel">
+        <div class="stage">
+          <svg id="fb-svg" viewBox="0 0 700 380"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>左原动件转速 ω₁ <span class="val" id="fb-w1-val">1.0</span></label>
+              <input type="range" id="fb-w1" min="0.3" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="param-row">
+              <label>右原动件转速 ω₂ <span class="val" id="fb-w2-val">1.7</span></label>
+              <input type="range" id="fb-w2" min="0.3" max="2.0" step="0.1" value="1.7">
+            </div>
+            <div class="param-row">
+              <label>右原动件相位差 φ <span class="val" id="fb-phi-val">90</span>°</label>
+              <input type="range" id="fb-phi" min="0" max="180" step="10" value="90">
+            </div>
+          </div>
+          <div id="fb-controls-mount"></div>
+          <div class="verdict" id="fb-verdict"></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>2 自由度 → 末端轨迹是真正的 2D 曲线</li><li>两个原动件独立可控</li><li>刚性好（双侧支撑）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>需要 2 个电机协同控制</li><li>工作空间形状复杂</li><li>轨迹规划比串联臂难</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>需要复杂曲线的拾放</li><li>印花、点胶、绣花</li><li>并联机械手基础</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-multi" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <text x="0" y="-160" text-anchor="middle" fill="#999" font-size="13">六杆机构（Watt 型 / Stephenson 型）</text>
+              <line x1="-200" y1="100" x2="200" y2="100" stroke="#333" stroke-width="3"/>
+              <polygon points="-130,100 -110,100 -115,115 -125,115" fill="#333"/>
+              <polygon points="100,100 120,100 115,115 105,115" fill="#333"/>
+              <line x1="-120" y1="100" x2="-60" y2="-30" stroke="#c8442a" stroke-width="4"/>
+              <line x1="-60" y1="-30" x2="60" y2="20" stroke="#2a5c8a" stroke-width="4"/>
+              <line x1="60" y1="20" x2="120" y2="100" stroke="#c8442a" stroke-width="4"/>
+              <line x1="-60" y1="-30" x2="-20" y2="80" stroke="#2a7c4a" stroke-width="3"/>
+              <line x1="-20" y1="80" x2="60" y2="20" stroke="#2a7c4a" stroke-width="3"/>
+              <circle cx="-120" cy="100" r="6" fill="#333"/>
+              <circle cx="120" cy="100" r="6" fill="#333"/>
+              <circle cx="-60" cy="-30" r="5" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="60" cy="20" r="5" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="-20" cy="80" r="5" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="60" cy="20" r="8" fill="#c8442a"/>
+              <text x="80" y="40" fill="#c8442a" font-size="11">末端点</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>比四杆能生成更丰富的曲线</li><li>可设计"停歇"段（一段近似不动）</li><li>实现近似直线/圆弧段</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>设计复杂（综合困难）</li><li>杆多 → 累积误差大</li><li>动平衡难，高速会振动</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>缝纫机挑线机构</li><li>印刷机送纸</li><li>包装机折叠翻盖</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-camlink" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <text x="0" y="-160" text-anchor="middle" fill="#999" font-size="13">凸轮（轨迹源） + 连杆放大（输出端走复杂曲线）</text>
+              <ellipse cx="-100" cy="0" rx="60" ry="40" fill="#c8442a" stroke="#333" stroke-width="2" transform="rotate(-15 -100 0)"/>
+              <circle cx="-100" cy="0" r="6" fill="#333"/>
+              <circle cx="-30" cy="-30" r="10" fill="white" stroke="#333" stroke-width="2"/>
+              <line x1="-30" y1="-30" x2="60" y2="-60" stroke="#2a5c8a" stroke-width="4"/>
+              <line x1="60" y1="-60" x2="120" y2="20" stroke="#2a5c8a" stroke-width="4"/>
+              <circle cx="-30" cy="-30" r="4" fill="#333"/>
+              <circle cx="60" cy="-60" r="5" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="120" cy="20" r="8" fill="#c8442a"/>
+              <text x="140" y="40" fill="#c8442a" font-size="11">放大末端</text>
+              <polygon points="-180,80 -160,80 -170,95" fill="#333"/>
+              <line x1="-180" y1="80" x2="-160" y2="80" stroke="#333" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>凸轮廓形可任意设计 → 末端轨迹灵活</li><li>结构紧凑（凸轮 + 几根杆）</li><li>高速稳定（设计好后是开环控制）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>凸轮加工成本高</li><li>磨损后轨迹会变</li><li>动载荷大时噪音明显</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>纺织机械（开口、引纬）</li><li>缝纫机针杆</li><li>包装机封口</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-delta" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <text x="0" y="-160" text-anchor="middle" fill="#999" font-size="13">Delta 并联：3 组平行四边形 → 末端纯平动（无姿态）</text>
+              <circle cx="0" cy="-80" r="80" fill="none" stroke="#333" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <g id="delta-arms"></g>
+              <circle cx="0" cy="-80" r="6" fill="#333"/>
+              <circle cx="0" cy="40" r="20" fill="#c8442a" stroke="#333" stroke-width="2"/>
+              <text x="0" y="80" fill="#c8442a" font-size="11">动平台（只平动）</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>电机都在静平台 → 末端惯性小</li><li>加速度极高（数十 g）</li><li>结构对称 → 各向同性</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>工作空间/占地面积比小</li><li>纯平动（无姿态自由度）</li><li>3 电机需精密协同</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>高速拾放（药品、食品）</li><li>电子元件分拣</li><li>3D 打印机（并联型）</li></ul></div>
+        </div>
+      </section>
+
+      <div class="robot-callout">
+        <img src="../assets/asabe/end-effector-picking.png" alt="end effector">
+        <div class="text">
+          <strong>在我们的机器人上</strong>
+          我们没用复杂曲线机构——3-DOF 串联臂 + 刮板的组合，靠**多点示教**走需要的轨迹。
+          但如果你要做"高速拾放 100+ 个/分钟"（比如鸡蛋分拣工业线），Delta 并联就是经典选择。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="motion-transmission.html">← 减速传动</a>
+        <a href="wrap-up.html">选型决策树 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { TAU } from './common/math.js';
+
+    injectSidebar('motion-complex');
+
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+
+    // 五杆机构
+    // 两个机架点 A、E，两个原动件 AB、ED，两个连杆 BC、DC，C 为公共点
+    const fbSvg = document.getElementById('fb-svg');
+    const fbMount = document.getElementById('fb-controls-mount');
+    const fbVerdict = document.getElementById('fb-verdict');
+
+    const fbConfig = {
+      a1: 60, b1: 110,   // 左侧: A→B 长度, B→C 长度
+      a2: 60, b2: 110,   // 右侧
+      frame: 200,        // A 到 E 的水平距离
+    };
+
+    let w1 = 1.0, w2 = 1.7, phiDeg = 90;
+    const trace = [];
+    const TRACE_MAX = 220;
+
+    function solveFiveBar(theta1, theta4) {
+      const A = { x: -fbConfig.frame / 2, y: 0 };
+      const E = { x: fbConfig.frame / 2, y: 0 };
+      const B = { x: A.x + fbConfig.a1 * Math.cos(theta1), y: A.y + fbConfig.a1 * Math.sin(theta1) };
+      const D = { x: E.x + fbConfig.a2 * Math.cos(theta4), y: E.y + fbConfig.a2 * Math.sin(theta4) };
+
+      // C 在以 B 为圆心 b1 的圆 与 以 D 为圆心 b2 的圆 的交点
+      const dx = D.x - B.x;
+      const dy = D.y - B.y;
+      const distBD = Math.hypot(dx, dy);
+      if (distBD > fbConfig.b1 + fbConfig.b2 || distBD < Math.abs(fbConfig.b1 - fbConfig.b2)) {
+        return { valid: false, A, E, B, D, C: null };
+      }
+      const a1 = (fbConfig.b1 * fbConfig.b1 - fbConfig.b2 * fbConfig.b2 + distBD * distBD) / (2 * distBD);
+      const h = Math.sqrt(Math.max(0, fbConfig.b1 * fbConfig.b1 - a1 * a1));
+      const ux = dx / distBD, uy = dy / distBD;
+      const px = -uy, py = ux;
+      // 取下方交点（让机构看起来像 ∩ 形）
+      const C = {
+        x: B.x + a1 * ux - h * px,
+        y: B.y + a1 * uy - h * py,
+      };
+      return { valid: true, A, E, B, D, C };
+    }
+
+    function render(phase) {
+      clear(fbSvg);
+      const t = phase * TAU;
+      const theta1 = t * w1;
+      const theta4 = t * w2 + (phiDeg * Math.PI) / 180;
+      const sol = solveFiveBar(theta1, theta4);
+
+      const cx = 350, cy = 220;
+
+      // 机架
+      if (sol.valid || true) {
+        const ax = cx + sol.A.x, ay = cy - sol.A.y;
+        const ex = cx + sol.E.x, ey = cy - sol.E.y;
+        fbSvg.appendChild(line(ax, ay + 60, ex, ey + 60, { stroke:'#333', 'stroke-width':3 }));
+        fbSvg.appendChild(svg('polygon', { points: `${ax-15},${ay+58} ${ax+15},${ay+58} ${ax+12},${ay+72} ${ax-12},${ay+72}`, fill:'#333' }));
+        fbSvg.appendChild(svg('polygon', { points: `${ex-15},${ey+58} ${ex+15},${ey+58} ${ex+12},${ey+72} ${ex-12},${ey+72}`, fill:'#333' }));
+        fbSvg.appendChild(circle(ax, ay, 6, { fill:'#333' }));
+        fbSvg.appendChild(circle(ex, ey, 6, { fill:'#333' }));
+        const lblA0 = svg('text', { x: ax - 20, y: ay + 88, fill:'#555', 'font-size':11, 'text-anchor':'middle', 'font-family':'monospace' });
+        lblA0.textContent = 'A';
+        fbSvg.appendChild(lblA0);
+        const lblE0 = svg('text', { x: ex + 20, y: ey + 88, fill:'#555', 'font-size':11, 'text-anchor':'middle', 'font-family':'monospace' });
+        lblE0.textContent = 'E';
+        fbSvg.appendChild(lblE0);
+      }
+
+      if (!sol.valid) {
+        const txt = svg('text', { x: cx, y: 40, 'text-anchor':'middle', fill:'#a13030', 'font-size':14 });
+        txt.textContent = '⚠ 装配失败：调整 ω 或相位';
+        fbSvg.appendChild(txt);
+        return;
+      }
+
+      const ax = cx + sol.A.x, ay = cy - sol.A.y;
+      const ex = cx + sol.E.x, ey = cy - sol.E.y;
+      const bx = cx + sol.B.x, by = cy - sol.B.y;
+      const dx = cx + sol.D.x, dy_ = cy - sol.D.y;
+      const ccx = cx + sol.C.x, ccy = cy - sol.C.y;
+
+      // 轨迹累积
+      trace.push({ x: ccx, y: ccy });
+      if (trace.length > TRACE_MAX) trace.shift();
+
+      // 画轨迹
+      if (trace.length > 1) {
+        const path = svg('polyline', { fill:'none', stroke:'#c8442a', 'stroke-width':1.5, opacity:0.5, points: trace.map(p => `${p.x},${p.y}`).join(' ') });
+        fbSvg.appendChild(path);
+      }
+
+      // 左侧连杆链（红→蓝）
+      fbSvg.appendChild(line(ax, ay, bx, by, { stroke:'#c8442a', 'stroke-width':5 }));
+      fbSvg.appendChild(line(bx, by, ccx, ccy, { stroke:'#2a5c8a', 'stroke-width':4 }));
+      // 右侧连杆链
+      fbSvg.appendChild(line(ex, ey, dx, dy_, { stroke:'#c8442a', 'stroke-width':5 }));
+      fbSvg.appendChild(line(dx, dy_, ccx, ccy, { stroke:'#2a5c8a', 'stroke-width':4 }));
+
+      // 关节
+      [sol.B, sol.D].forEach(p => {
+        fbSvg.appendChild(circle(cx + p.x, cy - p.y, 5, { fill:'white', stroke:'#333', 'stroke-width':2 }));
+      });
+
+      // 末端 C
+      fbSvg.appendChild(circle(ccx, ccy, 8, { fill:'#c8442a', stroke:'#333', 'stroke-width':2 }));
+      const lbl = svg('text', { x: ccx + 14, y: ccy + 4, fill:'#c8442a', 'font-size':12, 'font-family':'monospace' });
+      lbl.textContent = 'C 末端';
+      fbSvg.appendChild(lbl);
+
+      // 速度指示（输入端）
+      const arrowLen1 = 25;
+      const tan1 = { x: -Math.sin(theta1), y: Math.cos(theta1) };
+      fbSvg.appendChild(svg('line', {
+        x1: bx, y1: by, x2: bx + tan1.x * arrowLen1 * (w1 > 0 ? 1 : -1), y2: by - tan1.y * arrowLen1 * (w1 > 0 ? 1 : -1),
+        stroke:'#c8442a', 'stroke-width':2, 'marker-end':'arrow'
+      }));
+      const tan4 = { x: -Math.sin(theta4), y: Math.cos(theta4) };
+      fbSvg.appendChild(svg('line', {
+        x1: dx, y1: dy_, x2: dx + tan4.x * arrowLen1 * (w2 > 0 ? 1 : -1), y2: dy_ - tan4.y * arrowLen1 * (w2 > 0 ? 1 : -1),
+        stroke:'#c8442a', 'stroke-width':2
+      }));
+
+      // 顶部提示
+      const hint = svg('text', { x: cx, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+      hint.textContent = `θ₁ = ${(theta1 * 180 / Math.PI % 360).toFixed(0)}°, θ₄ = ${(theta4 * 180 / Math.PI % 360).toFixed(0)}° — 两原动件不同步 → C 走出复杂曲线`;
+      fbSvg.appendChild(hint);
+
+      // 底部标签
+      const lblA = svg('text', { x: ax, y: cy + 100, 'text-anchor':'middle', fill:'#555', 'font-size':11 });
+      lblA.textContent = '原动件 ①';
+      fbSvg.appendChild(lblA);
+      const lblE = svg('text', { x: ex, y: cy + 100, 'text-anchor':'middle', fill:'#555', 'font-size':11 });
+      lblE.textContent = '原动件 ②';
+      fbSvg.appendChild(lblE);
+
+      // 更新结论
+      const freqRatio = `${w1.toFixed(1)}:${w2.toFixed(1)}`;
+      fbVerdict.className = 'verdict';
+      fbVerdict.innerHTML = `<strong>F = 2</strong> · 两个原动件以 ${freqRatio} 转动 → 末端 C 走出 Lissajous 式轨迹。频比和相位差共同决定轨迹形状。`;
+    }
+
+    document.getElementById('fb-w1').addEventListener('input', e => {
+      w1 = parseFloat(e.target.value);
+      document.getElementById('fb-w1-val').textContent = w1.toFixed(1);
+      trace.length = 0;
+    });
+    document.getElementById('fb-w2').addEventListener('input', e => {
+      w2 = parseFloat(e.target.value);
+      document.getElementById('fb-w2-val').textContent = w2.toFixed(1);
+      trace.length = 0;
+    });
+    document.getElementById('fb-phi').addEventListener('input', e => {
+      phiDeg = parseInt(e.target.value);
+      document.getElementById('fb-phi-val').textContent = phiDeg;
+      trace.length = 0;
+    });
+
+    createControls(fbMount, {
+      duration: 8000,
+      onTick: (phase) => render(phase),
+    });
+  </script>
+</body>
+</html>

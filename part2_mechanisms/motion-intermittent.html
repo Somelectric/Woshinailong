@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>间歇运动 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">间歇运动 <span class="en">Intermittent Motion</span></h1>
+      <p class="need-hint">
+        <strong>什么时候需要这种运动？</strong> 主动件连续转，从动件需要"动—停—动—停"——例如分度转盘、上料机构、计数器。
+        工程上有一整套经典机构来实现这个目的。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="hero">槽轮机构 ★</button>
+        <button class="tab" data-tab="ratchet">棘轮机构</button>
+        <button class="tab" data-tab="partial">不完全齿轮</button>
+        <button class="tab" data-tab="stepper">步进电机</button>
+      </div>
+
+      <section id="tab-hero" class="tab-panel">
+        <div class="stage">
+          <svg id="gv-svg" viewBox="0 0 700 380"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>槽数 n <span class="val" id="gv-n-val">4</span></label>
+              <input type="range" id="gv-n" min="3" max="8" step="1" value="4">
+            </div>
+          </div>
+          <div id="gv-controls-mount"></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>主动件连续转动，从动件精确分度</li><li>结构紧凑，刚性好</li><li>每个周期定位准确</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>启动/停止瞬间有冲击</li><li>高速时噪音大</li><li>槽数确定后分度角固定</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>转塔式包装机</li><li>ATM 出钞机构</li><li>分度工作台</li><li>电影放映机抓片</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-ratchet" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <circle r="100" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="ratchet-teeth"></g>
+              <circle r="10" fill="#333"/>
+              <path d="M 0,-120 L 60,-100 L 0,-80 Z" fill="#c8442a" stroke="#333" stroke-width="1.5"/>
+              <text x="0" y="-140" text-anchor="middle" fill="#999" font-size="13">棘爪（推动）</text>
+              <path d="M -40,-50 L -100,-30 L -45,-10 Z" fill="#2a5c8a" stroke="#333" stroke-width="1.5"/>
+              <text x="-110" y="-20" text-anchor="middle" fill="#999" font-size="13">止回爪</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>单向传动（防反转）</li><li>结构简单</li><li>能实现"摆动→单向间歇转"</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>有齿隙噪音</li><li>冲击大</li><li>承载有限</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>自行车后轴（早期）</li><li>棘轮扳手</li><li>提升机防反转</li><li>打簧机械</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-partial" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <circle r="110" fill="white" stroke="#333" stroke-width="2"/>
+              <path d="M 0,-80 A 80,80 0 0 1 70,-40 L 0,0 Z" fill="#c8442a" opacity="0.4"/>
+              <text x="0" y="-120" text-anchor="middle" fill="#999" font-size="13">主动轮只有一段齿</text>
+              <text x="0" y="140" text-anchor="middle" fill="#999" font-size="13">其余时间脱离啮合 → 从动停歇</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>制造相对容易（齿廓熟悉）</li><li>传动比可设计</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>啮入/啮出冲击大</li><li>需要专门定位装置</li><li>重载不适用</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>计数器</li><li>程序控制</li><li>轻载分度</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-stepper" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 380">
+            <g transform="translate(350, 200)">
+              <rect x="-60" y="-60" width="120" height="120" fill="#2a5c8a" stroke="#333" stroke-width="2" rx="4"/>
+              <circle r="40" fill="white" stroke="#333" stroke-width="2"/>
+              <line x1="0" y1="0" x2="0" y2="-40" stroke="#c8442a" stroke-width="4"/>
+              <text x="0" y="5" text-anchor="middle" font-size="13">步进</text>
+              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">电脉冲 → 离散角位移</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>开环定位精确</li><li>软件控制灵活</li><li>无需机械结构</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>低速会抖动</li><li>失步风险（过载时）</li><li>需专门驱动器</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机</li><li>CNC 机床</li><li>我们的 42 步进电机</li></ul></div>
+        </div>
+      </section>
+
+      <div class="robot-callout">
+        <img src="../assets/asabe/mobility-chassis.png" alt="chassis">
+        <div class="text">
+          <strong>在我们的机器人上</strong>
+          我们没有用机械式间歇机构，而是用<strong>步进电机直接驱动</strong>实现"动—停—动"——比如检测到鸡蛋时立即停车，
+          这是数字控制相对于机械间歇机构的优势：停的位置由传感器实时决定，而不是结构死定。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="motion-oscillation.html">← 摆动</a>
+        <a href="motion-gripping.html">夹持拾取 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { TAU } from './common/math.js';
+
+    injectSidebar('motion-intermittent');
+
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+
+    const gvSvg = document.getElementById('gv-svg');
+    const gvCtlMount = document.getElementById('gv-controls-mount');
+    let nSlots = 4;
+
+    document.getElementById('gv-n').addEventListener('input', (e) => {
+      nSlots = parseInt(e.target.value);
+      document.getElementById('gv-n-val').textContent = nSlots;
+    });
+
+    function render(phase) {
+      clear(gvSvg);
+      const driverCx = 200, driverCy = 200;
+      const drivenCx = 500, drivenCy = 200;
+      const R = 100;       // 主动销旋转半径
+      const slotR = 100;   // 从动轮半径
+
+      const slotAngle = TAU / nSlots;
+      const driveRatio = 0.5; // 主动销转一圈，有 50% 时间在啮合
+
+      // 标准化相位到 [0, 1)
+      const p = ((phase % 1) + 1) % 1;
+      const driverAngle = p * TAU - Math.PI; // 从左侧开始
+
+      // 主动销位置（相对驱动轴中心）
+      const pinX = driverCx + R * Math.cos(driverAngle);
+      const pinY = driverCy + R * Math.sin(driverAngle);
+
+      // 判断是否在啮合区（pin 距离 driven 较近的一侧）
+      const distToDriven = Math.hypot(pinX - drivenCx, pinY - drivenCy);
+
+      // 啮合区：当 pin 处于两轮之间时
+      const engaging = pinX > driverCx && pinX < drivenCx && distToDriven < slotR + 30;
+
+      // 从动轮转角（仅在啮合时累积）
+      // 简化：在啮合相位内线性转动 slotAngle
+      let drivenAngle = 0;
+      if (engaging) {
+        // 啮合进度
+        const engagePhase = (Math.cos(driverAngle) + 1) / 2; // 0~1
+        drivenAngle = -slotAngle / 2 + engagePhase * slotAngle;
+      }
+
+      // 画从动轮（带槽）
+      const drivenGroup = svg('g', { transform: `translate(${drivenCx},${drivenCy}) rotate(${drivenAngle * 180 / Math.PI})` });
+      // 外圆
+      drivenGroup.appendChild(circle(0, 0, slotR, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+      // 锁止弧（在外圆上）
+      // 槽（从中心向外辐射）
+      for (let i = 0; i < nSlots; i++) {
+        const a = i * slotAngle;
+        const x1 = 0, y1 = 0;
+        const x2 = slotR * Math.cos(a), y2 = slotR * Math.sin(a);
+        drivenGroup.appendChild(line(x1, y1, x2, y2, { stroke: '#2a5c8a', 'stroke-width': 6 }));
+      }
+      drivenGroup.appendChild(circle(0, 0, 15, { fill: '#333' }));
+      gvSvg.appendChild(drivenGroup);
+
+      // 画主动轮（带圆销 + 圆弧锁止盘）
+      const driverGroup = svg('g', { transform: `translate(${driverCx},${driverCy})` });
+      // 锁止盘（半径较小的圆，避免干涉从动轮槽）
+      driverGroup.appendChild(circle(0, 0, R * 0.6, { fill: '#eee', stroke: '#333', 'stroke-width': 2 }));
+      // 圆销
+      driverGroup.appendChild(circle(R * Math.cos(driverAngle), R * Math.sin(driverAngle), 8, { fill: '#c8442a', stroke: '#333', 'stroke-width': 2 }));
+      // 中心轴
+      driverGroup.appendChild(circle(0, 0, 6, { fill: '#333' }));
+      gvSvg.appendChild(driverGroup);
+
+      // 标签
+      const t = svg('text', { x: 350, y: 40, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+      t.textContent = engaging
+        ? `啮合中：从动轮转动 ${slotAngle * 180 / Math.PI}° / 主动一圈`
+        : `静止期：从动轮被锁止盘定位`;
+      gvSvg.appendChild(t);
+
+      const t2 = svg('text', { x: driverCx, y: driverCy + 130, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
+      t2.textContent = '主动轮（连续转）';
+      gvSvg.appendChild(t2);
+      const t3 = svg('text', { x: drivenCx, y: drivenCy + 130, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
+      t3.textContent = `从动轮（${nSlots} 槽 → ${nSlots} 分度）`;
+      gvSvg.appendChild(t3);
+    }
+
+    createControls(gvCtlMount, {
+      duration: 6000,
+      onTick: (phase) => render(phase),
+    });
+  </script>
+</body>
+</html>

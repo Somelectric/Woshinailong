@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>机构设计 · Part 2 运动方式分类</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="index-wrap">
+    <div class="index-hero">
+      <h1>机构设计 · 运动方式分类</h1>
+      <p>ARC 农业机器人俱乐部 · 大一入门课 · Part 2</p>
+    </div>
+
+    <p style="font-size:15px; color:var(--ink-soft); margin-bottom:24px;">
+      按"我要什么运动"选机构，而不是"我会什么机构"凑运动。每页对比多种实现方式，看动画、看优缺点、看我们机器人上的对应零件。
+    </p>
+
+    <div class="motion-grid">
+      <a class="motion-card" href="dof.html">
+        <div class="icon">F</div>
+        <h3>自由度</h3>
+        <div class="en">Degrees of Freedom</div>
+        <div class="desc">机构能独立运动的方式数。先建立"约束—自由度"的基本概念，再谈选型。</div>
+      </a>
+
+      <a class="motion-card" href="motion-linear.html">
+        <div class="icon">→</div>
+        <h3>直线运动</h3>
+        <div class="en">Linear Motion</div>
+        <div class="desc">丝杆滑台、齿轮齿条、曲柄滑块、同步带、气缸、凸轮直线从动件——同一目标的 6 种实现。</div>
+      </a>
+
+      <a class="motion-card hero" href="motion-oscillation.html">
+        <div class="icon">∿</div>
+        <h3>摆动 & 有限转动</h3>
+        <div class="en">Oscillation</div>
+        <div class="desc">四杆机构（可调参数 hero demo）、凸轮摆动、直接舵机、齿条-齿轮摆动。</div>
+      </a>
+
+      <a class="motion-card" href="motion-intermittent.html">
+        <div class="icon">⦿</div>
+        <h3>间歇运动</h3>
+        <div class="en">Intermittent Motion</div>
+        <div class="desc">连续转动 → 周期性启停：槽轮、棘轮、不完全齿轮、步进电机直驱。</div>
+      </a>
+
+      <a class="motion-card" href="motion-gripping.html">
+        <div class="icon">✊</div>
+        <h3>夹持 & 拾取</h3>
+        <div class="en">Gripping</div>
+        <div class="desc">末端执行器的核心环节：平行夹爪、真空吸盘、柔顺软爪、刮板扫入、电磁。</div>
+      </a>
+
+      <a class="motion-card" href="motion-transmission.html">
+        <div class="icon">⚙</div>
+        <h3>减速 & 传动</h3>
+        <div class="en">Transmission</div>
+        <div class="desc">多级齿轮、蜗轮蜗杆、行星轮系、同步带、链传动——从电机到末端怎么传递动力。</div>
+      </a>
+
+      <a class="motion-card" href="motion-complex.html">
+        <div class="icon">≋</div>
+        <h3>复杂 / 平面曲线</h3>
+        <div class="en">Complex Curves</div>
+        <div class="desc">当末端要走特定轨迹：多连杆、凸轮+连杆、五杆、Delta 并联。</div>
+      </a>
+
+      <a class="motion-card" href="wrap-up.html">
+        <div class="icon">🌳</div>
+        <h3>收尾：选型决策树</h3>
+        <div class="en">Wrap-up</div>
+        <div class="desc">任务需求 → 运动方式 → 机构选型，三层决策树。Part 1 任务拆解方法论的闭环。</div>
+      </a>
+    </div>
+
+    <div style="margin-top:32px; padding:16px 20px; background:var(--panel); border-radius:8px; font-size:14px; color:var(--ink-soft);">
+      <strong style="color:var(--accent);">使用提示</strong>：投影时按 <code style="font-family:var(--mono); background:var(--bg); padding:2px 6px; border-radius:3px;">F11</code> 全屏；动画可暂停在某角度讲解；hero demo 可现场调杆长。
+    </div>
+  </div>
+</body>
+</html>

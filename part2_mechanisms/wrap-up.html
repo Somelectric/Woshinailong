@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>选型决策树 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+  <style>
+    .tree-stage {
+      background: var(--bg);
+      border-radius: 6px;
+      padding: 24px 16px;
+      margin-bottom: 20px;
+    }
+    .tree-row {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .tree-row + .tree-row { margin-top: 18px; position: relative; }
+    .tree-row + .tree-row::before {
+      content: '';
+      position: absolute;
+      top: -18px;
+      left: 50%;
+      width: 2px;
+      height: 18px;
+      background: var(--line);
+    }
+    .tree-node {
+      background: white;
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 18px;
+      text-align: center;
+      min-width: 140px;
+      max-width: 200px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .tree-node.task { background: var(--accent); color: white; border-color: var(--accent); }
+    .tree-node.motion { background: white; border-color: #2a5c8a; }
+    .tree-node.mech { background: white; border-color: var(--good); font-size: 13px; padding: 8px 12px; }
+    .tree-node .label { font-size: 11px; color: var(--ink-soft); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .tree-node.task .label { color: rgba(255,255,255,0.8); }
+    .tree-node .name { font-weight: 600; font-size: 14px; }
+    .tree-node.task .name { font-size: 16px; }
+    .tree-connector {
+      display: flex; justify-content: center; align-items: center;
+      color: var(--ink-soft); font-size: 20px;
+      height: 24px;
+    }
+    .arrow-down {
+      text-align: center;
+      color: var(--ink-soft);
+      font-size: 18px;
+      margin: 4px 0;
+    }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border-radius: 4px;
+    }
+    .legend-dot {
+      width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+      border: 2px solid;
+    }
+    .recall-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .recall-card {
+      background: white;
+      border-left: 4px solid var(--accent);
+      padding: 12px 16px;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .recall-card .head {
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .recall-card .body {
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+    .method-flow {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 20px;
+      background: white;
+      border-radius: 6px;
+      margin: 16px 0;
+    }
+    .method-step {
+      padding: 10px 16px;
+      background: var(--bg);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .method-step strong { color: var(--accent); }
+    .method-arrow { color: var(--ink-soft); font-size: 18px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">选型决策树 <span class="en">How to Choose</span></h1>
+      <p class="need-hint">
+        <strong>这节课的总结。</strong> 从"任务需求"反推"机构选型"——这是 Part 1 任务拆解方法论的延续。
+        永远先问"我要什么运动"，再问"用什么机构实现"。
+      </p>
+
+      <section class="stage">
+        <h3 style="margin:0 0 8px; font-size:18px;">设计流程：任务 → 运动 → 机构</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin: 0 0 12px;">
+          Part 1 讲的"解耦→耦合"是<strong>横向</strong>维度（同一层级内拆分）；
+          下面这张图是<strong>纵向</strong>维度（从需求到物理实现）。
+        </p>
+
+        <div class="method-flow">
+          <div class="method-step"><strong>① 任务</strong> 把鸡蛋捡起来</div>
+          <span class="method-arrow">→</span>
+          <div class="method-step"><strong>② 运动需求</strong> 直线 + 夹持</div>
+          <span class="method-arrow">→</span>
+          <div class="method-step"><strong>③ 候选机构</strong> 列 4~5 种</div>
+          <span class="method-arrow">→</span>
+          <div class="method-step"><strong>④ 耦合判断</strong> 能否合并子任务</div>
+          <span class="method-arrow">→</span>
+          <div class="method-step"><strong>⑤ 选定</strong> 刮板扫入</div>
+        </div>
+      </section>
+
+      <section class="stage tree-stage">
+        <h3 style="margin:0 0 20px; font-size:18px; text-align:center;">决策树（点机构名回顾对应页面）</h3>
+
+        <div class="tree-row">
+          <div class="tree-node task">
+            <div class="label">根 · 任务</div>
+            <div class="name">设计一个机构</div>
+          </div>
+        </div>
+
+        <div class="tree-row">
+          <div class="tree-node motion">
+            <div class="label">问 1 · 末端走什么轨迹</div>
+            <div class="name">直线？曲线？摆动？停歇？</div>
+          </div>
+        </div>
+
+        <div class="tree-row">
+          <a class="tree-node mech" href="motion-linear.html">
+            <div class="label">运动 1</div>
+            <div class="name">直线运动</div>
+          </a>
+          <a class="tree-node mech" href="motion-oscillation.html">
+            <div class="label">运动 2</div>
+            <div class="name">摆动</div>
+          </a>
+          <a class="tree-node mech" href="motion-intermittent.html">
+            <div class="label">运动 3</div>
+            <div class="name">间歇</div>
+          </a>
+          <a class="tree-node mech" href="motion-gripping.html">
+            <div class="label">运动 4</div>
+            <div class="name">夹持拾取</div>
+          </a>
+          <a class="tree-node mech" href="motion-transmission.html">
+            <div class="label">运动 5</div>
+            <div class="name">减速传动</div>
+          </a>
+          <a class="tree-node mech" href="motion-complex.html">
+            <div class="label">运动 6</div>
+            <div class="name">复杂曲线</div>
+          </a>
+        </div>
+
+        <div class="tree-row" style="margin-top:24px;">
+          <div class="tree-node motion">
+            <div class="label">问 2 · 再问 3 个约束</div>
+            <div class="name">精度？负载？速度？</div>
+          </div>
+        </div>
+
+        <div class="tree-row">
+          <div class="tree-node mech" style="border-color:var(--bad);">
+            <div class="label">精度</div>
+            <div class="name">μm 级 → 丝杆 / 滚珠</div>
+          </div>
+          <div class="tree-node mech" style="border-color:var(--bad);">
+            <div class="label">负载</div>
+            <div class="name">大 → 齿轮 / 蜗轮</div>
+          </div>
+          <div class="tree-node mech" style="border-color:var(--bad);">
+            <div class="label">速度</div>
+            <div class="name">高速 → 同步带 / 直接驱动</div>
+          </div>
+          <div class="tree-node mech" style="border-color:var(--bad);">
+            <div class="label">成本</div>
+            <div class="name">低成本 → 曲柄 / 气缸</div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent); border-color:var(--accent);"></div>
+            起点：任务需求
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:white; border-color:#2a5c8a;"></div>
+            第一层判断：运动类型
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:white; border-color:var(--good);"></div>
+            第二层：候选机构
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:white; border-color:var(--bad);"></div>
+            第三层：约束筛选
+          </div>
+        </div>
+      </section>
+
+      <section class="stage">
+        <h3 style="margin:0 0 8px; font-size:18px;">回到我们的机器人：每个机构选择的回顾</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin: 0 0 8px;">
+          整套课程的核心：每个机构都不是"教科书里这么用"，而是"我们的任务这么要求"。
+        </p>
+        <div class="recall-grid">
+          <div class="recall-card">
+            <div class="head">3-DOF 机械臂</div>
+            <div class="body">
+              末端要在 3D 空间达位 → F=3 → 3 个转动副 + 3 舵机。
+              <a href="dof.html">自由度页 →</a>
+            </div>
+          </div>
+          <div class="recall-card">
+            <div class="head">刮板扫入</div>
+            <div class="body">
+              不夹（鸡蛋易碎）+ 同时称重 → 选刮板而不是夹爪。
+              <a href="motion-gripping.html">夹持拾取页 →</a>
+            </div>
+          </div>
+          <div class="recall-card">
+            <div class="head">好蛋释放铰链板</div>
+            <div class="body">
+              简化四杆 / 直接舵机摆动 → 把 5mm 泡棉倾斜让蛋滑出。
+              <a href="motion-oscillation.html">摆动页 →</a>
+            </div>
+          </div>
+          <div class="recall-card">
+            <div class="head">步进电机直驱麦轮</div>
+            <div class="body">
+              开环精确停位（动—停—动）→ 数字控制替代机械间歇机构。
+              <a href="motion-intermittent.html">间歇运动页 →</a>
+            </div>
+          </div>
+          <div class="recall-card">
+            <div class="head">任务耦合：扫入 + 称重</div>
+            <div class="body">
+              刮板同时承担"扫鸡蛋"和"压力传感器贴底称重"两个功能 →
+              <strong>一个机构 = 两个子任务的解</strong>。
+            </div>
+          </div>
+          <div class="recall-card">
+            <div class="head">没用的：复杂曲线</div>
+            <div class="body">
+              我们的轨迹靠示教就能完成，没上五杆/Delta →
+              <strong>不为了"高级"而用复杂机构</strong>。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage" style="background:linear-gradient(135deg, #fafaf7, #fde7e0);">
+        <h3 style="margin:0 0 12px; font-size:18px;">给大一的三句话</h3>
+        <div style="display:grid; gap:10px; font-size:14px; line-height:1.7;">
+          <div><strong style="color:var(--accent);">① 先想清楚再动手。</strong> 把末端要走的轨迹画在纸上，再问"几自由度能实现"，最后才选机构。</div>
+          <div><strong style="color:var(--accent);">② 算清自由度。</strong> F = 3n − 2P<sub>L</sub> − P<sub>H</sub> 不是公式游戏——它告诉你这个机构能不能动、需要几个电机。</div>
+          <div><strong style="color:var(--accent);">③ 用现成件。</strong> 舵机、步进、同步带轮、直线导轨都是商品化的——不要重新发明轮子，把精力花在<strong>整合</strong>上。</div>
+        </div>
+      </section>
+
+      <div class="page-nav">
+        <a href="motion-complex.html">← 复杂曲线</a>
+        <a href="index.html">回到首页 ↻</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    injectSidebar('wrap-up');
+  </script>
+</body>
+</html>

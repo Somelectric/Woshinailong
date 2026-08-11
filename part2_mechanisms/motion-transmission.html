@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>减速与传动 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">减速 & 传动 <span class="en">Transmission</span></h1>
+      <p class="need-hint">
+        <strong>什么时候需要这种机构？</strong> 电机转速太高、力矩太小，而末端需要低转速 + 大力矩。
+        传动机构同时解决"减速"和"传力"两个问题。任何机器人都会用到。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="hero">齿轮对 ★</button>
+        <button class="tab" data-tab="worm">蜗轮蜗杆</button>
+        <button class="tab" data-tab="planetary">行星轮系</button>
+        <button class="tab" data-tab="belt">同步带</button>
+        <button class="tab" data-tab="chain">链传动</button>
+      </div>
+
+      <section id="tab-hero" class="tab-panel">
+        <div class="stage">
+          <svg id="gr-svg" viewBox="0 0 700 320"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>小齿轮齿数 z₁ <span class="val" id="gr-z1-val">20</span></label>
+              <input type="range" id="gr-z1" min="10" max="40" value="20">
+            </div>
+            <div class="param-row">
+              <label>大齿轮齿数 z₂ <span class="val" id="gr-z2-val">40</span></label>
+              <input type="range" id="gr-z2" min="20" max="80" value="40">
+            </div>
+          </div>
+          <div id="gr-controls-mount"></div>
+          <div class="verdict" id="gr-verdict"></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>传动比精确、稳定</li><li>效率高（97%+）</li><li>承载能力强</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>噪音（高速时）</li><li>远距离传动结构变大</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>机器人关节减速器</li><li>汽车变速箱</li><li>工业机械主传动</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-worm" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <g transform="translate(350, 160)">
+              <ellipse cx="-80" cy="0" rx="20" ry="60" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="worm-threads"></g>
+              <circle cx="60" cy="0" r="80" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="worm-gear-teeth"></g>
+              <text x="0" y="-130" text-anchor="middle" fill="#999" font-size="13">蜗杆（左）→ 蜗轮（右）：大减速比 + 自锁</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>单级可实现大减速比（30~80）</li><li>结构紧凑</li><li>可自锁（导程角小于摩擦角）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>摩擦损失大（效率 50~90%）</li><li>发热</li><li>铜蜗轮成本高</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>升降机构（自锁防坠）</li><li>阀门驱动</li><li>电梯</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-planetary" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <g transform="translate(350, 160)">
+              <circle r="100" fill="none" stroke="#333" stroke-width="3"/>
+              <circle r="25" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="planets"></g>
+              <text x="0" y="-130" text-anchor="middle" fill="#999" font-size="13">太阳轮 + 行星轮 + 内齿圈 = 紧凑大减速比</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>同轴输入输出</li><li>结构紧凑，比功率大</li><li>多齿同时受力，承载高</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>设计复杂</li><li>装配精度要求高</li><li>内齿圈加工成本</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>电动车减速箱</li><li>机器人 RV 减速器</li><li>风电齿轮箱</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-belt" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <g transform="translate(350, 160)">
+              <circle cx="-120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
+              <line x1="-120" y1="-50" x2="120" y2="-50" stroke="#666" stroke-width="3"/>
+              <line x1="-120" y1="50" x2="120" y2="50" stroke="#666" stroke-width="3"/>
+              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">同步带传动：远距离、有齿啮合（无滑差）</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>适合远距离传动</li><li>无齿隙（同步带）</li><li>无需润滑、噪音低</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>长期使用会松弛</li><li>抗冲击能力差</li><li>寿命有限</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机 X/Y 轴</li><li>发动机正时系统</li><li>自动门</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-chain" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <g transform="translate(350, 160)">
+              <circle cx="-120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
+              <circle cx="120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="chain-link"></g>
+              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">链传动：大载荷、远距离，无滑差</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>承载能力大</li><li>无滑差</li><li>远距离传动效率高</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>噪音大</li><li>有齿隙冲击</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>自行车、摩托车</li><li>叉车提升机构</li><li>农业机械（收割机）</li></ul></div>
+        </div>
+      </section>
+
+      <div class="robot-callout">
+        <img src="../assets/asabe/stepper-motor.png" alt="stepper">
+        <div class="text">
+          <strong>在我们的机器人上</strong>
+          4 个 42 步进电机直接驱动麦轮——没有用齿轮减速器，靠步进电机本身的扭矩 + PWM 微步控制。
+          如果未来要加负载（如采摘机械臂），就需要在电机和关节之间加一对齿轮减速。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="motion-gripping.html">← 夹持</a>
+        <a href="motion-complex.html">复杂曲线 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { gears, TAU } from './common/math.js';
+
+    injectSidebar('motion-transmission');
+
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+
+    const grSvg = document.getElementById('gr-svg');
+    const grMount = document.getElementById('gr-controls-mount');
+    const grVerdict = document.getElementById('gr-verdict');
+    let z1 = 20, z2 = 40;
+    const m = 2.5; // 模数 mm
+
+    function updateVerdict() {
+      const g = gears({ m, z1, z2 });
+      grVerdict.className = 'verdict';
+      grVerdict.innerHTML = `<strong>传动比 i = z₂/z₁ = ${z2}/${z1} = ${(g.ratio).toFixed(2)}</strong> · 中心距 = ${g.centerDist.toFixed(1)} mm · 输入 ω₁ → 输出 ω₂ = ω₁/${g.ratio.toFixed(2)}`;
+    }
+    document.getElementById('gr-z1').addEventListener('input', e => { z1 = parseInt(e.target.value); document.getElementById('gr-z1-val').textContent = z1; updateVerdict(); });
+    document.getElementById('gr-z2').addEventListener('input', e => { z2 = parseInt(e.target.value); document.getElementById('gr-z2-val').textContent = z2; updateVerdict(); });
+    updateVerdict();
+
+    // 简化齿轮：画圆+齿
+    function drawGear(cx, cy, r, teethCount, color = '#c8442a', rotation = 0) {
+      const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${rotation})` });
+      // 节圆（淡色）
+      g.appendChild(circle(0, 0, r, { fill: 'white', stroke: '#eee', 'stroke-width': 1 }));
+      // 齿（小矩形分布在圆周）
+      const toothDepth = 5;
+      for (let i = 0; i < teethCount; i++) {
+        const a = (i / teethCount) * 360;
+        const tooth = svg('rect', { x: -3, y: -r - toothDepth, width: 6, height: toothDepth * 2, fill: color, transform: `rotate(${a})` });
+        g.appendChild(tooth);
+      }
+      // 中心圆
+      g.appendChild(circle(0, 0, r * 0.85, { fill: 'white', stroke: color, 'stroke-width': 2 }));
+      // 辐条
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * 360;
+        g.appendChild(svg('rect', { x: -2, y: -r * 0.85, width: 4, height: r * 0.7, fill: '#ddd', transform: `rotate(${a})` }));
+      }
+      // 中心轴
+      g.appendChild(circle(0, 0, 6, { fill: '#333' }));
+      return g;
+    }
+
+    function render(phase) {
+      clear(grSvg);
+      const g = gears({ m, z1, z2 });
+      // 主动轮在左，从动轮在右
+      const cx1 = 350 - g.r2;
+      const cx2 = 350 + g.r1;
+      const cy = 160;
+      // 两轮转向相反
+      const ang1 = phase * 360;
+      const ang2 = -phase * 360 * (z1 / z2);
+
+      grSvg.appendChild(drawGear(cx1, cy, g.r1, z1, '#c8442a', ang1));
+      grSvg.appendChild(drawGear(cx2, cy, g.r2, z2, '#2a5c8a', ang2));
+
+      // 标签
+      const t1 = svg('text', { x: cx1, y: cy + g.r1 + 30, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
+      t1.textContent = `z₁ = ${z1}`;
+      grSvg.appendChild(t1);
+      const t2 = svg('text', { x: cx2, y: cy + g.r2 + 30, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
+      t2.textContent = `z₂ = ${z2}`;
+      grSvg.appendChild(t2);
+      // 速度指示
+      const t3 = svg('text', { x: cx1, y: cy - g.r1 - 25, 'text-anchor':'middle', fill:'#c8442a', 'font-size':13 });
+      t3.textContent = `ω₁ 输入`;
+      grSvg.appendChild(t3);
+      const t4 = svg('text', { x: cx2, y: cy - g.r2 - 25, 'text-anchor':'middle', fill:'#2a5c8a', 'font-size':13 });
+      t4.textContent = `ω₂ = ω₁/${g.ratio.toFixed(2)} 输出`;
+      grSvg.appendChild(t4);
+    }
+
+    createControls(grMount, {
+      duration: 4000,
+      onTick: (phase) => render(phase),
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>直线运动 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+
+    <main class="main">
+      <h1 class="page-title">直线运动 <span class="en">Linear Motion</span></h1>
+      <p class="need-hint">
+        <strong>什么时候需要这种运动？</strong> 末端要沿一条直线往复运动（推、拉、夹、压）。
+        看似简单，但实现方式五花八门，选哪种取决于行程、精度、负载、动力源。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="hero">曲柄滑块 ★</button>
+        <button class="tab" data-tab="screw">丝杆滑台</button>
+        <button class="tab" data-tab="rack">齿轮齿条</button>
+        <button class="tab" data-tab="belt">同步带</button>
+        <button class="tab" data-tab="cylinder">气缸</button>
+      </div>
+
+      <section id="tab-hero" class="tab-panel">
+        <div class="stage">
+          <svg id="cs-svg" viewBox="0 0 700 320"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>a · 曲柄长度 <span class="val" id="cs-a-val">50</span> mm</label>
+              <input type="range" id="cs-a" min="20" max="90" value="50">
+            </div>
+            <div class="param-row">
+              <label>b · 连杆长度 <span class="val" id="cs-b-val">160</span> mm</label>
+              <input type="range" id="cs-b" min="80" max="240" value="160">
+            </div>
+            <div class="param-row">
+              <label>e · 偏置距离 <span class="val" id="cs-e-val">0</span> mm</label>
+              <input type="range" id="cs-e" min="-30" max="30" value="0">
+            </div>
+          </div>
+          <div id="cs-controls-mount"></div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good">
+            <h4>优点</h4>
+            <ul>
+              <li>结构最简单：一个曲柄 + 连杆 + 滑块</li>
+              <li>把电机的连续转动直接变成直线往复</li>
+              <li>发动机活塞、冲床、压缩机都用它</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>缺点</h4>
+            <ul>
+              <li>滑块速度不均匀（正弦近似），快速端慢、中点快</li>
+              <li>行程受限于曲柄长度的 2 倍</li>
+              <li>侧向力大（无偏置时仍然有侧推）</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>适用场景</h4>
+            <ul>
+              <li>周期性、固定行程的直线往复</li>
+              <li>动力源是连续转动电机</li>
+              <li>不要求中间位置精确停位</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-screw" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <defs>
+              <pattern id="screw-thread" x="0" y="0" width="14" height="20" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="20" x2="14" y2="0" stroke="#888" stroke-width="1.5"/>
+              </pattern>
+            </defs>
+            <rect x="200" y="120" width="380" height="40" fill="url(#screw-thread)" stroke="#666" stroke-width="2"/>
+            <rect x="500" y="80" width="80" height="120" fill="#c8442a" stroke="#333" stroke-width="2" rx="4"/>
+            <text x="540" y="145" text-anchor="middle" fill="white" font-size="13">螺母滑台</text>
+            <line x1="200" y1="180" x2="580" y2="180" stroke="#666" stroke-width="2"/>
+            <line x1="200" y1="180" x2="200" y2="220" stroke="#666" stroke-width="2"/>
+            <line x1="580" y1="180" x2="580" y2="220" stroke="#666" stroke-width="2"/>
+            <circle cx="180" cy="140" r="22" fill="white" stroke="#333" stroke-width="2"/>
+            <text x="180" y="145" text-anchor="middle" font-size="11">电机</text>
+            <text x="350" y="60" text-anchor="middle" fill="#999" font-size="13">丝杆旋转 → 螺母沿轴向直线移动</text>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>精度高（微米级）</li><li>减速比大（导程小则更慢）</li><li>能自锁（梯形螺纹）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>速度慢</li><li>滚珠丝杆成本高</li><li>长行程时丝杆下垂</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机、CNC</li><li>精密定位台</li><li>升降柱</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-rack" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <g transform="translate(350, 160)">
+              <circle r="60" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="gear-teeth"></g>
+              <rect x="-300" y="55" width="600" height="40" fill="white" stroke="#333" stroke-width="2"/>
+              <g id="rack-teeth"></g>
+              <circle r="6" fill="#c8442a"/>
+              <text x="0" y="-90" text-anchor="middle" fill="#999" font-size="13">齿轮旋转 → 齿条直线移动</text>
+            </g>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>传动效率高</li><li>行程理论上无限</li><li>结构紧凑</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>有齿隙（影响精度）</li><li>需要润滑</li><li>高速时噪音大</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>汽车转向</li><li>大型数控机床</li><li>铁路道岔</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-belt" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <circle cx="180" cy="160" r="50" fill="white" stroke="#333" stroke-width="2"/>
+            <circle cx="520" cy="160" r="50" fill="white" stroke="#333" stroke-width="2"/>
+            <rect x="320" y="100" width="60" height="40" fill="#c8442a" stroke="#333" stroke-width="2" rx="2"/>
+            <line x1="180" y1="110" x2="520" y2="110" stroke="#666" stroke-width="3"/>
+            <line x1="180" y1="210" x2="520" y2="210" stroke="#666" stroke-width="3"/>
+            <circle cx="180" cy="160" r="6" fill="#c8442a"/>
+            <circle cx="520" cy="160" r="6" fill="#c8442a"/>
+            <text x="350" y="80" text-anchor="middle" fill="#999" font-size="13">主动轮旋转 → 同步带直线运动</text>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>远距离传动效率高</li><li>无齿隙（同步带）</li><li>噪音低、无需润滑</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>长期会松弛</li><li>高速可能跳齿</li><li>精度不如丝杆</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机 X/Y 轴</li><li>白板笔机器人</li><li>自动门</li></ul></div>
+        </div>
+      </section>
+
+      <section id="tab-cylinder" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <svg viewBox="0 0 700 320">
+            <rect x="200" y="120" width="280" height="80" fill="white" stroke="#333" stroke-width="2" rx="4"/>
+            <rect x="220" y="140" width="200" height="40" fill="#fde7e0" stroke="#c8442a" stroke-width="2" rx="2"/>
+            <rect x="420" y="150" width="180" height="20" fill="#666"/>
+            <line x1="220" y1="160" x2="220" y2="200" stroke="#c8442a" stroke-width="3" stroke-dasharray="4 4"/>
+            <line x1="420" y1="160" x2="420" y2="200" stroke="#c8442a" stroke-width="3" stroke-dasharray="4 4"/>
+            <text x="320" y="100" text-anchor="middle" fill="#999" font-size="13">气缸（或电动推杆）→ 直接输出直线运动</text>
+          </svg>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul><li>直接出直线运动，最简单</li><li>响应快（气动）</li><li>力大（液压）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>气动只能两位置（无法中间停）</li><li>需要气源/液压站</li><li>电动推杆自锁看型号</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>夹爪开闭</li><li>推料、顶出</li><li>二位置切换</li></ul></div>
+        </div>
+      </section>
+
+      <div class="robot-callout">
+        <img src="../assets/asabe/end-effector-picking.png" alt="end effector">
+        <div class="text">
+          <strong>在我们的机器人上</strong>
+          末端刮板的扫动其实就是一种简化曲柄滑块——舵机驱动刮板绕一个轴摆动，把鸡蛋扫入收集筐。
+          如果刮板要做长行程直线运动（而不是摆动），可以考虑改成齿条或同步带方案。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="dof.html">← 自由度</a>
+        <a href="motion-oscillation.html">摆动 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { crankSlider, TAU } from './common/math.js';
+
+    injectSidebar('motion-linear');
+
+    // Tab 切换
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+
+    // 曲柄滑块动画
+    const csSvg = document.getElementById('cs-svg');
+    const csCtlMount = document.getElementById('cs-controls-mount');
+    const lens = { a: 50, b: 160, e: 0 };
+
+    function bindSlider(name) {
+      const el = document.getElementById('cs-' + name);
+      el.addEventListener('input', (e) => {
+        lens[name] = parseInt(e.target.value);
+        document.getElementById('cs-' + name + '-val').textContent = lens[name];
+      });
+    }
+    ['a','b','e'].forEach(bindSlider);
+
+    function render(theta1) {
+      clear(csSvg);
+      const sol = crankSlider({ ...lens, theta1 });
+      const ox = 200, oy = 160;
+
+      // 导路
+      csSvg.appendChild(line(50, oy + lens.e, 650, oy + lens.e, { stroke: '#ddd', 'stroke-width': 1, 'stroke-darray': '4 4' }));
+      // 实线导路（滑块运动路径）
+      csSvg.appendChild(line(50, oy + lens.e + 50, 650, oy + lens.e + 50, { stroke: '#eee', 'stroke-width': 1 }));
+
+      // 机架（曲柄支座）
+      csSvg.appendChild(circle(ox, oy, 8, { fill: '#333' }));
+      csSvg.appendChild(svg('polygon', { points: `${ox-15},${oy+8} ${ox+15},${oy+8} ${ox+10},${oy+22} ${ox-10},${oy+22}`, fill: '#333' }));
+
+      if (!sol.valid || sol.sliderPos === null) {
+        const t = svg('text', { x: 350, y: 60, 'text-anchor':'middle', fill:'#a13030', 'font-size':14 });
+        t.textContent = '⚠ 装配失败：连杆长度不足，请增大 b';
+        csSvg.appendChild(t);
+        return;
+      }
+
+      const crankEnd = { x: ox + sol.crankEnd.x, y: oy - sol.crankEnd.y };
+      const slider = { x: ox + sol.sliderPos, y: oy + lens.e };
+
+      // 连杆（蓝）
+      csSvg.appendChild(line(crankEnd.x, crankEnd.y, slider.x, slider.y, { stroke: '#2a5c8a', 'stroke-width': 4 }));
+      // 曲柄（红）
+      csSvg.appendChild(line(ox, oy, crankEnd.x, crankEnd.y, { stroke: '#c8442a', 'stroke-width': 5 }));
+
+      // 滑块（橙色矩形）
+      csSvg.appendChild(svg('rect', { x: slider.x - 25, y: slider.y - 18, width: 50, height: 36, fill: '#c8442a', stroke:'#333', 'stroke-width': 2, rx: 3 }));
+
+      // 关节
+      [crankEnd, slider].forEach(p => {
+        csSvg.appendChild(circle(p.x, p.y, 5, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+      });
+
+      // 标签
+      const lbl = (x, y, t) => {
+        const e = svg('text', { x, y, fill:'#555', 'font-size':11, 'font-family':'monospace' });
+        e.textContent = t;
+        csSvg.appendChild(e);
+      };
+      lbl(ox - 30, oy - 5, 'A');
+      lbl(crankEnd.x + 8, crankEnd.y - 5, 'B');
+      lbl(slider.x - 5, slider.y - 25, 'C');
+
+      const hint = svg('text', { x: 350, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+      hint.textContent = `θ₁ = ${(theta1 * 180 / Math.PI).toFixed(0)}°`;
+      csSvg.appendChild(hint);
+    }
+
+    createControls(csCtlMount, {
+      duration: 4000,
+      onTick: (phase) => render(phase * TAU),
+    });
+  </script>
+</body>
+</html>

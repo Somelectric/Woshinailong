@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>摆动 & 有限转动 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+
+    <main class="main">
+      <h1 class="page-title">摆动 & 有限转动 <span class="en">Oscillation</span></h1>
+      <p class="need-hint">
+        <strong>什么时候需要这种运动？</strong> 末端要在某个角度范围内来回摆动（如分拣挡板、机械臂肩关节、好蛋释放铰链板）。
+        通常单驱动源（一个舵机或电机）就能搞定。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="four-bar">四杆机构 ★</button>
+        <button class="tab" data-tab="cam">凸轮摆动</button>
+        <button class="tab" data-tab="servo">直接舵机</button>
+        <button class="tab" data-tab="rack">齿条-齿轮摆动</button>
+      </div>
+
+      <!-- ===== 四杆机构（hero demo） ===== -->
+      <section id="tab-four-bar" class="tab-panel">
+        <div class="stage">
+          <svg id="fb-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+
+          <div class="params">
+            <div class="param-row">
+              <label>a · 曲柄 <span class="val" id="fb-a-val">60</span> mm</label>
+              <input type="range" id="fb-a" min="20" max="140" value="60">
+            </div>
+            <div class="param-row">
+              <label>b · 连杆 <span class="val" id="fb-b-val">160</span> mm</label>
+              <input type="range" id="fb-b" min="40" max="240" value="160">
+            </div>
+            <div class="param-row">
+              <label>c · 摇杆 <span class="val" id="fb-c-val">120</span> mm</label>
+              <input type="range" id="fb-c" min="40" max="240" value="120">
+            </div>
+            <div class="param-row">
+              <label>d · 机架 <span class="val" id="fb-d-val">180</span> mm</label>
+              <input type="range" id="fb-d" min="40" max="280" value="180">
+            </div>
+            <div class="param-row">
+              <label>f · 连杆点偏移 <span class="val" id="fb-f-val">40</span> mm</label>
+              <input type="range" id="fb-f" min="-80" max="80" value="40">
+            </div>
+            <div class="param-row">
+              <label>动画速度 <span class="val" id="fb-spd-val">1×</span></label>
+              <input type="range" id="fb-spd" min="0.1" max="3" step="0.1" value="1">
+            </div>
+          </div>
+
+          <div class="verdict" id="fb-verdict"></div>
+
+          <div id="fb-controls-mount"></div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good">
+            <h4>优点</h4>
+            <ul>
+              <li>纯转动副，磨损小、寿命长</li>
+              <li>设计成熟，杆长变了运动规律就变，灵活度高</li>
+              <li>能精确控制末端的摆角范围与节奏</li>
+              <li>刚性好，能承受较大载荷</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>缺点</h4>
+            <ul>
+              <li>需要满足 Grashof 条件才有曲柄</li>
+              <li>运动到"死点"会卡死（需要飞轮或对称布置）</li>
+              <li>杆长一旦定死，运动规律不可调</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>适用场景</h4>
+            <ul>
+              <li>需要周期性摆动的释放/分拣机构</li>
+              <li>机械臂肩/肘关节（多用多组四杆串联）</li>
+              <li>履带悬挂、悬挂系统</li>
+              <li>压力机、剪切机</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="robot-callout">
+          <img src="../assets/asabe/storage-release.png" alt="Storage and release mechanism">
+          <div class="text">
+            <strong>在我们的机器人上</strong>
+            好蛋释放机构 = 简化版铰链四杆：侧置舵机驱动铰链板绕固定轴旋转。
+            注意它只是"单臂铰链"——只有一个转动副+板本身作为连杆，是最简单的四杆退化情形。
+            想象再加一根连杆让舵机远离铰链点，就是标准曲柄摇杆了。
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 其他机构（待开发） ===== -->
+      <section id="tab-cam" class="tab-panel" style="display:none;">
+        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
+          <div style="text-align:center; color:var(--ink-soft);">
+            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">凸轮摆动从动件 · 待开发</div>
+            <div style="font-size:13px; line-height:1.7; max-width:480px;">
+              原理：凸轮廓形决定摆杆运动规律。<br>
+              后续可根据需要补充动画演示。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-servo" class="tab-panel" style="display:none;">
+        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
+          <div style="text-align:center; color:var(--ink-soft);">
+            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">直接舵机驱动 · 待开发</div>
+            <div style="font-size:13px; line-height:1.7; max-width:480px;">
+              原理：舵机直接输出有限角度摆动，是最简单的实现方式。<br>
+              我们机器人上的好蛋释放铰链板就属于这种。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-rack" class="tab-panel" style="display:none;">
+        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
+          <div style="text-align:center; color:var(--ink-soft);">
+            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">齿条-齿轮摆动 · 待开发</div>
+            <div style="font-size:13px; line-height:1.7; max-width:480px;">
+              原理：齿条直线运动 → 齿轮有限转动。<br>
+              适合需要精确角度控制且负载较大的场合。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="page-nav">
+        <a href="motion-linear.html">← 直线运动</a>
+        <a href="motion-intermittent.html">间歇运动 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear, toSvg } from './common/controls.js';
+    import { fourBar, grashof, couplerPoint, TAU } from './common/math.js';
+
+    injectSidebar('motion-oscillation');
+
+    // ===== Tabs 切换 =====
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
+      });
+    });
+
+    // ===== 四杆 hero demo =====
+    const fbSvg = document.getElementById('fb-svg');
+    const fbVerdict = document.getElementById('fb-verdict');
+    const fbControlsMount = document.getElementById('fb-controls-mount');
+
+    // SVG 舞台几何
+    const ORIGIN = { x: 250, y: 220 }; // A 点在 SVG 的位置
+    const SCALE = 1.0; // 1 mm = 1 SVG unit
+
+    // 连杆轨迹历史
+    const trail = [];
+    const MAX_TRAIL = 200;
+
+    // 杆长状态
+    const lens = { a: 60, b: 160, c: 120, d: 180, f: 40 };
+
+    function updateLabels() {
+      for (const k of ['a','b','c','d','f']) {
+        document.getElementById('fb-' + k + '-val').textContent = lens[k];
+      }
+    }
+
+    function bindSlider(name) {
+      const el = document.getElementById('fb-' + name);
+      el.addEventListener('input', (e) => {
+        lens[name] = parseInt(e.target.value);
+        document.getElementById('fb-' + name + '-val').textContent = lens[name];
+        trail.length = 0;
+        updateVerdict();
+      });
+    }
+    ['a','b','c','d','f'].forEach(bindSlider);
+
+    function updateVerdict() {
+      const g = grashof(lens);
+      const classes = {
+        'crank-rocker': 'good',
+        'double-crank': 'good',
+        'double-rocker': '',
+        'triple-rocker': 'bad',
+        'change-point': 'bad',
+      };
+      const cls = classes[g.type] || '';
+      fbVerdict.className = 'verdict ' + cls;
+      const symbol = g.grashof ? '✓' : '✗';
+      fbVerdict.innerHTML = `<strong>${symbol} ${g.type}</strong> · ${g.desc} <br>条件 s+l ≤ p+q：最短 ${Math.min(lens.a,lens.b,lens.c,lens.d)} + 最长 ${Math.max(lens.a,lens.b,lens.c,lens.d)} = ${Math.min(lens.a,lens.b,lens.c,lens.d)+Math.max(lens.a,lens.b,lens.c,lens.d)}，其余两杆和 = ${lens.a+lens.b+lens.c+lens.d - Math.min(lens.a,lens.b,lens.c,lens.d) - Math.max(lens.a,lens.b,lens.c,lens.d)}`;
+    }
+    updateVerdict();
+    updateLabels();
+
+    // 绘制循环
+    function render(theta1) {
+      clear(fbSvg);
+
+      // 网格背景
+      const grid = svg('g', { opacity: 0.15 });
+      for (let x = 0; x <= 700; x += 40) {
+        grid.appendChild(line(x, 0, x, 380, { stroke: '#ccc', 'stroke-width': 0.5 }));
+      }
+      for (let y = 0; y <= 380; y += 40) {
+        grid.appendChild(line(0, y, 700, y, { stroke: '#ccc', 'stroke-width': 0.5 }));
+      }
+      fbSvg.appendChild(grid);
+
+      const sol = fourBar({ ...lens, theta1 });
+
+      // 地（机架 d 的固定支座）—— 在 A 和 D 下方画三角形
+      const A = toSvg(sol.A, ORIGIN.x, ORIGIN.y, SCALE);
+      const D = toSvg(sol.D, ORIGIN.x, ORIGIN.y, SCALE);
+      // 画机架 d（粗实线）
+      fbSvg.appendChild(line(A.x, A.y, D.x, D.y, { stroke: '#333', 'stroke-width': 4 }));
+      // 两个支座（小三角形）
+      [A, D].forEach(P => {
+        fbSvg.appendChild(svg('polygon', {
+          points: `${P.x-12},${P.y+12} ${P.x+12},${P.y+12} ${P.x},${P.y}`,
+          fill: '#333',
+        }));
+        fbSvg.appendChild(line(P.x - 18, P.y + 12, P.x + 18, P.y + 12, { stroke: '#333', 'stroke-width': 2 }));
+      });
+
+      if (!sol.valid) {
+        // 装配失败，只画 A、D 点和提示
+        fbSvg.appendChild(circle(A.x, A.y, 5, { fill: '#c8442a' }));
+        fbSvg.appendChild(circle(D.x, D.y, 5, { fill: '#c8442a' }));
+        const txt = svg('text', { x: 350, y: 60, 'text-anchor': 'middle', fill: '#a13030', 'font-size': 14 });
+        txt.textContent = '⚠ 装配失败：杆长组合无法闭合。调整杆长使曲柄能整周转动。';
+        fbSvg.appendChild(txt);
+        return;
+      }
+
+      const B = toSvg(sol.B, ORIGIN.x, ORIGIN.y, SCALE);
+      const C = toSvg(sol.C, ORIGIN.x, ORIGIN.y, SCALE);
+
+      // 轨迹
+      const cp = couplerPoint(sol, lens.b / 2, lens.f);
+      if (cp) {
+        const cpSvg = toSvg(cp, ORIGIN.x, ORIGIN.y, SCALE);
+        trail.push(cpSvg);
+        if (trail.length > MAX_TRAIL) trail.shift();
+        const path = trail.map((p, i) => (i === 0 ? 'M' : 'L') + p.x + ',' + p.y).join(' ');
+        fbSvg.appendChild(svg('path', { d: path, fill: 'none', stroke: '#c8442a', 'stroke-width': 1.5, opacity: 0.5 }));
+      }
+
+      // 杆 a（曲柄）—— 红色
+      fbSvg.appendChild(line(A.x, A.y, B.x, B.y, { stroke: '#c8442a', 'stroke-width': 5 }));
+      // 杆 b（连杆）—— 蓝色
+      fbSvg.appendChild(line(B.x, B.y, C.x, C.y, { stroke: '#2a5c8a', 'stroke-width': 4 }));
+      // 杆 c（摇杆）—— 绿色
+      fbSvg.appendChild(line(D.x, D.y, C.x, C.y, { stroke: '#2a7c4a', 'stroke-width': 5 }));
+
+      // 关节
+      [A, B, C, D].forEach(P => {
+        fbSvg.appendChild(circle(P.x, P.y, 6, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+      });
+
+      // 连杆上的点
+      if (cp) {
+        const cpSvg = toSvg(cp, ORIGIN.x, ORIGIN.y, SCALE);
+        fbSvg.appendChild(circle(cpSvg.x, cpSvg.y, 5, { fill: '#c8442a' }));
+      }
+
+      // 标签
+      const label = (P, text, dx = 0, dy = 0) => {
+        const t = svg('text', { x: P.x + dx, y: P.y + dy, fill: '#555', 'font-size': 12, 'font-family': 'monospace' });
+        t.textContent = text;
+        fbSvg.appendChild(t);
+      };
+      label(A, 'A', -15, 18);
+      label(D, 'D', -5, 22);
+      label(B, 'B', 8, -8);
+      label(C, 'C', 8, -8);
+
+      // 角度提示
+      const t1 = svg('text', { x: 30, y: 30, fill: '#999', 'font-size': 11, 'font-family': 'monospace' });
+      t1.textContent = `θ₁ = ${(theta1 * 180 / Math.PI).toFixed(0)}°`;
+      fbSvg.appendChild(t1);
+      const t3 = svg('text', { x: 30, y: 48, fill: '#999', 'font-size': 11, 'font-family': 'monospace' });
+      t3.textContent = sol.theta3 !== null ? `θ₃ = ${(sol.theta3 * 180 / Math.PI).toFixed(0)}°` : '';
+      fbSvg.appendChild(t3);
+    }
+
+    // 控制器：把 phase 0~1 映射到 θ₁ 0~2π
+    let currentSpeed = 1;
+    const ctl = createControls(fbControlsMount, {
+      duration: 6000,
+      defaultSpeed: 1,
+      onTick: (phase) => {
+        render(phase * TAU);
+      },
+    });
+
+    // 速度滑块（额外的）
+    document.getElementById('fb-spd').addEventListener('input', (e) => {
+      currentSpeed = parseFloat(e.target.value);
+      document.getElementById('fb-spd-val').textContent = currentSpeed + '×';
+      ctl.setDuration(6000 / currentSpeed);
+    });
+  </script>
+</body>
+</html>
