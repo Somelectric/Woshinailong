@@ -202,7 +202,44 @@ textbox(s, Inches(5.0), Inches(6.5), Inches(8), Inches(0.5),
 
 page_number(s, 1)
 
-# === Slide 2：任务拆解方法论（核心页） ===
+# === Slide 2：ASABE 2025 任务（先举具体例子） ===
+s = slide(); bg(s)
+title_bar(s, "ASABE 2025 任务：5 分钟收蛋分拣", "理解任务约束是机构设计的第一步")
+
+# 4 个约束卡片
+constraints = [
+    ("⏱", "5 min", "限时完成所有动作", ACCENT),
+    ("⬚", "12″立方", "机器人整体尺寸约束", BLUE),
+    ("🤖", "自主运行", "启动后无需人工干预", GOOD),
+    ("🥚", "好坏蛋分类", "好蛋入筐 / 坏蛋排除", BAD),
+]
+for i, (icon, key, desc, col) in enumerate(constraints):
+    x = Inches(0.5 + i * 3.15)
+    box(s, x, Inches(1.4), Inches(3.0), Inches(2.4), fill=WHITE, line_color=col, line_w=1.5)
+    textbox(s, x, Inches(1.55), Inches(3.0), Inches(0.6),
+            icon, size=32, color=col, align=PP_ALIGN.CENTER)
+    textbox(s, x, Inches(2.2), Inches(3.0), Inches(0.5),
+            key, size=18, color=col, bold=True, align=PP_ALIGN.CENTER)
+    textbox(s, x + Inches(0.2), Inches(2.8), Inches(2.6), Inches(0.9),
+            desc, size=14, color=INK, align=PP_ALIGN.CENTER)
+
+# 下方得分
+textbox(s, Inches(0.5), Inches(4.2), Inches(12.3), Inches(0.4),
+        "得分逻辑：好蛋正确入筐 +坏蛋正确识别 + 自主完成度 + 报告分",
+        size=17, color=INK, bold=True)
+
+# 提示框
+card(s, Inches(0.5), Inches(4.8), Inches(12.3), Inches(2.2),
+     "对机构设计的隐含要求",
+     "• 高效：5 min 内完成 → 机构要快，不能慢悠悠一个一个抓\n"
+     "• 可靠：自主运行 → 机构要稳，不能依赖人工调整\n"
+     "• 紧凑：12″立方 → 所有机构要塞进有限空间\n"
+     "• 精准：好坏蛋分类 → 末端执行器要带感知（这里是压力传感器）",
+     color=BLUE, title_size=16, body_size=12)
+
+page_number(s, 2)
+
+# === Slide 3：任务拆解方法论（再提炼方法论） ===
 s = slide(); bg(s)
 title_bar(s, "方法论 · 任务拆解：解耦 → 耦合", "Part 1 的核心思想，贯穿整节课")
 
@@ -260,43 +297,6 @@ card(s, Inches(0.5), Inches(6.05), Inches(12.3), Inches(1.2),
      "我们的答案（后面会展开）",
      "收集用「刮板扫入」，分拣用「压力传感器称重」——\n两者合并到「刮板 + 压力传感器一体化」结构里，一个机构同时完成两个子任务。",
      color=ACCENT, title_size=18, body_size=12)
-
-page_number(s, 2)
-
-# === Slide 3：规则要点 ===
-s = slide(); bg(s)
-title_bar(s, "ASABE 2025 任务：5 分钟收蛋分拣", "理解任务约束是机构设计的第一步")
-
-# 4 个约束卡片
-constraints = [
-    ("⏱", "5 min", "限时完成所有动作", ACCENT),
-    ("⬚", "12″立方", "机器人整体尺寸约束", BLUE),
-    ("🤖", "自主运行", "启动后无需人工干预", GOOD),
-    ("🥚", "好坏蛋分类", "好蛋入筐 / 坏蛋排除", BAD),
-]
-for i, (icon, key, desc, col) in enumerate(constraints):
-    x = Inches(0.5 + i * 3.15)
-    box(s, x, Inches(1.4), Inches(3.0), Inches(2.4), fill=WHITE, line_color=col, line_w=1.5)
-    textbox(s, x, Inches(1.55), Inches(3.0), Inches(0.6),
-            icon, size=32, color=col, align=PP_ALIGN.CENTER)
-    textbox(s, x, Inches(2.2), Inches(3.0), Inches(0.5),
-            key, size=18, color=col, bold=True, align=PP_ALIGN.CENTER)
-    textbox(s, x + Inches(0.2), Inches(2.8), Inches(2.6), Inches(0.9),
-            desc, size=14, color=INK, align=PP_ALIGN.CENTER)
-
-# 下方得分
-textbox(s, Inches(0.5), Inches(4.2), Inches(12.3), Inches(0.4),
-        "得分逻辑：好蛋正确入筐 +坏蛋正确识别 + 自主完成度 + 报告分",
-        size=17, color=INK, bold=True)
-
-# 提示框
-card(s, Inches(0.5), Inches(4.8), Inches(12.3), Inches(2.2),
-     "对机构设计的隐含要求",
-     "• 高效：5 min 内完成 → 机构要快，不能慢悠悠一个一个抓\n"
-     "• 可靠：自主运行 → 机构要稳，不能依赖人工调整\n"
-     "• 紧凑：12″立方 → 所有机构要塞进有限空间\n"
-     "• 精准：好坏蛋分类 → 末端执行器要带感知（这里是压力传感器）",
-     color=BLUE, title_size=16, body_size=12)
 
 page_number(s, 3)
 
