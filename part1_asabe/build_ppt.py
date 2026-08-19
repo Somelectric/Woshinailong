@@ -241,7 +241,7 @@ page_number(s, 2)
 
 # === Slide 3：任务拆解方法论（再提炼方法论） ===
 s = slide(); bg(s)
-title_bar(s, "方法论 · 任务拆解：解耦 → 耦合", "Part 1 的核心思想，贯穿整节课")
+title_bar(s, "方法论 · 任务拆解：解耦 → 选型 → 耦合", "Part 1 的核心思想，贯穿整节课")
 
 # 上半部：解耦
 textbox(s, Inches(0.5), Inches(1.3), Inches(12.5), Inches(0.4),
@@ -282,9 +282,9 @@ arrow(s, Inches(3.4), Inches(3.05), Inches(3.4), Inches(3.3))
 # 右下：横梁 → B 顶部中心（带箭头，垂直向下）
 arrow(s, Inches(9.9), Inches(3.05), Inches(9.9), Inches(3.3))
 
-# 下半部：耦合（往下移，避免与子问题框重叠）
+# 下半部：选型 + 耦合（往下移，避免与子问题框重叠）
 textbox(s, Inches(0.5), Inches(4.45), Inches(12.5), Inches(0.4),
-        "② 耦合（Couple）：考虑子问题之间的联动性，做整体选型",
+        "② 选型 + 耦合：各子问题分别选型，再考虑联动合并",
         size=16, color=ACCENT, bold=True)
 
 coupling = box(s, Inches(3.5), Inches(5.05), Inches(6.0), Inches(0.8), fill=PANEL, line_color=ACCENT, line_w=1.5)
@@ -466,11 +466,10 @@ textbox(s, right_x, Inches(4.75), col_w, Inches(0.3),
         "末端执行器（刮板 + 蜂窝筐 + 压力传感器）",
         size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-# 我们要点
+# 我们要点（精简：细节交给第 7 页）
 bullets(s, right_x, Inches(5.2), col_w, Inches(1.5),
-        ["收集与分拣合并到同一结构件",
-         "刮板扫入 → 蜂窝筐底部压力传感器即称重",
-         "一个机构同时完成两个子任务"],
+        ["一个结构件完成「收集 + 分拣」",
+         "具体怎么实现 → 下页详述"],
         size=14)
 
 # 底部结论
@@ -528,7 +527,43 @@ textbox(s, right_x, Inches(5.7), right_w, Inches(1.2),
 
 page_number(s, 7)
 
-# === Slide 8：迭代思路（方案只是起点） ===
+# === Slide 8：设计细节（末端执行器关键参数） ===
+s = slide(); bg(s)
+title_bar(s, "设计细节：末端执行器的关键参数", "方案落地后，参数决定成败")
+
+# 左侧图
+img_x, img_y = Inches(0.5), Inches(1.35)
+img_w, img_h = Inches(5.6), Inches(5.55)
+box(s, img_x, img_y, img_w, img_h, fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "end-effector-picking.png"),
+          img_x + Inches(0.15), img_y + Inches(0.15), img_w - Inches(0.3), img_h - Inches(0.5))
+textbox(s, img_x, img_y + img_h - Inches(0.3), img_w, Inches(0.3),
+        "末端执行器：刮板 + 蜂窝筐 + 压力传感器",
+        size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+# 右侧参数卡片（2 列 × 3 行）
+param_cards = [
+    ("刮板", "薄塑料板 + 微舵机\n边缘限位脊 → 蛋与传感器完全接触", ACCENT),
+    ("压力传感器", "薄膜式 40×40mm\n量程 20g–10kg，按阈值分类", ACCENT),
+    ("收集筐", "3D 打印 PLA，梯形上窄下宽\n蜂窝镂空 + 加强筋 → 减重保刚度", BLUE),
+    ("好蛋释放", "5mm 泡棉内衬斜面\n双舵机铰链翻板", GOOD),
+    ("坏蛋释放", "布料张紧变斜坡\n存储 / 释放一体化", BAD),
+    ("全机成本", "$273.39\n处理器（Arduino+OpenMV）仅 $53.6", INK),
+]
+card_x0 = Inches(6.4); card_x1 = Inches(9.85); card_w = Inches(3.15)
+for i, (t, body, col) in enumerate(param_cards):
+    r, c = divmod(i, 2)
+    x = card_x0 if c == 0 else card_x1
+    y = Inches(1.35 + r * 1.85)
+    box(s, x, y, card_w, Inches(1.7), fill=WHITE, line_color=col, line_w=1.2)
+    textbox(s, x + Inches(0.15), y + Inches(0.1), card_w - Inches(0.3), Inches(0.4),
+            t, size=15, color=col, bold=True)
+    textbox(s, x + Inches(0.15), y + Inches(0.55), card_w - Inches(0.3), Inches(1.1),
+            body, size=13, color=INK)
+
+page_number(s, 8)
+
+# === Slide 9：迭代思路（方案只是起点） ===
 s = slide(); bg(s)
 title_bar(s, "迭代思路：方案只是起点", "方案确定后，靠一次次迭代把它做完善")
 
@@ -564,9 +599,9 @@ for i, (prob, sol, eff) in enumerate(iterations):
     textbox(s, iter_x + Inches(0.15), y + Inches(0.5), iter_w - Inches(0.3), Inches(0.4),
             "→ " + eff, size=13, color=INK)
 
-page_number(s, 8)
+page_number(s, 9)
 
-# === Slide 9：整机 3D 总览 ===
+# === Slide 10：整机 3D 总览 ===
 s = slide(); bg(s)
 title_bar(s, "整机总览：模块化标注", "5 个子系统，每个都有对应的机构设计点")
 
@@ -597,9 +632,9 @@ for i, (k, v, col) in enumerate(modules):
     textbox(s, right_x + Inches(0.1), y + Inches(0.42), right_w - Inches(0.2), Inches(0.4),
             v, size=17, color=INK)
 
-page_number(s, 9)
+page_number(s, 10)
 
-# === Slide 10：释放机构（合并页） ===
+# === Slide 11：释放机构（合并页） ===
 s = slide(); bg(s)
 title_bar(s, "释放机构：好蛋 + 坏蛋", "两种独立机构，对应两种释放逻辑")
 
@@ -632,42 +667,6 @@ bullets(s, right_x, Inches(5.6), right_w, Inches(1.5),
          "舵机收紧 → 坡度增加 → 坏蛋滑出",
          "柔顺机构思路（无刚性结构）"],
         size=14)
-
-page_number(s, 10)
-
-# === Slide 11：设计细节（末端执行器关键参数） ===
-s = slide(); bg(s)
-title_bar(s, "设计细节：末端执行器的关键参数", "方案落地后，参数决定成败")
-
-# 左侧图
-img_x, img_y = Inches(0.5), Inches(1.35)
-img_w, img_h = Inches(5.6), Inches(5.55)
-box(s, img_x, img_y, img_w, img_h, fill=PANEL, line_color=LINE, line_w=0.5)
-image_fit(s, os.path.join(ASSETS, "end-effector-picking.png"),
-          img_x + Inches(0.15), img_y + Inches(0.15), img_w - Inches(0.3), img_h - Inches(0.5))
-textbox(s, img_x, img_y + img_h - Inches(0.3), img_w, Inches(0.3),
-        "末端执行器：刮板 + 蜂窝筐 + 压力传感器",
-        size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
-
-# 右侧参数卡片（2 列 × 3 行）
-param_cards = [
-    ("刮板", "薄塑料板 + 微舵机\n边缘限位脊 → 蛋与传感器完全接触", ACCENT),
-    ("压力传感器", "薄膜式 40×40mm\n量程 20g–10kg，按阈值分类", ACCENT),
-    ("收集筐", "3D 打印 PLA，梯形上窄下宽\n蜂窝镂空 + 加强筋 → 减重保刚度", BLUE),
-    ("好蛋释放", "5mm 泡棉内衬斜面\n双舵机铰链翻板", GOOD),
-    ("坏蛋释放", "布料张紧变斜坡\n存储 / 释放一体化", BAD),
-    ("全机成本", "$273.39\n处理器（Arduino+OpenMV）仅 $53.6", INK),
-]
-card_x0 = Inches(6.4); card_x1 = Inches(9.85); card_w = Inches(3.15)
-for i, (t, body, col) in enumerate(param_cards):
-    r, c = divmod(i, 2)
-    x = card_x0 if c == 0 else card_x1
-    y = Inches(1.35 + r * 1.85)
-    box(s, x, y, card_w, Inches(1.7), fill=WHITE, line_color=col, line_w=1.2)
-    textbox(s, x + Inches(0.15), y + Inches(0.1), card_w - Inches(0.3), Inches(0.4),
-            t, size=15, color=col, bold=True)
-    textbox(s, x + Inches(0.15), y + Inches(0.55), card_w - Inches(0.3), Inches(1.1),
-            body, size=13, color=INK)
 
 page_number(s, 11)
 
