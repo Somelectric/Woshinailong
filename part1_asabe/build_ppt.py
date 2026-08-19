@@ -1,7 +1,7 @@
 """
 Part 1 PPT 生成器：ASABE 2025 经验分享
-12 页，简洁通用风格，含流程图/框图。
-叙事主线：任务拆解（解耦 → 选型 → 耦合）。
+16 页，简洁通用风格，含流程图/框图。
+叙事主线：任务拆解（解耦 → 选型 → 耦合）+ 迭代思路 + 设计细节 + 心得。
 """
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -81,7 +81,7 @@ def page_number(s, n):
     tb = s.shapes.add_textbox(Inches(12.6), Inches(7.0), Inches(0.7), Inches(0.3))
     p = tb.text_frame.paragraphs[0]
     p.alignment = PP_ALIGN.RIGHT
-    r = p.add_run(); r.text = f"{n} / 12"
+    r = p.add_run(); r.text = f"{n} / 16"
     r.font.size = Pt(12); r.font.color.rgb = INK_SOFT; r.font.name = FONT
 
 def textbox(s, x, y, w, h, text, size=14, color=INK, bold=False, align=PP_ALIGN.LEFT, font=FONT):
@@ -528,7 +528,45 @@ textbox(s, right_x, Inches(5.7), right_w, Inches(1.2),
 
 page_number(s, 7)
 
-# === Slide 8：整机 3D 总览 ===
+# === Slide 8：迭代思路（方案只是起点） ===
+s = slide(); bg(s)
+title_bar(s, "迭代思路：方案只是起点", "方案确定后，靠一次次迭代把它做完善")
+
+# 点题
+textbox(s, Inches(0.5), Inches(1.3), Inches(12.3), Inches(0.4),
+        "没有一次成型的设计——车是一版一版迭代出来的：",
+        size=16, color=INK, bold=True)
+
+# 5 个迭代条目：问题（左）→ 迭代方案（右）
+iterations = [
+    ("① 收集筐太重", "实心壁 → 蜂窝镂空 + 加强筋", "减重明显，刚度不变"),
+    ("② 磁性蛋易碎", "加柔性泡沫垫缓冲", "破损率下降"),
+    ("③ 存储按好:坏=3:1 设计，实际 1:1", "坏蛋仓改纯布料，收集+释放一体化", "存储空间大幅增加"),
+    ("④ 激光对不齐鸡蛋", "微调传感器高度，激光正对鸡蛋", "探测稳定"),
+    ("⑤ 单层结构电路机构杂糅", "改两层：下层电路板 / 上层机构", "装配、调试、排查都方便"),
+]
+row_y = Inches(1.85); row_h = Inches(0.92); row_gap = Inches(0.08)
+prob_x = Inches(0.5); prob_w = Inches(4.6)
+iter_x = Inches(5.55); iter_w = Inches(7.25)
+for i, (prob, sol, eff) in enumerate(iterations):
+    y = row_y + int(row_h + row_gap) * i
+    # 问题框（浅红底）
+    box(s, prob_x, y, prob_w, row_h, fill=RGBColor(0xfb, 0xe9, 0xe7), line_color=BAD, line_w=1.0)
+    textbox(s, prob_x + Inches(0.15), y + Inches(0.14), prob_w - Inches(0.3), Inches(0.7),
+            prob, size=14, color=INK)
+    # 箭头
+    textbox(s, Inches(5.16), y + Inches(0.22), Inches(0.35), Inches(0.5),
+            "→", size=20, color=ACCENT, bold=True, align=PP_ALIGN.CENTER)
+    # 迭代框（浅绿底）
+    box(s, iter_x, y, iter_w, row_h, fill=RGBColor(0xe9, 0xf3, 0xec), line_color=GOOD, line_w=1.0)
+    textbox(s, iter_x + Inches(0.15), y + Inches(0.08), iter_w - Inches(0.3), Inches(0.42),
+            sol, size=14, color=GOOD, bold=True)
+    textbox(s, iter_x + Inches(0.15), y + Inches(0.5), iter_w - Inches(0.3), Inches(0.4),
+            "→ " + eff, size=13, color=INK)
+
+page_number(s, 8)
+
+# === Slide 9：整机 3D 总览 ===
 s = slide(); bg(s)
 title_bar(s, "整机总览：模块化标注", "5 个子系统，每个都有对应的机构设计点")
 
@@ -559,9 +597,9 @@ for i, (k, v, col) in enumerate(modules):
     textbox(s, right_x + Inches(0.1), y + Inches(0.42), right_w - Inches(0.2), Inches(0.4),
             v, size=17, color=INK)
 
-page_number(s, 8)
+page_number(s, 9)
 
-# === Slide 9：释放机构（合并页） ===
+# === Slide 10：释放机构（合并页） ===
 s = slide(); bg(s)
 title_bar(s, "释放机构：好蛋 + 坏蛋", "两种独立机构，对应两种释放逻辑")
 
@@ -595,9 +633,76 @@ bullets(s, right_x, Inches(5.6), right_w, Inches(1.5),
          "柔顺机构思路（无刚性结构）"],
         size=14)
 
-page_number(s, 9)
+page_number(s, 10)
 
-# === Slide 10：比赛演示视频 ===
+# === Slide 11：设计细节（末端执行器关键参数） ===
+s = slide(); bg(s)
+title_bar(s, "设计细节：末端执行器的关键参数", "方案落地后，参数决定成败")
+
+# 左侧图
+img_x, img_y = Inches(0.5), Inches(1.35)
+img_w, img_h = Inches(5.6), Inches(5.55)
+box(s, img_x, img_y, img_w, img_h, fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "end-effector-picking.png"),
+          img_x + Inches(0.15), img_y + Inches(0.15), img_w - Inches(0.3), img_h - Inches(0.5))
+textbox(s, img_x, img_y + img_h - Inches(0.3), img_w, Inches(0.3),
+        "末端执行器：刮板 + 蜂窝筐 + 压力传感器",
+        size=14, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+# 右侧参数卡片（2 列 × 3 行）
+param_cards = [
+    ("刮板", "薄塑料板 + 微舵机\n边缘限位脊 → 蛋与传感器完全接触", ACCENT),
+    ("压力传感器", "薄膜式 40×40mm\n量程 20g–10kg，按阈值分类", ACCENT),
+    ("收集筐", "3D 打印 PLA，梯形上窄下宽\n蜂窝镂空 + 加强筋 → 减重保刚度", BLUE),
+    ("好蛋释放", "5mm 泡棉内衬斜面\n双舵机铰链翻板", GOOD),
+    ("坏蛋释放", "布料张紧变斜坡\n存储 / 释放一体化", BAD),
+    ("全机成本", "$273.39\n处理器（Arduino+OpenMV）仅 $53.6", INK),
+]
+card_x0 = Inches(6.4); card_x1 = Inches(9.85); card_w = Inches(3.15)
+for i, (t, body, col) in enumerate(param_cards):
+    r, c = divmod(i, 2)
+    x = card_x0 if c == 0 else card_x1
+    y = Inches(1.35 + r * 1.85)
+    box(s, x, y, card_w, Inches(1.7), fill=WHITE, line_color=col, line_w=1.2)
+    textbox(s, x + Inches(0.15), y + Inches(0.1), card_w - Inches(0.3), Inches(0.4),
+            t, size=15, color=col, bold=True)
+    textbox(s, x + Inches(0.15), y + Inches(0.55), card_w - Inches(0.3), Inches(1.1),
+            body, size=13, color=INK)
+
+page_number(s, 11)
+
+# === Slide 12：实战运行闭环 ===
+s = slide(); bg(s)
+title_bar(s, "实战流程：收蛋 → 称重 → 分类 → 释放", "一次完整的工作循环")
+
+# 纵向 6 步
+steps = [
+    ("① 寻线移动", "相机识别引导线，麦轮开环行进"),
+    ("② 发现鸡蛋", "激光测距探测 20–200mm 内的蛋"),
+    ("③ 收蛋", "机械臂降下，刮板扫入蜂窝筐"),
+    ("④ 称重分类", "薄膜传感器阈值 → 绿灯好蛋 / 红灯坏蛋"),
+    ("⑤ 分区存储", "好蛋仓 + 坏蛋仓，互不干扰"),
+    ("⑥ 统一释放", "整场好/坏蛋各释放一次，自动回起点"),
+]
+flow_x = Inches(1.8); flow_w = Inches(9.7); flow_h = Inches(0.6)
+for i, (t, d) in enumerate(steps):
+    y = Inches(1.4) + int(Inches(0.82)) * i
+    box(s, flow_x, y, flow_w, flow_h, fill=PANEL if i % 2 == 0 else WHITE, line_color=BLUE, line_w=1.0)
+    textbox(s, flow_x + Inches(0.25), y + Inches(0.05), Inches(2.5), flow_h,
+            t, size=15, color=ACCENT, bold=True)
+    textbox(s, flow_x + Inches(2.8), y + Inches(0.08), flow_w - Inches(3.0), flow_h,
+            d, size=14, color=INK)
+    if i < 5:
+        arrow(s, Inches(6.65), y + flow_h, Inches(6.65), y + Inches(0.82), color=INK_SOFT, width=1.5)
+
+# 底部亮点
+textbox(s, Inches(0.5), Inches(6.45), Inches(12.3), Inches(0.4),
+        "设计亮点：好/坏蛋整场各释放一次 —— 先存储、最后统一倾倒，省时间",
+        size=15, color=GOOD, bold=True, align=PP_ALIGN.CENTER)
+
+page_number(s, 12)
+
+# === Slide 13：比赛演示视频 ===
 s = slide(); bg(s)
 title_bar(s, "比赛演示视频", "整机集成后的实际运行")
 
@@ -620,9 +725,43 @@ textbox(s, Inches(0.5), Inches(6.8), Inches(12.3), Inches(0.4),
         "关注：自主运行、5 min 内的节奏、收集-称重-释放的完整循环",
         size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-page_number(s, 10)
+page_number(s, 13)
 
-# === Slide 11：方法论总结（通用流程图） ===
+# === Slide 14：机构设计心得 ===
+s = slide(); bg(s)
+title_bar(s, "机构设计心得：实战教会我们的 6 件事", "把经验变成下一次设计的起点")
+
+lessons = [
+    ("简洁有效，不是越复杂越好",
+     "开环导航省掉编码器/IMU —— 能用一个舵机解决，就不用两个；简单 = 可靠 = 便宜"),
+    ("针对最脆弱的环节设计",
+     "磁性蛋掉地就散架 → 泡棉垫缓冲；先找最脆弱的点，再设计"),
+    ("模块化：并行推进 + 方便迭代",
+     "5 人分工互不干扰；迭代只改对应模块，排查故障也快"),
+    ("成本是约束也是动力",
+     "全机 $273.39，处理器仅 $53.6 —— 约束逼出简单方案"),
+    ("用评分规则倒推设计",
+     "总分 = 性能 × 报告；测试数据占 5 分，我们的报告恰好缺了（反面教材）"),
+    ("考虑环境因素",
+     "场地材质、光照影响视觉 → 影响机构执行和整车运动；规则方都改了场地材质（胶合板 → 泡棉垫）"),
+]
+card_w = Inches(6.05); card_h = Inches(1.75)
+xs = [Inches(0.5), Inches(6.8)]
+ys = [Inches(1.35), Inches(3.25), Inches(5.15)]
+for i, (t, d) in enumerate(lessons):
+    r, c = divmod(i, 2)
+    x = xs[c]; y = ys[r]
+    box(s, x, y, card_w, card_h, fill=WHITE, line_color=ACCENT, line_w=1.2)
+    textbox(s, x + Inches(0.15), y + Inches(0.08), Inches(0.5), Inches(0.4),
+            str(i + 1), size=18, color=ACCENT, bold=True)
+    textbox(s, x + Inches(0.65), y + Inches(0.1), card_w - Inches(0.8), Inches(0.4),
+            t, size=15, color=ACCENT, bold=True)
+    textbox(s, x + Inches(0.65), y + Inches(0.55), card_w - Inches(0.8), Inches(1.1),
+            d, size=13, color=INK)
+
+page_number(s, 14)
+
+# === Slide 15：方法论总结（通用流程图） ===
 s = slide(); bg(s)
 title_bar(s, "方法论回顾：解耦 → 选型 → 耦合", "一套可复用的机构设计思路，不止用于鸡蛋分拣")
 
@@ -664,9 +803,9 @@ textbox(s, Inches(0.5), Inches(2.4), Inches(3.7), Inches(2.0),
         "解耦让问题\n变简单\n\n选型让方案\n有依据\n\n耦合让结构\n更精炼",
         size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-page_number(s, 11)
+page_number(s, 15)
 
-# === Slide 12：桥段 + Q&A ===
+# === Slide 16：桥段 + Q&A ===
 s = slide(); bg(s)
 title_bar(s, "桥段回顾 → 进入 Part 2", "下面是 HTML 互动页面，可以现场调参数")
 
@@ -707,7 +846,7 @@ textbox(s, Inches(0.8), qa_y + Inches(0.7), Inches(11.5), Inches(1.3),
         "• ASABE 比赛相关",
         size=15, color=INK)
 
-page_number(s, 12)
+page_number(s, 16)
 
 # === 保存 ===
 prs.save(OUT)
