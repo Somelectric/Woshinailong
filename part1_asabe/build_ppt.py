@@ -1,6 +1,6 @@
 """
 Part 1 PPT 生成器：ASABE 2025 经验分享
-16 页，简洁通用风格，含流程图/框图。
+17 页，简洁通用风格，含流程图/框图。
 叙事主线：任务拆解（解耦 → 选型 → 耦合）+ 迭代思路 + 设计细节 + 心得。
 """
 from pptx import Presentation
@@ -81,7 +81,7 @@ def page_number(s, n):
     tb = s.shapes.add_textbox(Inches(12.6), Inches(7.0), Inches(0.7), Inches(0.3))
     p = tb.text_frame.paragraphs[0]
     p.alignment = PP_ALIGN.RIGHT
-    r = p.add_run(); r.text = f"{n} / 16"
+    r = p.add_run(); r.text = f"{n} / 17"
     r.font.size = Pt(12); r.font.color.rgb = INK_SOFT; r.font.name = FONT
 
 def textbox(s, x, y, w, h, text, size=14, color=INK, bold=False, align=PP_ALIGN.LEFT, font=FONT):
@@ -239,7 +239,66 @@ card(s, Inches(0.5), Inches(4.8), Inches(12.3), Inches(2.2),
 
 page_number(s, 2)
 
-# === Slide 3：任务拆解方法论（再提炼方法论） ===
+# === Slide 3：赛场与任务（场地 + 得分占比） ===
+s = slide(); bg(s)
+title_bar(s, "赛场与任务：场地、四项任务与得分", "规则拆解 —— 5 分钟收集分类（35%）是重中之重")
+
+# 左侧：场地示意图
+left_x = Inches(0.5); left_w = Inches(6.0)
+box(s, left_x, Inches(1.35), left_w, Inches(4.7), fill=PANEL, line_color=LINE, line_w=0.5)
+image_fit(s, os.path.join(ASSETS, "arena-layout-standard.png"),
+          left_x + Inches(0.15), Inches(1.5), left_w - Inches(0.3), Inches(4.1))
+textbox(s, left_x, Inches(5.6), left_w, Inches(0.4),
+        "标准组竞技场：8′×8′ · 白线导航 · 红圈为蛋位",
+        size=13, color=INK_SOFT, align=PP_ALIGN.CENTER)
+
+# 左下：场地关键尺寸
+dims = [
+    ("场地", "96″×96″（内 93″×93″）"),
+    ("围板高", "3.5″"),
+    ("蛋箱", "高 1″，好蛋/坏蛋两个箱"),
+    ("限时", "5 分钟 / 主赛一次"),
+]
+for i, (k, v) in enumerate(dims):
+    y = Inches(6.12 + i * 0.3)
+    textbox(s, left_x + Inches(0.3), y, Inches(2.0), Inches(0.3),
+            k, size=13, color=ACCENT, bold=True)
+    textbox(s, left_x + Inches(2.3), y, Inches(3.6), Inches(0.3),
+            v, size=13, color=INK)
+
+# 右侧：四项任务 + 得分占比
+right_x = Inches(6.8); right_w = Inches(6.0)
+textbox(s, right_x, Inches(1.35), right_w, Inches(0.4),
+        "四项任务与得分占比", size=17, color=ACCENT, bold=True)
+
+tasks = [
+    ("导航", "20%", "沿白线行进，2 分钟限时，按距离/时间计分", BLUE),
+    ("蛋识别", "20%", "识别蛋的类型，3 分钟，正确 1 个 1 分", BLUE),
+    ("蛋搬运", "25%", "磁性蛋移入收集箱，3 分钟，蛋易碎", ACCENT),
+    ("收集+分类", "35%", "5 分钟主赛：收集并分类，好/坏蛋分箱", BAD),
+]
+for i, (name, pct, desc, col) in enumerate(tasks):
+    y = Inches(1.9 + i * 1.05)
+    box(s, right_x, y, right_w, Inches(0.9), fill=WHITE, line_color=col, line_w=1.2)
+    # 名称
+    textbox(s, right_x + Inches(0.15), y + Inches(0.08), Inches(1.7), Inches(0.4),
+            name, size=15, color=col, bold=True)
+    # 占比
+    textbox(s, right_x + Inches(1.75), y + Inches(0.08), Inches(0.9), Inches(0.4),
+            pct, size=16, color=col, bold=True)
+    # 要求
+    textbox(s, right_x + Inches(2.7), y + Inches(0.15), Inches(3.2), Inches(0.7),
+            desc, size=12, color=INK)
+
+# 底部：总分公式提示
+card(s, Inches(6.8), Inches(6.15), Inches(6.0), Inches(1.0),
+     "总分 = 性能分 × 报告分",
+     "收集分类占性能分 35% —— 我们的机构设计就是围绕这一题展开的",
+     color=BAD, title_size=14, body_size=12)
+
+page_number(s, 3)
+
+# === Slide 4：任务拆解方法论（再提炼方法论） ===
 s = slide(); bg(s)
 title_bar(s, "方法论 · 任务拆解：解耦 → 选型 → 耦合", "Part 1 的核心思想，贯穿整节课")
 
@@ -298,9 +357,9 @@ card(s, Inches(0.5), Inches(6.05), Inches(12.3), Inches(1.2),
      "收集用「刮板扫入」，分拣用「压力传感器称重」——\n两者合并到「刮板 + 压力传感器一体化」结构里，一个机构同时完成两个子任务。",
      color=ACCENT, title_size=18, body_size=12)
 
-page_number(s, 3)
+page_number(s, 4)
 
-# === Slide 4：收集方案对比表 ===
+# === Slide 5：收集方案对比表 ===
 s = slide(); bg(s)
 title_bar(s, "解耦-收集方案：5 选 1", "穷举候选方案 → 用约束筛选")
 
@@ -357,9 +416,9 @@ card(s, Inches(0.5), y_dec, Inches(12.3), Inches(1.4),
      "③ 鸡蛋易碎，不夹比夹更安全",
      color=ACCENT, title_size=16, body_size=12)
 
-page_number(s, 4)
+page_number(s, 5)
 
-# === Slide 5：分拣方案对比表 ===
+# === Slide 6：分拣方案对比表 ===
 s = slide(); bg(s)
 title_bar(s, "解耦-分拣方案：5 选 1", "分拣 = 区分好蛋/坏蛋")
 
@@ -414,9 +473,9 @@ card(s, Inches(0.5), y_dec, Inches(12.3), Inches(1.4),
      "注：丝线分拣是同赛场另一组的方案——重的蛋穿过丝线落下，轻的弹开，构思很巧。",
      color=ACCENT, title_size=16, body_size=11)
 
-page_number(s, 5)
+page_number(s, 6)
 
-# === Slide 6：耦合方案对比（不止一种解法） ===
+# === Slide 7：耦合方案对比（不止一种解法） ===
 s = slide(); bg(s)
 title_bar(s, "耦合不止一种：两组方案对照", "同样把「收集 + 分拣」合并，思路可以很不一样")
 
@@ -478,9 +537,9 @@ card(s, Inches(0.5), Inches(6.55), Inches(12.3), Inches(0.8),
      "耦合没有标准答案——关键是找到子问题的「共享点」。下页详述我们的耦合方案。",
      color=ACCENT, title_size=15, body_size=13)
 
-page_number(s, 6)
+page_number(s, 7)
 
-# === Slide 7：耦合页（我们的方案详述） ===
+# === Slide 8：耦合页（我们的方案详述） ===
 s = slide(); bg(s)
 title_bar(s, "耦合：刮板 + 压力传感器 一体化", "两个子问题的解在这里合并")
 
@@ -525,9 +584,9 @@ textbox(s, right_x, Inches(5.7), right_w, Inches(1.2),
         "不是为了省零件而合并，\n而是因为两个子任务在物理上共享同一个执行点（鸡蛋被夹持的位置）。\n机构设计要找的就是这种「共享点」。",
         size=14, color=INK)
 
-page_number(s, 7)
+page_number(s, 8)
 
-# === Slide 8：设计细节（末端执行器关键参数） ===
+# === Slide 9：设计细节（末端执行器关键参数） ===
 s = slide(); bg(s)
 title_bar(s, "设计细节：末端执行器的关键参数", "方案落地后，参数决定成败")
 
@@ -561,9 +620,9 @@ for i, (t, body, col) in enumerate(param_cards):
     textbox(s, x + Inches(0.15), y + Inches(0.55), card_w - Inches(0.3), Inches(1.1),
             body, size=13, color=INK)
 
-page_number(s, 8)
+page_number(s, 9)
 
-# === Slide 9：迭代思路（方案只是起点） ===
+# === Slide 10：迭代思路（方案只是起点） ===
 s = slide(); bg(s)
 title_bar(s, "迭代思路：方案只是起点", "方案确定后，靠一次次迭代把它做完善")
 
@@ -599,9 +658,9 @@ for i, (prob, sol, eff) in enumerate(iterations):
     textbox(s, iter_x + Inches(0.15), y + Inches(0.5), iter_w - Inches(0.3), Inches(0.4),
             "→ " + eff, size=13, color=INK)
 
-page_number(s, 9)
+page_number(s, 10)
 
-# === Slide 10：整机 3D 总览 ===
+# === Slide 11：整机 3D 总览 ===
 s = slide(); bg(s)
 title_bar(s, "整机总览：模块化标注", "5 个子系统，每个都有对应的机构设计点")
 
@@ -632,9 +691,9 @@ for i, (k, v, col) in enumerate(modules):
     textbox(s, right_x + Inches(0.1), y + Inches(0.42), right_w - Inches(0.2), Inches(0.4),
             v, size=17, color=INK)
 
-page_number(s, 10)
+page_number(s, 11)
 
-# === Slide 11：释放机构（合并页） ===
+# === Slide 12：释放机构（合并页） ===
 s = slide(); bg(s)
 title_bar(s, "释放机构：好蛋 + 坏蛋", "两种独立机构，对应两种释放逻辑")
 
@@ -668,9 +727,9 @@ bullets(s, right_x, Inches(5.6), right_w, Inches(1.5),
          "柔顺机构思路（无刚性结构）"],
         size=14)
 
-page_number(s, 11)
+page_number(s, 12)
 
-# === Slide 12：实战运行闭环 ===
+# === Slide 13：实战运行闭环 ===
 s = slide(); bg(s)
 title_bar(s, "实战流程：收蛋 → 称重 → 分类 → 释放", "一次完整的工作循环")
 
@@ -699,9 +758,9 @@ textbox(s, Inches(0.5), Inches(6.45), Inches(12.3), Inches(0.4),
         "设计亮点：好/坏蛋整场各释放一次 —— 先存储、最后统一倾倒，省时间",
         size=15, color=GOOD, bold=True, align=PP_ALIGN.CENTER)
 
-page_number(s, 12)
+page_number(s, 13)
 
-# === Slide 13：比赛演示视频 ===
+# === Slide 14：比赛演示视频 ===
 s = slide(); bg(s)
 title_bar(s, "比赛演示视频", "整机集成后的实际运行")
 
@@ -724,9 +783,9 @@ textbox(s, Inches(0.5), Inches(6.8), Inches(12.3), Inches(0.4),
         "关注：自主运行、5 min 内的节奏、收集-称重-释放的完整循环",
         size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-page_number(s, 13)
+page_number(s, 14)
 
-# === Slide 14：机构设计心得 ===
+# === Slide 15：机构设计心得 ===
 s = slide(); bg(s)
 title_bar(s, "机构设计心得：实战教会我们的 6 件事", "把经验变成下一次设计的起点")
 
@@ -758,9 +817,9 @@ for i, (t, d) in enumerate(lessons):
     textbox(s, x + Inches(0.65), y + Inches(0.55), card_w - Inches(0.8), Inches(1.1),
             d, size=13, color=INK)
 
-page_number(s, 14)
+page_number(s, 15)
 
-# === Slide 15：方法论总结（通用流程图） ===
+# === Slide 16：方法论总结（通用流程图） ===
 s = slide(); bg(s)
 title_bar(s, "方法论回顾：解耦 → 选型 → 耦合", "一套可复用的机构设计思路，不止用于鸡蛋分拣")
 
@@ -802,9 +861,9 @@ textbox(s, Inches(0.5), Inches(2.4), Inches(3.7), Inches(2.0),
         "解耦让问题\n变简单\n\n选型让方案\n有依据\n\n耦合让结构\n更精炼",
         size=15, color=INK_SOFT, align=PP_ALIGN.CENTER)
 
-page_number(s, 15)
+page_number(s, 16)
 
-# === Slide 16：桥段 + Q&A ===
+# === Slide 17：桥段 + Q&A ===
 s = slide(); bg(s)
 title_bar(s, "桥段回顾 → 进入 Part 2", "下面是 HTML 互动页面，可以现场调参数")
 
@@ -845,7 +904,7 @@ textbox(s, Inches(0.8), qa_y + Inches(0.7), Inches(11.5), Inches(1.3),
         "• ASABE 比赛相关",
         size=15, color=INK)
 
-page_number(s, 16)
+page_number(s, 17)
 
 # === 保存 ===
 prs.save(OUT)
