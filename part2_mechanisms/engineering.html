@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工程实现 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">工程实现 <span class="en">Engineering</span></h1>
+      <p class="need-hint">
+        <strong>CAD 画完只是开始。</strong> 设计要"长"在你手头的制造能力上：
+        俱乐部的<strong>拓竹 FDM 打印机、激光切割机、螺丝螺母/联轴器/轴承库存</strong>就是你的制造边界。
+        这一页讲怎么让设计一次打印成功、一次装配成功。
+      </p>
+
+      <!-- ===== 制造方式决策 ===== -->
+      <section class="stage">
+        <h3>第一步：这个零件用什么工艺做</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>工艺</th><th>适合的零件</th><th>材料</th><th>能做什么形状</th><th>精度量级</th></tr></thead>
+            <tbody>
+              <tr class="hl">
+                <td><strong>FDM 3D 打印</strong></td>
+                <td>壳体、支架、连杆、齿轮箱、爪、定制垫片</td>
+                <td>PLA（通用）/ PETG（耐冲击）/ TPU（柔性）</td>
+                <td>任意 3D 形状（悬垂 &lt; 45°）</td>
+                <td>±0.2 mm，孔偏紧 0.1~0.3</td>
+              </tr>
+              <tr>
+                <td><strong>激光切割</strong></td>
+                <td>平面底盘、侧板、连杆、凸轮样板、槽接框架</td>
+                <td>亚克力 3~5 mm / 桦木多层板 3~5</td>
+                <td>2D 平面轮廓 + 槽接拼装</td>
+                <td>±0.1 mm，切缝 kerf 0.1~0.2</td>
+              </tr>
+              <tr>
+                <td><strong>标准件</strong></td>
+                <td>凡是轴承、联轴器、螺丝、电机座、同步带轮</td>
+                <td>—</td>
+                <td>买！不要打印</td>
+                <td>商品级</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">选工艺的三个问题</div>
+          <div class="f-note">
+            ① <strong>是平面的吗？</strong>是 → 激光切割（快 10 倍、刚性好、批量强）。<br>
+            ② <strong>必须是 3D 的吗？</strong>是 → FDM 打印（一体壳体、异形腔、装配关系多）。<br>
+            ③ <strong>买得到吗？</strong>轴承/齿轮/联轴器永远买——打印齿轮的精度寿命远不如买的，
+            <strong>把打印留给"世界上不存在"的零件</strong>。
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 3D 打印设计规则 ===== -->
+      <section class="stage">
+        <h3>FDM 打印件设计规则</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 10px;">
+          拓竹打印机的默认参数（0.4 喷嘴、0.2 层高）下，这些规则决定成败：
+        </p>
+        <svg id="fdm-svg" viewBox="0 0 700 250"></svg>
+        <div class="checklist">
+          <div class="cl-title">打印前自查清单</div>
+          <ul>
+            <li><strong>壁厚 ≥ 1.5 mm</strong>（4~5 层周长）——受力件 ≥ 2.4 mm</li>
+            <li><strong>孔放大 0.15~0.3 mm</strong>：M3 过孔画 Ø3.3，轴承座按厂商公差 +0.1</li>
+            <li><strong>悬垂 &lt; 45°</strong>；否则加燕尾/桥接 ≤ 5 mm，或者干脆调个方向打印</li>
+            <li><strong>受力方向避开层间</strong>：FDM 层间强度只有面内的 30~50%——受拉杆件要立着打印或改设计</li>
+            <li><strong>四角加圆角</strong>（内 R ≥ 2）：尖角 = 裂纹起点</li>
+            <li><strong>电机/舵机孔位标准化</strong>：42 步进 31 mm 方孔距、MG996R 类舵机耳片 49.5 × 10.1——做成库文件复用</li>
+            <li><strong>活动铰链别直接打印一体</strong>：层间弱点 + 熔成一坨；用螺丝 + 轴承/铜柱代替</li>
+            <li><strong>TPU 柔性件壁厚 ≥ 2 mm</strong>、避免突然变截面</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ===== 孔径配合速查 ===== -->
+      <section class="stage">
+        <h3>孔径配合速查 · 交互</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 12px;">
+          打印孔普遍偏紧（材料挤出胀出 + 热收缩）。选螺丝规格，得到建议的 CAD 孔径：
+        </p>
+        <div class="calc-card" style="margin:0;">
+          <div class="calc-grid">
+            <div class="calc-params">
+              <div class="param-row">
+                <label for="ft-spec">紧固件 <span class="val" id="ft-spec-val">M3</span></label>
+                <select id="ft-spec" aria-label="紧固件规格" style="padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; background:white;">
+                  <option value="M2" selected>M2</option>
+                  <option value="M2.5">M2.5</option>
+                  <option value="M3">M3</option>
+                  <option value="M4">M4</option>
+                  <option value="M5">M5</option>
+                </select>
+              </div>
+              <div class="param-row">
+                <label for="ft-fit">配合类型</label>
+                <select id="ft-fit" aria-label="配合类型" style="padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; background:white;">
+                  <option value="free" selected>自由通过（+螺母/垫片）</option>
+                  <option value="tap">自攻（打印塑料孔）</option>
+                  <option value="tight">紧配合（压入定位）</option>
+                </select>
+              </div>
+              <div class="param-row">
+                <label for="ft-mat">打印材料</label>
+                <select id="ft-mat" aria-label="打印材料" style="padding:6px 8px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; background:white;">
+                  <option value="pla" selected>PLA（收缩小）</option>
+                  <option value="petg">PETG（收缩略大）</option>
+                  <option value="tpu">TPU（弹性孔）</option>
+                </select>
+              </div>
+            </div>
+            <div class="calc-output">
+              <div class="co-row">
+                <span class="co-label">CAD 建议孔径</span>
+                <span class="co-value"><span id="ft-hole">3.3</span> <small>mm</small></span>
+              </div>
+              <div class="co-row">
+                <span class="co-label">钻头修整（孔偏紧时）</span>
+                <span class="co-value"><span id="ft-drill">3.2</span> <small>mm</small></span>
+              </div>
+              <div class="calc-verdict ok" id="ft-note">M3 是机器人结构件的万能规格：螺杆、铜柱、舵机耳片孔全用它。</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 12 立方折叠 ===== -->
+      <section class="stage">
+        <h3>比赛硬约束：12″×12″×12″ 起步体积</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 10px;">
+          ASABE 规则只限制<strong>开赛瞬间</strong>的尺寸（±0.5″），启动后允许展开——
+          这直接催生一类设计：<strong>折叠/翻展机构</strong>。点击切换两种状态：
+        </p>
+        <svg id="fold-svg" viewBox="0 0 700 300"></svg>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">折叠设计三式</div>
+          <div class="f-note">
+            <strong>① 翻板式</strong>：侧板铰接竖直收纳，开赛后舵机放平（成收集斜坡/挡板）。<br>
+            <strong>② 升降式</strong>：塔机构/剪叉藏在 12″ 内，启动后升高（摄像头视野、储蛋仓扩容）。<br>
+            <strong>③ 悬臂展开式</strong>：臂折叠贴身，展开后工作半径翻倍。<br>
+            检查清单：折叠状态下<strong>能否被裁判用 12″ 量具卡过</strong>？展开动作<strong>是否可能卡死</strong>（留 1~2 mm 公差）？
+            展开后<strong>锁止</strong>靠什么（磁吸/卡扣/舵机保持）？
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 公差与鲁棒性 ===== -->
+      <section class="stage">
+        <h3>公差思维：你的机器人会遇到的"变异"</h3>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>变异源</th><th>量级</th><th>设计对策</th></tr></thead>
+            <tbody>
+              <tr><td>比赛场地制作公差</td><td>±0.5″（规则明示）</td><td>轮距 &lt; 场宽余量；传感器阈值取中值</td></tr>
+              <tr><td>场地拼接高差/不平</td><td>2~5 mm</td><td>弹簧悬挂轮组（上一页）；底盘离地 ≥ 15 mm</td></tr>
+              <tr><td>蛋重波动</td><td>好蛋 40~45 g / 坏蛋 &lt;20 g</td><td>分类阈值放中间（30 g），不要贴边</td></tr>
+              <tr><td>蛋位随机（进阶组）</td><td>网格内任意</td><td>末端执行器容差 &gt; 定位误差（刮板比夹爪宽容）</td></tr>
+              <tr><td>打印件公差</td><td>±0.2~0.3 mm</td><td>活动配合留 0.2~0.3；关键定位用标准件</td></tr>
+              <tr><td>电机/舵机个体差</td><td>±10% 速度</td><td>闭环（编码器）；开环就要标定</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">鲁棒性 = 每个变异都有机构接住</div>
+          <div class="f-note">
+            近年赛规持续强调<strong>变异性（variability）</strong>：场地施工不准、蛋有波动、表面摩擦不均。
+            好设计不是"每次都完美"，而是<strong>在最坏组合下仍然工作</strong>。
+            检验方法：把每个公差参数都推到极限值，问"这还转得动/还分得对/还贴得了地吗？"——
+            答案必须是能。这就是<strong>公差设计</strong>，比"公差标注"更本质。
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 装配与测试流程 ===== -->
+      <section class="stage">
+        <h3>从 BOM 到上场：装配与测试流程</h3>
+        <div class="checklist">
+          <div class="cl-title">8 步流程（每一步都有"验收标准"）</div>
+          <ul>
+            <li><strong>① BOM 冻结</strong>：每个零件标"打印/切割/购买"三选一 + 数量 + 版本号</li>
+            <li><strong>② 制造单</strong>：打印件统一朝向与支撑策略；切割件排版算 kerf</li>
+            <li><strong>③ 单机构台架测试</strong>：每个机构<strong>先不装整机、单独供电手动触发</strong>——舵机扫全程、确认无卡死、测到位时间</li>
+            <li><strong>④ 子模块验收</strong>：收集模块能扫入 10/10 颗蛋；分拣模块 20 颗全对；驱动模块四轮空转电流正常</li>
+            <li><strong>⑤ 整机总装</strong>：按力矩路线走线；活动件之间留 2 mm 间隙拍照留档</li>
+            <li><strong>⑥ 联调</strong>：完整流程跑 3 次无人工干预；记录每轮收集数/正确率</li>
+            <li><strong>⑦ 极限测试</strong>：换场地/换蛋批次/电压低 1 格再跑——暴露鲁棒性短板</li>
+            <li><strong>⑧ 备件与快修</strong>：易损件 ×2 备份；现场 5 分钟能换的才叫模块化</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="case-callout">
+        <img src="assets/asabe/end-effector-picking.png" alt="end effector">
+        <div class="text">
+          <strong>一个真实的 DFM 案例（往届赛车的末端执行器）</strong>
+          收集筐 = PLA 蜂窝孔壁：孔挖掉不减刚度地<strong>减重</strong>（臂上质量小 → 舵机扭矩需求小 → 便宜舵机就够）；
+          梯形筐身让蛋<strong>自动居中</strong>到传感器上方（公差对策）；刮板限位脊保证接触可靠。
+          一个打印件同时吃下 DFM、公差、执行器选型三条线索——这就是"设计长在制造上"。
+        </div>
+      </div>
+
+      <div class="page-nav">
+        <a href="actuators.html">← 执行器选型</a>
+        <a href="wrap-up.html">选型决策树 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { svg, line, circle, clear } from './common/controls.js';
+    import { TAU } from './common/math.js';
+
+    injectSidebar('engineering');
+
+    /* ===== FDM 设计规则示意图 ===== */
+    (function () {
+      const s = document.getElementById('fdm-svg');
+      // 左：层间强度示意（立打 vs 平打）
+      const g1x = 60;
+      s.appendChild(svg('text', { x: g1x + 80, y: 28, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 }));
+      // 悬垂演示（右）
+      const hx = 430;
+      s.appendChild(svg('text', { x: hx + 110, y: 28, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 }));
+      // 具体图形由下方统一绘制
+      // 左图：两种打印方向的连杆
+      // 平打（层间在受拉方向 → 弱）
+      const drawPart = (cx, cy, vertical, ok) => {
+        s.appendChild(svg('rect', {
+          x: cx - 60, y: cy - 10, width: 120, height: 20,
+          fill: ok ? '#e2efec' : '#f9e5e2', stroke: ok ? '#0e6b5c' : '#b3372c', 'stroke-width': 2, rx: 3,
+        }));
+        const layers = vertical ? 0 : 6;
+        for (let i = 1; i < layers; i++) {
+          s.appendChild(line(cx - 60, cy - 10 + i * (20 / layers), cx + 60, cy - 10 + i * (20 / layers), { stroke: ok ? '#0e6b5c' : '#b3372c', 'stroke-width': 0.8, opacity: 0.5 }));
+        }
+        const vlay = vertical ? 10 : 0;
+        for (let i = 1; i < vlay; i++) {
+          s.appendChild(line(cx - 60 + i * (120 / vlay), cy - 10, cx - 60 + i * (120 / vlay), cy + 10, { stroke: '#0e6b5c', 'stroke-width': 0.8, opacity: 0.5 }));
+        }
+        s.appendChild(circle(cx - 60, cy, 6, { fill: 'white', stroke: '#232a31', 'stroke-width': 2 }));
+        s.appendChild(circle(cx + 60, cy, 6, { fill: 'white', stroke: '#232a31', 'stroke-width': 2 }));
+        // 受拉箭头
+        s.appendChild(line(cx - 90, cy, cx - 72, cy, { stroke: '#b3372c', 'stroke-width': 2.5 }));
+        s.appendChild(svg('polygon', { points: `${cx-72},${cy-4} ${cx-72},${cy+4} ${cx-64},${cy}`, fill: '#b3372c' }));
+        s.appendChild(line(cx + 90, cy, cx + 72, cy, { stroke: '#b3372c', 'stroke-width': 2.5 }));
+        s.appendChild(svg('polygon', { points: `${cx+72},${cy-4} ${cx+72},${cy+4} ${cx+64},${cy}`, fill: '#b3372c' }));
+      };
+      drawPart(140, 90, false, false);  // 平打：层间受拉 → 弱
+      drawPart(140, 160, true, true);   // 立打（示意）→ 强
+      const l1 = svg('text', { x: 140, y: 130, 'text-anchor': 'middle', fill: '#b3372c', 'font-size': 11 });
+      l1.textContent = '✗ 平放打印：拉力撕开层间';
+      s.appendChild(l1);
+      const l2 = svg('text', { x: 140, y: 200, 'text-anchor': 'middle', fill: '#0e6b5c', 'font-size': 11 });
+      l2.textContent = '✓ 竖放打印：拉力拉面内纤维';
+      s.appendChild(l2);
+
+      // 右图：悬垂 45° 规则
+      const hx0 = 430, hy0 = 200;
+      s.appendChild(svg('rect', { x: hx0, y: hy0, width: 200, height: 14, fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 1.5 }));
+      s.appendChild(svg('text', { x: hx0 + 100, y: hy0 + 32, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10.5 }));
+      // 45° 斜坡（可打印）
+      s.appendChild(svg('polygon', { points: `${hx0 + 20},${hy0} ${hx0 + 70},${hy0} ${hx0 + 70},${hy0 - 50}`, fill: '#e2efec', stroke: '#0e6b5c', 'stroke-width': 1.5 }));
+      // 垂直悬挑（不可打印）
+      s.appendChild(svg('polygon', { points: `${hx0 + 110},${hy0 - 60} ${hx0 + 170},${hy0 - 60} ${hx0 + 170},${hy0 - 50}`, fill: '#f9e5e2', stroke: '#b3372c', 'stroke-width': 1.5, 'stroke-dasharray': '3 2' }));
+      s.appendChild(line(hx0 + 110, hy0 - 60, hx0 + 110, hy0, { stroke: '#b3372c', 'stroke-width': 1.5 }));
+      const l3 = svg('text', { x: hx0 + 95, y: hy0 - 66, 'text-anchor': 'middle', fill: '#0e6b5c', 'font-size': 10.5 });
+      l3.textContent = '✓ ≤45° 斜面';
+      s.appendChild(l3);
+      const l4 = svg('text', { x: hx0 + 140, y: hy0 - 70, 'text-anchor': 'middle', fill: '#b3372c', 'font-size': 10.5 });
+      l4.textContent = '✗ 平底悬挑需支撑';
+      s.appendChild(l4);
+      const tt = svg('text', { x: 350, y: 28, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 });
+      tt.textContent = '两条最常见的打印失败规则：层间强度与悬垂';
+      s.appendChild(tt);
+    })();
+
+    /* ===== 孔径配合速查 ===== */
+    (function () {
+      const BASE = { M2: 2.0, 'M2.5': 2.5, M3: 3.0, M4: 4.0, M5: 5.0 };
+      const shrink = { pla: 0.15, petg: 0.2, tpu: 0.3 };
+      const freeAdd = { free: 0.3, tap: 0.0, tight: 0.1 };
+      const drillMap = { '2.3': '2.3', '2.4': '2.4', '2.8': '2.8', '3.2': '3.2', '3.3': '3.2', '3.4': '3.4', '3.7': '3.6', '4.3': '4.2', '4.4': '4.4', '5.3': '5.2' };
+
+      function update() {
+        const spec = document.getElementById('ft-spec').value;
+        const fit = document.getElementById('ft-fit').value;
+        const mat = document.getElementById('ft-mat').value;
+        document.getElementById('ft-spec-val').textContent = spec;
+        const d = BASE[spec];
+        const hole = (d + freeAdd[fit] + shrink[mat]).toFixed(1);
+        document.getElementById('ft-hole').textContent = hole;
+        const drill = drillMap[hole] || (parseFloat(hole) - 0.1).toFixed(1);
+        document.getElementById('ft-drill').textContent = drill;
+        const note = document.getElementById('ft-note');
+        if (fit === 'tap') {
+          note.className = 'calc-verdict warn';
+          note.textContent = `自攻孔 = 公称直径（Ø${d.toFixed(1)}），靠螺纹切入塑料 hold 住——只用于受力小的盖板/挡片，受力件请用螺母或铜柱。`;
+        } else if (fit === 'tight') {
+          note.className = 'calc-verdict ok';
+          note.textContent = `紧配合孔（Ø${hole}）用于销/轴承定位：装不进就用 ${drill} mm 钻头轻修一下。`;
+        } else {
+          note.className = 'calc-verdict ok';
+          note.textContent = `自由孔（Ø${hole}）+ 螺母/垫片是最稳的连接——${spec} 是机器人结构件的万能规格。`;
+        }
+      }
+      ['ft-spec', 'ft-fit', 'ft-mat'].forEach(id => {
+        document.getElementById(id).addEventListener('change', update);
+      });
+      update();
+    })();
+
+    /* ===== 12″ 折叠动画 ===== */
+    (function () {
+      const s = document.getElementById('fold-svg');
+      const mount = null; // 内部自驱动
+      // 简易动画循环（不用 createControls——两个状态切换更有教学感）
+      let phase = 0, playing = true, last = null;
+      function render(ts) {
+        if (last === null) last = ts;
+        const dt = Math.min(50, ts - last) / 1000;
+        last = ts;
+        if (playing) phase = (phase + dt / 4) % 1; // 4 s 一循环
+        draw(phase);
+        requestAnimationFrame(render);
+      }
+      s.addEventListener('click', () => { playing = !playing; });
+      function draw(phase) {
+        clear(s);
+        // 展开-收起平滑往返
+        const t = phase < 0.5 ? phase / 0.5 : 1 - (phase - 0.5) / 0.5;
+        const ext = 0.5 - 0.5 * Math.cos(Math.PI * t); // 0(收)→1(展) 平滑
+        const CX = 350, GY = 235;
+        // 12" 边框（收起状态常显）
+        const bx = CX - 110, bw = 220;
+        s.appendChild(svg('rect', { x: bx, y: GY - 200, width: bw, height: 200, fill: 'none', stroke: '#8a919b', 'stroke-width': 1.5, 'stroke-dasharray': '6 4' }));
+        const bt = svg('text', { x: bx + 4, y: GY - 206, fill: '#8a919b', 'font-size': 11, 'font-family': 'monospace' });
+        bt.textContent = '12″ 立方（开赛瞬间限制）';
+        s.appendChild(bt);
+
+        // 机器人本体（始终在框内的核心）
+        s.appendChild(svg('rect', { x: CX - 80, y: GY - 60, width: 160, height: 60, fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 2, rx: 4 }));
+        const bt2 = svg('text', { x: CX, y: GY - 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11 });
+        bt2.textContent = '核心底盘 + 储仓';
+        s.appendChild(bt2);
+
+        // 两侧翻板（收起竖直 → 展开水平）
+        const armAng = (1 - ext) * -Math.PI / 2; // -90°(竖) → 0°(平)
+        [[-1], [1]].forEach(([sgn]) => {
+          const px = CX + sgn * 80, py = GY - 50;
+          const L = 120;
+          const ex = px + sgn * L * Math.cos(armAng === 0 ? 0 : Math.abs(armAng)) * (sgn > 0 ? 1 : 1);
+          const dx = sgn * L * Math.cos(armAng);
+          const dy = L * Math.sin(armAng);
+          s.appendChild(line(px, py, px + dx, py + dy, { stroke: '#d9662c', 'stroke-width': 7, 'stroke-linecap': 'round' }));
+          s.appendChild(circle(px, py, 6, { fill: '#232a31' }));
+        });
+
+        // 状态标注
+        const state = ext > 0.9 ? '展开完成 · 开始收集' : ext < 0.1 ? '收起 · 满足 12″ 限制' : '展开中…';
+        const st = svg('text', { x: CX, y: 30, 'text-anchor': 'middle', fill: ext > 0.9 || ext < 0.1 ? '#0e6b5c' : '#5a6472', 'font-size': 13.5, 'font-weight': 600 });
+        st.textContent = state + '（点击 SVG 暂停/播放）';
+        s.appendChild(st);
+        const hint = svg('text', { x: CX, y: 52, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 11.5 });
+        hint.textContent = '翻板展开成收集斜坡：起步合规 + 展开增容';
+        s.appendChild(hint);
+      }
+      requestAnimationFrame(render);
+    })();
+  </script>
+</body>
+</html>
