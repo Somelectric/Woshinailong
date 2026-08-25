@@ -1,0 +1,46 @@
+name: Deploy Part 2 site to GitHub Pages
+
+# 把 part2_mechanisms/ 子目录发布为 GitHub Pages 静态站点。
+# 触发：推送到 main（且改动涉及站点目录或本工作流），或手动运行。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'part2_mechanisms/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+# GitHub Pages 部署所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署；新推送会取消进行中的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site artifact (part2_mechanisms)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 只发布互动课子目录作为站点根，index.html 即首页
+          path: part2_mechanisms
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

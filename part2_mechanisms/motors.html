@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>电机原理 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+  <style>
+    /* 本页专用：步进拍/相状态灯、外链卡 */
+    .phase-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+    .beat-name { font-family: var(--mono); font-size: 16px; font-weight: 650; color: var(--accent); }
+    .phase-lamps { display: flex; gap: 6px; }
+    .lamp {
+      font-family: var(--mono); font-size: 13px; padding: 3px 12px; border-radius: 6px;
+      border: 1px solid var(--line-strong); color: var(--ink-soft); background: #fff; transition: all .15s;
+    }
+    .lamp.on-a { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 650; }
+    .lamp.on-b { background: var(--accent-2-soft); border-color: var(--accent-2); color: var(--accent-2); font-weight: 650; }
+    .ext-link {
+      background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent-2);
+      border-radius: var(--radius); padding: 12px 16px; margin: 14px 0; font-size: 13.5px;
+      box-shadow: var(--shadow);
+    }
+    .ext-link a { color: var(--accent); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 08 页 · 原理</span>
+          <span class="chip chip-ghost">≈ 30 min</span>
+          <span class="chip chip-ghost">前置：07 轨迹合成</span>
+        </div>
+        <h1 class="ph-title">电机原理 <span class="en">Motors</span></h1>
+        <p class="ph-lead">
+          <strong>为什么通上电就会转？三种电机给出三种答案——这一页拆开看。</strong>
+          有刷直流：靠<b>机械换向器</b>（commutator，两个半环 + 电刷）自己翻转电流方向；
+          步进：靠<b>脉冲通电序列</b>一格一格吸着转子走；
+          无刷 BLDC：把换向器搬进<b>电子驱动器</b>，用霍尔传感器决定何时切换电流。
+          看懂这三个"换向"，电机选型就通了。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">有刷直流</span>
+          <span class="tag">步进</span>
+          <span class="tag">BLDC 六步换向</span>
+          <span class="tag">舵机</span>
+        </div>
+      </header>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="brushed">有刷直流电机 ★</button>
+        <button class="tab" data-tab="stepper">步进电机</button>
+        <button class="tab" data-tab="bldc">无刷直流 BLDC</button>
+        <button class="tab" data-tab="compare">对比总结</button>
+      </div>
+
+      <!-- ===== Tab 1 有刷直流 ===== -->
+      <section id="tab-brushed" class="tab-panel">
+        <div class="stage">
+          <h3>有刷直流电机 · 单匝线圈 + 换向器 + 电刷（轴向剖视）</h3>
+          <svg id="dc-svg" viewBox="0 0 700 400"></svg>
+          <div id="dc-controls-mount"></div>
+          <div id="dc-steps-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">两个核心公式：安培力 与 反电动势</div>
+          <div class="f-eq">F = B·I·L（左手定则）　　E = k·ω</div>
+          <div class="f-note">
+            <strong>F = B·I·L</strong>：通电导体在磁场中受力，B 是磁感应强度、I 是电流、L 是导体有效长度。
+            判断方向用<strong>左手定则</strong>——磁感线穿入手心，四指指向电流，拇指即为受力方向。
+            线圈两边电流相反 → 两边受力一上一下 → 形成<strong>转矩</strong>。<br>
+            <strong>E = k·ω</strong>：线圈转起来后自己切割磁感线，产生<strong>反电动势</strong>（back-EMF），方向与电源电压相反。
+            转速越高反电动势越大，电流 I = (U − E)/R 越小——所以直流电机的转速有上限，
+            这也是它能用 PWM 改变电压来调速的物理根源。
+          </div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li><strong>电刷磨损 = 寿命瓶颈</strong>：碳刷与换向器持续摩擦，千余小时后需更换</li>
+              <li>换向瞬间有<strong>火花</strong> → 电磁干扰（EMI），干扰编码器/单片机信号线</li>
+              <li>换向器占掉转子空间，散热差，堵转易烧线圈</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li><strong>成品即用</strong>：两根线接上就转，无需驱动器调参</li>
+              <li>调速 = <strong>PWM</strong> 改平均电压；换向 = H 桥或双刀双掷开关</li>
+              <li>比赛里是驱动轮、履带底盘的主力：便宜、扭矩随叫随到</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul>
+            <li>结构最简单，两根线，成本最低</li>
+            <li>低速扭矩大、响应快（堵转也有力）</li>
+            <li>PWM 调速 + H 桥换向，方案极其成熟</li>
+          </ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul>
+            <li>电刷磨损 → 寿命与可靠性瓶颈</li>
+            <li>换向火花 → 干扰 + 换向器氧化</li>
+            <li>本身不知道转没转、转多快，需外加编码器</li>
+          </ul></div>
+          <div class="info-card use"><h4>ASABE 比赛适用</h4><ul>
+            <li>底盘驱动轮、履带行走（配减速箱）</li>
+            <li>对寿命不敏感的短时重载任务</li>
+            <li>要位置控制时 → 加编码器闭环（见对比总结）</li>
+          </ul></div>
+        </div>
+        <figure class="photo-fig" data-reveal>
+          <img src="figure/motor-brushed-dc.png" alt="有刷直流电机内部结构：定子永磁体、转子线圈、换向器、电刷" loading="lazy">
+          <figcaption><strong>有刷直流电机内部结构图</strong>——定子（永磁体）、转子（线圈）、<strong>换向器 + 电刷</strong>，
+          正是上面剖视图里"机械换向"的实物拆解；配上减速箱就是最常见的底盘驱动方案。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ===== Tab 2 步进 ===== -->
+      <section id="tab-stepper" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>两相混合式步进 · 八拍通电序列（A⁺→A⁺B⁺→B⁺→B⁻A⁺→B⁻→A⁻B⁻→A⁻→A⁺B⁻ 循环）</h3>
+          <svg id="st-svg" viewBox="0 0 700 400"></svg>
+          <div class="phase-row">
+            <span style="font-size:12.5px; color:var(--ink-soft);">当前拍：</span>
+            <span class="beat-name" id="st-beat">A⁺</span>
+            <span class="phase-lamps" id="st-lamps">
+              <span class="lamp" data-p="Ap">A⁺</span>
+              <span class="lamp" data-p="Am">A⁻</span>
+              <span class="lamp" data-p="Bp">B⁺</span>
+              <span class="lamp" data-p="Bm">B⁻</span>
+            </span>
+            <button class="btn" id="st-next">单拍 ▶</button>
+          </div>
+          <div id="st-controls-mount"></div>
+          <div class="params">
+            <div class="param-row">
+              <label>自动播放拍速 <span class="val" id="st-rate-val">3</span> 拍/秒</label>
+              <input type="range" id="st-rate" min="1" max="10" step="1" value="3">
+            </div>
+          </div>
+        </div>
+
+        <div class="stage">
+          <h3>掉步演示 · 负载 &gt; 保持扭矩时，转子跟不上（红色偏差角累计）</h3>
+          <svg id="ms-svg" viewBox="0 0 700 260"></svg>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" id="ms-overload">⚡ 施加过载（负载 &gt; 保持扭矩）</button>
+            <button class="btn secondary" id="ms-reset">↺ 重置</button>
+          </div>
+          <div class="verdict" id="ms-verdict"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">步距角：一格到底多大</div>
+          <div class="f-eq">步距角 = 360° / (相数 × 拍数)</div>
+          <div class="f-note">
+            两相电机<strong>四拍</strong>（A⁺→B⁺→A⁻→B⁻）：360°/(2×4) = <strong>90°</strong>——这是本页动画用的教学模型；
+            <strong>八拍</strong>（半步）再减半。<br>
+            常见的 <strong>1.8° 步进电机</strong>为什么这么小？因为真实转子是<strong>50 齿的齿槽结构</strong>（混合式），
+            磁路齿数代替了"极数"：360°/(50×2×整步拍) = 1.8°。齿越多，一格越细。
+          </div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li><strong>保持扭矩</strong>（holding torque）是关键参数：负载超过它就掉步</li>
+              <li>矩频特性：转速越高扭矩越小，高速场景别选步进</li>
+              <li>开环省了编码器，但误差无告警——留 50% 扭矩裕度</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>配<strong>步进驱动器</strong>（A4988/TMC 系列）：单片机给脉冲+方向即可</li>
+              <li>自带丝杆/导程的<strong>直线步进</strong> = 最便宜的直线轴方案</li>
+              <li>调好细分（microstepping）后低速很安静</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul>
+            <li>开环位置控制：发多少脉冲走多少角，不用编码器</li>
+            <li>低速可直驱、保持力矩大（断电仍自锁）</li>
+            <li>成本低、控制代码简单</li>
+          </ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul>
+            <li><strong>掉步无告警</strong>：撞了、超载了控制器都不知道</li>
+            <li>高速扭矩骤降，不适合高速任务</li>
+            <li>有共振点，某些转速下振动噪音明显</li>
+          </ul></div>
+          <div class="info-card use"><h4>ASABE 比赛适用</h4><ul>
+            <li>Z 轴升降、播种/夹取等低速点动轴</li>
+            <li>节奏简单、负载可预期的执行机构</li>
+            <li>要求可靠可验证的轴 → 换 BLDC/伺服闭环</li>
+          </ul></div>
+        </div>
+
+        <figure class="photo-fig" data-reveal>
+          <img src="assets/asabe/stepper-motor.png" alt="42 步进电机实物" loading="lazy">
+          <figcaption><strong>42 步进电机（NEMA 17）实物</strong>——方形法兰、四角安装孔、输出轴。
+          法兰 <strong>31 mm 孔距</strong>是俱乐部的标准件基准：悬挂电机板（底盘页）、直线滑台、夹爪掌基的孔位都按它画。
+          认准这个方形法兰——它是全站 drive-card 里"电机座 31 mm 孔距"的实物来源。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ===== Tab 3 BLDC ===== -->
+      <section id="tab-bldc" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>三相 BLDC · 星形绕组 + 3 个霍尔传感器 + 六步换向（旋转磁场矢量拉着转子走）</h3>
+          <svg id="bl-svg" viewBox="0 0 700 460"></svg>
+          <div id="bl-controls-mount"></div>
+          <div id="bl-steps-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">梯形换向（六步）vs 正弦 FOC</div>
+          <div class="f-eq">每 60° 电角切换一次导通相：U⁺V⁻ → U⁺W⁻ → V⁺W⁻ → V⁺U⁻ → W⁺U⁻ → W⁺V⁻</div>
+          <div class="f-note">
+            <strong>六步换向</strong>（梯形/trapezoidal）：任意时刻只有两相导通（一进一出），磁场矢量每 60° 跳一格——
+            结构简单，只需 3 个霍尔传感器（Hall sensor）告诉驱动器"转子到哪了"。转矩有轻微纹波（看下面的梯形波）。<br>
+            <strong>正弦 FOC</strong>（磁场定向控制）：三相电流按正弦连续变化，磁场矢量平滑旋转，转矩更平顺、效率更高，
+            但需要<strong>电流采样</strong>和复杂算法。比赛用的空心杯/云台 BLDC 多为六步，高性能舵机/机械臂用 FOC。<br>
+            <strong>无电刷 = 无火花、无磨损</strong> → 寿命只受轴承限制；但必须有电子驱动器，三根线接反只反转不损坏。
+          </div>
+        </div>
+
+        <div class="ext-link">
+          想看工业级的交互动画？
+          <a href="https://www.nanotec.com/us/en/knowledge-base/brushless-dc-motors-animation" target="_blank" rel="noopener">
+            Nanotec 官网 · BLDC 工作原理交互演示 ↗</a>（英文，六步换向与绕组磁场的成品级可视化）
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li>看三个参数：<strong>KV 值</strong>（转速/伏）、额定扭矩、峰值电流</li>
+              <li>配行星/谐波减速箱 = 大扭矩低转速关节</li>
+              <li>过载能力远强于步进：短时 2~3 倍扭矩不烧</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>必须配<strong>电调（ESC）/ BLDC 驱动器</strong>：信号线给 PWM 或指令</li>
+              <li>云台电机（低速大扭矩直驱）+ 驱动板 = 关节单元</li>
+              <li>要位置控制时加编码器 → 就是"伺服"</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good"><h4>优点</h4><ul>
+            <li>无电刷 → 寿命长、无火花、无 EMI</li>
+            <li>功率密度高：同重量下扭矩/转速都占优</li>
+            <li>效率高（85%+），电池机器人的好朋友</li>
+          </ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul>
+            <li>必须配驱动器，接线多（3 相 + 3 霍尔）</li>
+            <li>开环通电只会抖不转，天生需要"感知+换向"</li>
+            <li>低成本驱动器低速有纹波、噪音</li>
+          </ul></div>
+          <div class="info-card use"><h4>ASABE 比赛适用</h4><ul>
+            <li>行走底盘（配减速 + 编码器闭环）</li>
+            <li>需要长时间高可靠运行的机构主轴</li>
+            <li>机械臂关节（云台电机 + FOC 驱动板）</li>
+          </ul></div>
+        </div>
+        <figure class="photo-fig" data-reveal>
+          <img src="figure/motor-bldc.jpg" alt="无刷直流电机工作原理：定子旋转磁场、带磁铁转子、霍尔传感器 + 电子换向" loading="lazy">
+          <figcaption><strong>无刷 BLDC 工作原理图</strong>——左：定子线圈产生旋转磁场拉着带磁铁的转子转；
+          右：<strong>霍尔传感器反馈 → 电子控制器精确切换三相电流</strong>。机械换向被搬进了电调（ESC）。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ===== Tab 4 对比总结 ===== -->
+      <section id="tab-compare" class="tab-panel" style="display:none;">
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th>维度</th><th>有刷直流</th><th>步进</th><th>BLDC</th><th>舵机</th>
+            </tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>换向方式</strong></td>
+                <td>机械换向器 + 电刷</td>
+                <td>驱动器按脉冲序列通电</td>
+                <td>电子六步换向（霍尔）</td>
+                <td>内置有刷电机 + 齿轮箱</td>
+              </tr>
+              <tr>
+                <td><strong>位置控制</strong></td>
+                <td>本身不行，需编码器闭环</td>
+                <td>开环：脉冲数 = 角度</td>
+                <td>需编码器闭环</td>
+                <td class="hl"><strong>自带电位器闭环，给角度即到</strong></td>
+              </tr>
+              <tr>
+                <td><strong>反馈</strong></td>
+                <td>无（外置编码器）</td>
+                <td>无（掉步无告警）</td>
+                <td>霍尔换向；位置仍需编码器</td>
+                <td>电位器（角度）</td>
+              </tr>
+              <tr>
+                <td><strong>寿命</strong></td>
+                <td>受电刷磨损限制</td>
+                <td>轴承寿命</td>
+                <td class="hl"><strong>轴承寿命（无刷无火花）</strong></td>
+                <td>齿轮 + 电刷磨损</td>
+              </tr>
+              <tr>
+                <td><strong>成本</strong></td>
+                <td class="hl"><strong>最低</strong></td>
+                <td>低（省编码器）</td>
+                <td>中（电机+驱动器）</td>
+                <td>低~中（集成度高）</td>
+              </tr>
+              <tr>
+                <td><strong>ASABE 比赛适用</strong></td>
+                <td>底盘驱动轮、行走（配减速箱）</td>
+                <td>Z 轴升降、低速点动</td>
+                <td>高性能底盘、臂关节</td>
+                <td>夹爪开合、转向舵</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">一句话选型</div>
+          <div class="f-note" style="font-size:14px; line-height:1.9;">
+            <strong>要角度</strong>（转到这里就停）→ <strong>舵机</strong>：三根线，给 PWM 角度即到，大一最容易上手的"角度执行器"；<br>
+            <strong>要转速 + 闭环</strong>（轮子、底盘、高速可靠）→ <strong>BLDC</strong> 或 <strong>直流 + 编码器</strong>：前者寿命长功率大，后者便宜方案成熟；<br>
+            <strong>省事低速</strong>（升降、点动、负载可预期）→ <strong>步进</strong>：发脉冲就走，不用调 PID，留够 50% 扭矩裕度防掉步。
+          </div>
+        </div>
+      </section>
+
+      <div class="page-nav">
+        <a href="motion-complex.html">← 复杂曲线</a>
+        <a href="control.html">传感与控制 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { TAU, deg } from './common/math.js';
+    import { COLORS, hatchPattern, arrow, bar, stepControls } from './common/draw.js';
+
+    injectSidebar('motors');
+
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    });
+
+    /* ============================================================
+     * Tab 1 有刷直流：定子永磁 + 转子单匝线圈 + 换向器(双半环) + 电刷
+     * 电流路径随转子过中性面自动换向；F=BIL 力箭头始终同向（恒转矩）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('dc-svg');
+      const mount = document.getElementById('dc-controls-mount');
+      const stepsMount = document.getElementById('dc-steps-mount');
+      const CX = 350, CY = 200;
+      const Rcoil = 96;       // 线圈端到中心半径
+      const Rcomm = 28;       // 换向器半径
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+        const theta = phase * TAU;          // 转子角
+        const A = { x: CX + Rcoil * Math.cos(theta), y: CY + Rcoil * Math.sin(theta) };
+        const B = { x: CX - Rcoil * Math.cos(theta), y: CY - Rcoil * Math.sin(theta) };
+
+        // —— 定子永磁体（左 N 右 S） ——
+        svgEl.appendChild(svg('rect', { x: 90, y: CY - 70, width: 36, height: 140, fill: '#b3372c', stroke: COLORS.ink, 'stroke-width': 2, rx: 3 }));
+        const nT = svg('text', { x: 108, y: CY + 6, 'text-anchor': 'middle', fill: 'white', 'font-size': 20, 'font-weight': 700 });
+        nT.textContent = 'N'; svgEl.appendChild(nT);
+        svgEl.appendChild(svg('rect', { x: 574, y: CY - 70, width: 36, height: 140, fill: '#2a3a5c', stroke: COLORS.ink, 'stroke-width': 2, rx: 3 }));
+        const sT = svg('text', { x: 592, y: CY + 6, 'text-anchor': 'middle', fill: 'white', 'font-size': 20, 'font-weight': 700 });
+        sT.textContent = 'S'; svgEl.appendChild(sT);
+        // 磁场方向 B（N→S，向右）
+        svgEl.appendChild(arrow(svgEl, 150, CY - 96, 550, CY - 96, { color: COLORS.ref, width: 2, label: 'B（磁场 N→S）' }));
+
+        // —— 转子线圈（双线杆 A→B，两端引线接到换向器半环） ——
+        svgEl.appendChild(bar(A.x, A.y, B.x, B.y, { color: COLORS.drive, th: 10 }));
+        // 引线 A→上换向片、B→下换向片（简化：引到中心轴附近的换向器）
+        // 换向器：两半环，分界方向 = theta（与线圈共面）
+        // 半环1 接 A 端（在 theta 方向），半环2 接 B 端
+        svgEl.appendChild(line(A.x, A.y, CX + Rcomm * 0.5 * Math.cos(theta), CY + Rcomm * 0.5 * Math.sin(theta), { stroke: COLORS.drive, 'stroke-width': 3 }));
+        svgEl.appendChild(line(B.x, B.y, CX - Rcomm * 0.5 * Math.cos(theta), CY - Rcomm * 0.5 * Math.sin(theta), { stroke: COLORS.drive, 'stroke-width': 3 }));
+
+        // 换向器双半环（用两个半圆弧 + 不同色）
+        const gComm = svg('g', { transform: `translate(${CX},${CY}) rotate(${deg(theta)})` });
+        // 半环1（连 A，右半，drive 色）
+        gComm.appendChild(svg('path', { d: `M 0,${-Rcomm} A ${Rcomm} ${Rcomm} 0 0 1 0,${Rcomm} L 0,0 Z`, fill: COLORS.drive, stroke: COLORS.ink, 'stroke-width': 1.5 }));
+        // 半环2（连 B，左半，driven 色）
+        gComm.appendChild(svg('path', { d: `M 0,${-Rcomm} A ${Rcomm} ${Rcomm} 0 0 0 0,${Rcomm} L 0,0 Z`, fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 1.5 }));
+        svgEl.appendChild(gComm);
+
+        // 电刷（固定，上下两片，接触换向器外缘）
+        const brushTop = { x: CX, y: CY - Rcomm - 2 };
+        const brushBot = { x: CX, y: CY + Rcomm + 2 };
+        svgEl.appendChild(svg('rect', { x: CX - 14, y: CY - Rcomm - 16, width: 28, height: 14, fill: COLORS.frame, stroke: COLORS.ink, 'stroke-width': 1.5, rx: 2 }));
+        svgEl.appendChild(svg('rect', { x: CX - 14, y: CY + Rcomm + 2, width: 28, height: 14, fill: COLORS.frame, stroke: COLORS.ink, 'stroke-width': 1.5, rx: 2 }));
+        const btT = svg('text', { x: CX + 26, y: CY - Rcomm - 6, fill: '#5a6472', 'font-size': 11 });
+        btT.textContent = '电刷+（固定）'; svgEl.appendChild(btT);
+        const bbT = svg('text', { x: CX + 26, y: CY + Rcomm + 14, fill: '#5a6472', 'font-size': 11 });
+        bbT.textContent = '电刷−（固定）'; svgEl.appendChild(bbT);
+
+        // —— 电流方向判定：过中性面（θ=90/270）换向 ——
+        // θ∈(-90,90) 即 cosθ>0：A 端在上半，接顶电刷，电流 + → A 在顶、B 在底
+        // 简化：电流方向 sign = sign(cosθ)（cosθ>0 时 A 接+ ）
+        const sign = Math.cos(theta) >= 0 ? 1 : -1;
+        const atNeutral = Math.abs(Math.cos(theta)) < 0.08;
+
+        // 电流路径高亮：顶电刷→当前接触的半环→A端→线圈→B端→另一半环→底电刷
+        const topContactIsA = sign > 0; // A 接顶电刷
+        const pathColor = atNeutral ? COLORS.ref : COLORS.hi;
+        if (!atNeutral) {
+          // 顶→半环（A 或 B）→ 端点 → 线圈 → 另一端 → 半环 → 底
+          const topEnd = topContactIsA ? A : B;
+          const botEnd = topContactIsA ? B : A;
+          svgEl.appendChild(arrow(svgEl, CX, CY - Rcomm - 16, CX, CY - Rcomm, { color: pathColor, width: 3 }));
+          svgEl.appendChild(line(CX, CY - Rcomm, topEnd.x, topEnd.y, { stroke: pathColor, 'stroke-width': 3, opacity: 0.7 }));
+          svgEl.appendChild(line(botEnd.x, botEnd.y, CX, CY + Rcomm, { stroke: pathColor, 'stroke-width': 3, opacity: 0.7 }));
+          svgEl.appendChild(arrow(svgEl, CX, CY + Rcomm, CX, CY + Rcomm + 16, { color: pathColor, width: 3 }));
+        }
+
+        // —— F=BIL 力箭头（两端切向，始终同向 = 恒转矩） ——
+        // 转子顺时针转（θ 增）。A 端切向（顺时针）= (sinθ, -cosθ)... 用 (-sinθ, cosθ) 的反向。
+        // 简化：力方向 = 垂直于径向，与转动方向一致。顺时针转动方向切向 = (sinθ, -cosθ) 的 -1？
+        // SVG y 向下：θ 增 = 顺时针视觉。切向（顺时针）= (-sinθ, cosθ)... 让我直接用：端点速度方向 = dθ/dt × r = (-sinθ, cosθ)
+        const tang = (p) => ({ x: -(p.y - CY), y: (p.x - CX) });
+        const tA = tang(A), tB = tang(B);
+        const tl = 26;
+        const nA = Math.hypot(tA.x, tA.y) || 1, nB = Math.hypot(tB.x, tB.y) || 1;
+        svgEl.appendChild(arrow(svgEl, A.x, A.y, A.x + tA.x / nA * tl, A.y + tA.y / nA * tl, { color: COLORS.driven, width: 2.8, label: 'F' }));
+        svgEl.appendChild(arrow(svgEl, B.x, B.y, B.x + tB.x / nB * tl, B.y + tB.y / nB * tl, { color: COLORS.driven, width: 2.8, label: 'F' }));
+
+        // 旋转方向标记（中心）
+        svgEl.appendChild(arrow(svgEl, CX + 14, CY, CX + 14, CY + 22, { color: COLORS.ref, width: 1.8 }));
+
+        // 端点关节
+        [A, B].forEach(p => svgEl.appendChild(circle(p.x, p.y, 5, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 2 })));
+
+        // 读数
+        const thetaDeg = ((deg(theta) % 360) + 360) % 360;
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: atNeutral ? COLORS.hi : '#5a6472', 'font-size': 13.5, 'font-weight': 600 });
+        t.textContent = atNeutral
+          ? `⚠ 中性面！cosθ≈0，换向片正在切换 → 电流方向即将反转（转矩却不变）`
+          : `θ=${thetaDeg.toFixed(0)}° · 电流方向 ${sign > 0 ? 'A→B' : 'B→A'}（过中性面会自动换向）· 两端 F 始终同向 → 恒转矩旋转`;
+        svgEl.appendChild(t);
+      }
+
+      const ctl = createControls(mount, { duration: 5000, onTick: (p) => render(p) });
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.00, title: '① 电流路径', desc: '电流从<strong>顶电刷</strong>进入 → 经当前接触的<strong>换向片</strong> → 线圈一端 → 穿过线圈 → 另一端 → 另一换向片 → <strong>底电刷</strong>流出（红色高亮路径）。' },
+          { at: 0.12, title: '② 导体受力 F = BIL', desc: '线圈两边在磁场 B 中通电，受<strong>安培力 F = B·I·L</strong>。用左手定则：磁感线穿手心、四指指电流、拇指即受力。两边电流相反 → 力一上一下 → 形成转矩。' },
+          { at: 0.25, title: '③ 过中性面 · 换向', desc: '转子转到线圈平面与磁场<strong>垂直</strong>（中性面）时，cosθ≈0，<strong>换向片切换接触</strong>——电流方向瞬间反转。这是"机械换向器"的核心动作。' },
+          { at: 0.40, title: '④ 转矩方向不变', desc: '虽然电流反向了，但因为换向片也换了边，<strong>受力方向不变</strong>——转子被持续推向同一方向，连续旋转。这就是有刷电机"通电就转"的完整答案。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 150);
+      tabCtls['brushed'] = ctl;
+    })();
+
+    /* ============================================================
+     * Tab 2 步进电机：两相八拍通电序列 + 相状态灯 + 单拍/自动 + 掉步演示
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('st-svg');
+      const mount = document.getElementById('st-controls-mount');
+      const beatEl = document.getElementById('st-beat');
+      const lampsEl = document.getElementById('st-lamps');
+      const CX = 350, CY = 200;
+
+      // 八拍序列：每拍 = 哪些相通电 + 转子目标角（每拍 45°）
+      // 相：Ap(A+), Am(A-), Bp(B+), Bm(B-)
+      const BEATS = [
+        { name: 'A⁺', active: ['Ap'], ang: 0 },
+        { name: 'A⁺B⁺', active: ['Ap', 'Bp'], ang: 45 },
+        { name: 'B⁺', active: ['Bp'], ang: 90 },
+        { name: 'A⁻B⁺', active: ['Am', 'Bp'], ang: 135 },
+        { name: 'A⁻', active: ['Am'], ang: 180 },
+        { name: 'A⁻B⁻', active: ['Am', 'Bm'], ang: 225 },
+        { name: 'B⁻', active: ['Bm'], ang: 270 },
+        { name: 'A⁺B⁻', active: ['Ap', 'Bm'], ang: 315 },
+      ];
+      let beatIdx = 0;
+      let autoRate = 3;
+      let autoTimer = null;
+
+      // 定子 4 极位置（上 Bp、右 Ap、下 Bm、左 Am —— 对应转子磁极被吸方向）
+      const POLES = {
+        Ap: { x: CX + 130, y: CY, label: 'A⁺', color: COLORS.drive },
+        Am: { x: CX - 130, y: CY, label: 'A⁻', color: COLORS.drive },
+        Bp: { x: CX, y: CY - 130, label: 'B⁺', color: COLORS.driven },
+        Bm: { x: CX, y: CY + 130, label: 'B⁻', color: COLORS.driven },
+      };
+
+      function drawBeat(idx) {
+        beatIdx = ((idx % 8) + 8) % 8;
+        const beat = BEATS[beatIdx];
+        clear(svgEl);
+        // 4 极线圈
+        Object.entries(POLES).forEach(([k, p]) => {
+          const on = beat.active.includes(k);
+          svgEl.appendChild(svg('rect', {
+            x: p.x - 22, y: p.y - 22, width: 44, height: 44, rx: 5,
+            fill: on ? p.color : '#e9e6dd', stroke: COLORS.ink, 'stroke-width': 2,
+            opacity: on ? 1 : 0.5,
+          }));
+          const t = svg('text', { x: p.x, y: p.y + 5, 'text-anchor': 'middle', fill: on ? 'white' : '#8a919b', 'font-size': 13, 'font-weight': 600 });
+          t.textContent = p.label; svgEl.appendChild(t);
+          // 通电时画磁吸箭头（极→转子）
+          if (on) {
+            svgEl.appendChild(arrow(svgEl, p.x, p.y, CX + (CX - p.x) * 0, CY + (CY - p.y) * 0, { color: p.color, width: 0 })); // placeholder no-op
+            // 真正画极到转子方向的引力线
+            const dx = CX - p.x, dy = CY - p.y;
+            const n = Math.hypot(dx, dy);
+            svgEl.appendChild(arrow(svgEl, p.x + dx / n * 26, p.y + dy / n * 26, CX - dx / n * 38, CY - dy / n * 38, { color: p.color, width: 2.2 }));
+          }
+        });
+        // 转子（永磁 N/S，标 N 在 ang 方向）
+        const ang = beat.ang * Math.PI / 180;
+        const rRot = 56;
+        // 转子盘
+        svgEl.appendChild(circle(CX, CY, rRot, { fill: '#3a3f45', stroke: COLORS.ink, 'stroke-width': 2 }));
+        // N 极（红半）指向 ang
+        svgEl.appendChild(svg('path', {
+          d: `M ${CX},${CY} L ${CX + rRot * Math.cos(ang - 0.35)},${CY + rRot * Math.sin(ang - 0.35)} A ${rRot} ${rRot} 0 0 1 ${CX + rRot * Math.cos(ang + 0.35)},${CY + rRot * Math.sin(ang + 0.35)} Z`,
+          fill: '#b3372c',
+        }));
+        const nT = svg('text', { x: CX + 34 * Math.cos(ang), y: CY + 34 * Math.sin(ang) + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 13, 'font-weight': 700 });
+        nT.textContent = 'N'; svgEl.appendChild(nT);
+        const sT = svg('text', { x: CX - 34 * Math.cos(ang), y: CY - 34 * Math.sin(ang) + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 13, 'font-weight': 700 });
+        sT.textContent = 'S'; svgEl.appendChild(sT);
+        svgEl.appendChild(circle(CX, CY, 6, { fill: COLORS.bg }));
+
+        // 相状态灯
+        beatEl.textContent = beat.name;
+        lampsEl.querySelectorAll('.lamp').forEach(l => {
+          const p = l.dataset.p;
+          l.classList.remove('on-a', 'on-b');
+          if (beat.active.includes(p)) l.classList.add(p.startsWith('A') ? 'on-a' : 'on-b');
+        });
+
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+        t.textContent = `第 ${beatIdx + 1}/8 拍 · 通电相 ${beat.name} → 转子对齐到 ${beat.ang}°`;
+        svgEl.appendChild(t);
+      }
+
+      function startAuto() {
+        stopAuto();
+        autoTimer = setInterval(() => drawBeat(beatIdx + 1), 1000 / autoRate);
+      }
+      function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
+
+      document.getElementById('st-next').addEventListener('click', () => { stopAuto(); drawBeat(beatIdx + 1); });
+      document.getElementById('st-rate').addEventListener('input', (e) => {
+        autoRate = parseInt(e.target.value);
+        document.getElementById('st-rate-val').textContent = autoRate;
+        if (autoTimer) startAuto();
+      });
+      // 用 createControls 做自动播放的占位（进度条可视化），实际拍进由 setInterval 驱动
+      const ctl = createControls(mount, {
+        duration: 8000,
+        onTick: (phase) => {
+          const target = Math.floor(phase * 8) % 8;
+          if (target !== beatIdx) drawBeat(target);
+        },
+      });
+      tabCtls['stepper'] = ctl; ctl.pause();
+
+      drawBeat(0);
+
+      /* —— 掉步演示（ms-svg）—— */
+      const msSvg = document.getElementById('ms-svg');
+      const msVerdict = document.getElementById('ms-verdict');
+      let overloaded = false;
+      let drift = 0;
+      let msPhase = 0;
+
+      function drawMissed() {
+        clear(msSvg);
+        msPhase += 0.012;
+        const targetAng = msPhase * 90; // 指令角度（每秒走 75°）
+        if (overloaded) drift += 1.2;   // 转子跟不上，偏差累积
+        const actualAng = targetAng - drift;
+        const cx = 200, cy = 130;
+        // 目标指针（绿，细）
+        const ta = targetAng * Math.PI / 180;
+        msSvg.appendChild(line(cx, cy, cx + 70 * Math.cos(ta), cy + 70 * Math.sin(ta), { stroke: COLORS.good, 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
+        // 实际指针（红，粗，滞后）
+        const aa = actualAng * Math.PI / 180;
+        msSvg.appendChild(line(cx, cy, cx + 70 * Math.cos(aa), cy + 70 * Math.sin(aa), { stroke: overloaded ? COLORS.hi : COLORS.drive, 'stroke-width': 4, 'stroke-linecap': 'round' }));
+        msSvg.appendChild(circle(cx, cy, 6, { fill: COLORS.ink }));
+        // 读数
+        const t1 = svg('text', { x: cx, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t1.textContent = `指令角 ${targetAng.toFixed(0)}°　实际角 ${actualAng.toFixed(0)}°`;
+        msSvg.appendChild(t1);
+        const t2 = svg('text', { x: cx, y: 50, 'text-anchor': 'middle', fill: overloaded ? COLORS.hi : COLORS.ref, 'font-size': 12.5, 'font-weight': 600 });
+        t2.textContent = overloaded ? `⚠ 掉步！偏差 ${drift.toFixed(0)}° 累积，控制器毫不知情` : '正常运行：实际紧跟指令';
+        msSvg.appendChild(t2);
+        // 右侧说明
+        const t3 = svg('text', { x: 400, y: 80, fill: '#5a6472', 'font-size': 13 });
+        t3.textContent = '步进开环的致命弱点：'; msSvg.appendChild(t3);
+        const lines = [
+          '• 负载 > 保持扭矩 → 转子卡住一拍',
+          '• 控制器仍在发脉冲 → 指令继续走',
+          '• 实际位置与指令脱钩 → 误差永久保持',
+          '• 没有反馈 → 系统完全不知道错了',
+          '',
+          '对策：留 50% 扭矩裕度 /',
+          '　    加编码器变闭环 /',
+          '　    或换 BLDC 伺服',
+        ];
+        lines.forEach((s, i) => {
+          const e = svg('text', { x: 400, y: 110 + i * 20, fill: '#5a6472', 'font-size': 12.5 });
+          e.textContent = s; msSvg.appendChild(e);
+        });
+      }
+      let msRaf = null;
+      function msLoop() { drawMissed(); msRaf = requestAnimationFrame(msLoop); }
+      document.getElementById('ms-overload').addEventListener('click', () => {
+        overloaded = true;
+        msVerdict.className = 'verdict bad';
+        msVerdict.textContent = '过载已施加：偏差开始累积，红色指针逐渐落后于绿色指令。这就是"掉步"。';
+      });
+      document.getElementById('ms-reset').addEventListener('click', () => {
+        overloaded = false; drift = 0; msPhase = 0;
+        msVerdict.className = 'verdict';
+        msVerdict.textContent = '已重置。正常运行时实际角紧跟指令角。';
+      });
+      msVerdict.textContent = '点「施加过载」看步进电机如何悄悄失位。';
+      msLoop();
+    })();
+
+    /* ============================================================
+     * Tab 3 BLDC：三相星形 + 3 霍尔 + 六步换向 + 旋转磁场矢量 + 分步
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('bl-svg');
+      const mount = document.getElementById('bl-controls-mount');
+      const stepsMount = document.getElementById('bl-steps-mount');
+      const CX = 350, CY = 230;
+      // 三相绕组方向（120° 分布）：U 上、V 右下、W 左下
+      const PHASES = [
+        { name: 'U', ang: -90, color: COLORS.drive },
+        { name: 'V', ang: 30, color: COLORS.driven },
+        { name: 'W', ang: 150, color: '#7a4ab0' },
+      ];
+      // 六步换向表：每步哪两相导通（+进 -出）+ 转子磁极目标角
+      const STEPS = [
+        { on: { U: '+', W: '-' }, fieldAng: 60, hall: '霍尔 U↑' },
+        { on: { U: '+', V: '-' }, fieldAng: 120, hall: '霍尔 V↑' },
+        { on: { V: '+', W: '-' }, fieldAng: 180, hall: '霍尔 V↓' },
+        { on: { V: '+', U: '-' }, fieldAng: 240, hall: '霍尔 U↓' },
+        { on: { W: '+', U: '-' }, fieldAng: 300, hall: '霍尔 W↑' },
+        { on: { W: '+', V: '-' }, fieldAng: 0, hall: '霍尔 W↓' },
+      ];
+
+      function render(phase) {
+        clear(svgEl);
+        const stepF = phase * 6;
+        const stepIdx = Math.floor(stepF) % 6;
+        const frac = stepF - Math.floor(stepF);
+        const step = STEPS[stepIdx];
+        const nextStep = STEPS[(stepIdx + 1) % 6];
+        // 转子角：跟随磁场（每步 60°，平滑过渡）
+        const fieldAng = step.fieldAng + (nextStep.fieldAng - step.fieldAng + 540) % 360 - 180;
+        const rotorAng = (step.fieldAng + frac * (((nextStep.fieldAng - step.fieldAng + 540) % 360) - 180));
+
+        // 三相绕组（星形：末端连中点）
+        const Rcoil = 110;
+        const tips = PHASES.map(p => {
+          const a = p.ang * Math.PI / 180;
+          return { ...p, x: CX + Rcoil * Math.cos(a), y: CY + Rcoil * Math.sin(a) };
+        });
+        // 中点
+        svgEl.appendChild(circle(CX, CY, 6, { fill: COLORS.ink }));
+        // 三相绕组线圈（按导通状态着色）
+        tips.forEach(p => {
+          const state = step.on[p.name]; // '+','-',或 undefined
+          const on = !!state;
+          svgEl.appendChild(bar(CX, CY, p.x, p.y, { color: on ? p.color : '#d8d5cc', th: on ? 10 : 6, opacity: on ? 1 : 0.5 }));
+          // 端部线圈方块
+          svgEl.appendChild(svg('rect', { x: p.x - 16, y: p.y - 16, width: 32, height: 32, rx: 4, fill: on ? p.color : '#e9e6dd', stroke: COLORS.ink, 'stroke-width': 1.8, opacity: on ? 1 : 0.6 }));
+          const t = svg('text', { x: p.x, y: p.y + 5, 'text-anchor': 'middle', fill: on ? 'white' : '#8a919b', 'font-size': 13, 'font-weight': 600 });
+          t.textContent = p.name + (state || ''); svgEl.appendChild(t);
+        });
+        // 星形中点连线（三绕组末端相连）
+        const midPts = tips.map(p => ({ x: CX + (p.x - CX) * 0.0, y: CY + (p.y - CY) * 0.0 }));
+        // 霍尔传感器（3 个，在绕组端部）
+        tips.forEach((p, i) => {
+          const hx = CX + (p.x - CX) * 1.18, hy = CY + (p.y - CY) * 1.18;
+          svgEl.appendChild(svg('rect', { x: hx - 10, y: hy - 10, width: 20, height: 20, fill: '#fde7e0', stroke: COLORS.hi, 'stroke-width': 1.5, rx: 2 }));
+          const ht = svg('text', { x: hx, y: hy + 4, 'text-anchor': 'middle', fill: COLORS.hi, 'font-size': 9, 'font-weight': 600 });
+          ht.textContent = 'H' + (i + 1); svgEl.appendChild(ht);
+        });
+
+        // 旋转磁场矢量（从中心指向当前 fieldAng）
+        const fa = fieldAng * Math.PI / 180;
+        svgEl.appendChild(arrow(svgEl, CX, CY, CX + 80 * Math.cos(fa), CY + 80 * Math.sin(fa), { color: COLORS.hi, width: 3.5, label: '磁场矢量' }));
+
+        // 转子（永磁，N 指向 rotorAng）
+        const ra = rotorAng * Math.PI / 180;
+        const rRot = 44;
+        svgEl.appendChild(circle(CX, CY, rRot, { fill: '#3a3f45', stroke: COLORS.ink, 'stroke-width': 2 }));
+        svgEl.appendChild(svg('path', {
+          d: `M ${CX},${CY} L ${CX + rRot * Math.cos(ra - 0.35)},${CY + rRot * Math.sin(ra - 0.35)} A ${rRot} ${rRot} 0 0 1 ${CX + rRot * Math.cos(ra + 0.35)},${CY + rRot * Math.sin(ra + 0.35)} Z`,
+          fill: '#b3372c',
+        }));
+        const nT = svg('text', { x: CX + 26 * Math.cos(ra), y: CY + 26 * Math.sin(ra) + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 11, 'font-weight': 700 });
+        nT.textContent = 'N'; svgEl.appendChild(nT);
+
+        // 读数
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13.5, 'font-weight': 600 });
+        const onDesc = Object.entries(step.on).map(([k, v]) => k + (v === '+' ? '⁺' : '⁻')).join(' ');
+        t.textContent = `第 ${stepIdx + 1}/6 步 · 导通 ${onDesc} · ${step.hall} · 磁场矢量 ${fieldAng.toFixed(0)}°`;
+        svgEl.appendChild(t);
+        const t2 = svg('text', { x: 350, y: 52, 'text-anchor': 'middle', fill: COLORS.ref, 'font-size': 12 });
+        t2.textContent = '磁场矢量每 60° 跳一格，拉着转子磁极同步旋转——这就是"电子换向"';
+        svgEl.appendChild(t2);
+      }
+
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.00, title: '① 步 1 · U⁺W⁻', desc: 'U 相进电流、W 相出电流 → 电流经 U 绕组→中点→W 绕组。<strong>合成磁场矢量</strong>指向 60° 方向，把转子 N 极吸过去。' },
+          { at: 0.16, title: '② 步 2 · U⁺V⁻', desc: '霍尔传感器检测到转子到位 → 切换：W 断开、V 通电（U⁺V⁻）。磁场矢量跳到 120°，转子继续被牵着转。' },
+          { at: 0.33, title: '③ 步 3 · V⁺W⁻', desc: 'U 断、V 保持正、W 反向 → 磁场矢量 180°。每步只动一相，磁场前进 60°。' },
+          { at: 0.50, title: '④ 步 4 · V⁺U⁻', desc: '六步过半，电流方向整体反转循环。磁场矢量 240°，转子转过 180°。' },
+          { at: 0.66, title: '⑤ 步 5 · W⁺U⁻', desc: '磁场矢量 300°。注意：任意时刻只有<strong>两相</strong>导通（一进一出），第三相悬空——这是梯形换向的特征。' },
+          { at: 0.83, title: '⑥ 步 6 · W⁺V⁻', desc: '磁场矢量回到 0°，一个电周期完成。转子跟着转了一圈（极对数=1 时）。<strong>无电刷、无火花</strong>——寿命只受轴承限制。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 150);
+      tabCtls['bldc'] = ctl; ctl.pause();
+    })();
+  </script>
+</body>
+</html>

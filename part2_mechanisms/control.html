@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>传感与控制 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+  <style>
+    #pid-grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; align-items: start; }
+    @media (max-width: 880px) { #pid-grid { grid-template-columns: 1fr; } }
+    .pid-readout {
+      display: flex; gap: 18px; flex-wrap: wrap;
+      font-family: var(--mono); font-size: 12.5px;
+      margin-top: 14px; padding: 10px 14px;
+      background: var(--bg); border-radius: 8px; color: var(--ink-soft);
+    }
+    .pid-readout b { color: var(--accent); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <h1 class="page-title">传感与控制 <span class="en">Sensing &amp; Control</span></h1>
+      <p class="need-hint">
+        <strong>机构负责"怎么动"，这一页讲"怎么知道动到哪、怎么停在想要的地方"。</strong>
+        编码器（encoder）是闭环的"眼睛"——把角度变成可数的脉冲；
+        PID 是闭环的"手"——发现偏差就往回拉。上一页说"数字控制详见传感与控制"，这一页把它拆到底。
+      </p>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="hero">编码器 · 正交解码 ★</button>
+        <button class="tab" data-tab="pid">PID 闭环 · 交互调参</button>
+        <button class="tab" data-tab="wrap">呼应总结</button>
+      </div>
+
+      <!-- ===== Tab 1：增量编码器 + 正交解码 ===== -->
+      <section id="tab-hero" class="tab-panel">
+        <div class="stage">
+          <h3>增量编码器 · 正交解码（Quadrature Decoding）</h3>
+          <p style="color:var(--ink-soft); font-size:13px; margin:0 0 8px;">
+            上：旋转码盘——外圈 A 相刻线（绿）、内圈 B 相刻线（橙），<strong>空间错开 1/4 刻线周期 = 90° 电角度</strong>；
+            中：两相方波随码盘转动（示波器滚动模式）；下：4 倍频计数。点「反转」看波形与计数如何反应。
+          </p>
+          <svg id="enc-svg" viewBox="0 0 700 460"></svg>
+          <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;" id="enc-dir-btns">
+            <button class="btn" id="enc-cw">正转 CW（A 超前 B）→ 计数 +</button>
+            <button class="btn secondary" id="enc-ccw">反转 CCW（B 超前 A）→ 计数 −</button>
+          </div>
+          <div id="enc-controls-mount"></div>
+          <div id="enc-steps-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">分辨率：4 倍频从哪来</div>
+          <div class="f-eq">1000 线 × 4 = 4000 计数/转　→　分辨率 = 360°/4000 = 0.09°/计数</div>
+          <div class="f-note">
+            <strong>为什么 ×4</strong>：A、B 两相每周期各产生 2 个边沿（上升+下降），共
+            <strong>4 个可数边沿/周期</strong>——每个边沿都计 1，分辨率就是刻线数的 4 倍。
+            演示码盘只有 8 条刻线（看得清），所以 8×4 = 32 计数/转、11.25°/计数。<br>
+            <strong>增量式 vs 绝对式</strong>：增量式（incremental）断电即失位——它只记"走了多少"，不记"现在在哪"，
+            上电必须先<strong>回零</strong>（Z 相 index 脉冲每转 1 个，专干这个）；
+            绝对式（absolute，如磁编码器 AS5600）每个角度对应唯一编码，断电位置保持，上电即知。
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card good"><h4>正交解码给你什么</h4><ul>
+            <li><strong>方向</strong>：A 超前 B = 正转；B 超前 A = 反转</li>
+            <li><strong>位置</strong>：计数值 × 分辨率 = 角度</li>
+            <li><strong>速度</strong>：单位时间计数变化 = 角速度（不用额外传感器）</li>
+            <li>两相互为校验：单相卡死立刻能发现</li>
+          </ul></div>
+          <div class="info-card bad"><h4>增量式的坑</h4><ul>
+            <li>断电失位，上电必须回零（撞限位开关或找 Z 相）</li>
+            <li>电气干扰丢一个边沿，误差就永久累积</li>
+            <li>转速太快时边沿间隔小于采样周期 → 计数溢出混叠</li>
+          </ul></div>
+          <div class="info-card use"><h4>竞赛用法</h4><ul>
+            <li>轮子里程计：4 倍频计数 ÷ (减速比×线数×4) = 走过的角度</li>
+            <li>Z 相 + 限位开关：上电标零，消除累积漂移</li>
+            <li>现成解码库遍地都是（见下方制造卡），别手写中断轮询</li>
+          </ul></div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li>编码器是<strong>闭环的"眼睛"</strong>：它放在减速箱哪一级，测的就是哪一级的真实位置</li>
+              <li>线数（CPR）选择 = 分辨率 vs 算力：轮速高时线数太高，单片机数不过来</li>
+              <li>测轮请装在<strong>电机轴</strong>（减速前）——同样线数分辨率放大减速比倍</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>磁编码器（AS5600 类）：芯片固定 + 轴端<strong>径向磁铁</strong>，免接触不怕灰——农业场景友好</li>
+              <li>AB 相输出成品编码器：花钱买精度，接线即用</li>
+              <li>自制磁编码器注意<strong>磁铁同心度 &lt; 0.5 mm</strong>，偏心 = 周期性误差</li>
+            </ul>
+          </div>
+        </div>
+
+        <figure class="photo-fig" data-reveal>
+          <img src="figure/encoder-diagram.jpg" alt="磁编码器原理：磁性编码环 + 磁阻传感器，磁场周期变化 → A/B/Z 信号输出" loading="lazy">
+          <figcaption><strong>磁编码器原理图</strong>——磁性编码环随转轴旋转，磁阻传感器读磁场周期变化，
+          输出 A/B 两相方波（外加 Z 相零位）。这正是上面动画里那两条错开 90° 电角度的绿/橙波形；接到 STM32 定时器编码器模式即可硬件 4 倍频计数。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ===== Tab 2：PID 闭环交互调参 ===== -->
+      <section id="tab-pid" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>PID 闭环 · 交互调参（Closed-loop PID）</h3>
+          <p style="color:var(--ink-soft); font-size:13px; margin:0 0 8px;">
+            左：控制回路框图——设定值与编码器反馈相减得误差 e，PID 算出控制量 u 驱动电机；
+            右：完整响应曲线随动画推进。拖滑块、点预设、<strong>注入扰动看它自己恢复</strong>——这就是闭环的底气。
+          </p>
+          <div id="pid-grid">
+            <div><svg id="pid-diagram" viewBox="0 0 640 205"></svg></div>
+            <div><svg id="pid-response" viewBox="0 0 640 430"></svg></div>
+          </div>
+
+          <div class="pid-readout">
+            <span>目标 r = <b id="pid-r">120</b>°</span>
+            <span>当前 θ = <b id="pid-y">0.0</b>°</span>
+            <span>误差 e = <b id="pid-e">0.0</b>°</span>
+            <span>控制量 u = <b id="pid-u">0</b>（限幅 ±150）</span>
+            <span>转速 v = <b id="pid-v">0</b>°/s</span>
+          </div>
+
+          <div class="params">
+            <div class="param-row">
+              <label>目标角 r <span class="val" id="pid-target-val">120</span>°</label>
+              <input type="range" id="pid-target" min="0" max="180" step="5" value="120">
+            </div>
+            <div class="param-row">
+              <label>比例 K<sub>p</sub> <span class="val" id="pid-kp-val">2.0</span></label>
+              <input type="range" id="pid-kp" min="0" max="5" step="0.1" value="2">
+            </div>
+            <div class="param-row">
+              <label>积分 K<sub>i</sub> <span class="val" id="pid-ki-val">0.50</span></label>
+              <input type="range" id="pid-ki" min="0" max="2" step="0.05" value="0.5">
+            </div>
+            <div class="param-row">
+              <label>微分 K<sub>d</sub> <span class="val" id="pid-kd-val">0.50</span></label>
+              <input type="range" id="pid-kd" min="0" max="1" step="0.05" value="0.5">
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid var(--line);">
+            <button class="btn" id="pid-play">⏸ 暂停</button>
+            <button class="btn secondary" id="pid-reset">↺ 重置</button>
+            <button class="btn secondary" data-preset="p">预设① P 振荡</button>
+            <button class="btn secondary" data-preset="pd">预设② PD 良好</button>
+            <button class="btn secondary" data-preset="pid">预设③ PID 消静差</button>
+            <button class="btn" id="pid-jump">⚡ 注入扰动 +20°</button>
+          </div>
+
+          <div class="verdict" id="pid-verdict"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">位置式 PID</div>
+          <div class="f-eq">u = K<sub>p</sub>·e + K<sub>i</sub>·∫e dt + K<sub>d</sub>·de/dt</div>
+          <div class="f-note">
+            <strong>e = r − θ</strong>（目标 − 实测）。<strong>P（比例）</strong>现在就放大误差猛拉；
+            <strong>I（积分）</strong>把历史误差累起来——只要误差还在，输出就一直加码，直到把<strong>稳态误差</strong>磨平；
+            <strong>D（微分）</strong>看误差变化率——冲得太快时提前踩刹车，提供阻尼。
+            仿真用的被控对象是一阶惯性环节 K/(Ts+1)（T = 0.3 s）加恒定负载扰动，
+            积分项加了<strong>限幅（anti-windup）</strong>：输出顶到限幅时停止积分累积，否则误差反号后要先"放电"才回头，恢复会慢一拍。
+          </div>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-card note"><h4>Kp 大 → 快但振荡</h4><ul>
+            <li>误差一样时拉力更大，起步猛</li>
+            <li>过头 → 反向误差 → 反向猛拉 → 来回摆</li>
+            <li>纯 P 顶不平负载：总留一个静差 e<sub>ss</sub> = u<sub>稳</sub>/K<sub>p</sub></li>
+          </ul></div>
+          <div class="info-card good"><h4>Kd → 阻尼抑制振荡</h4><ul>
+            <li>接近目标时速度大 → D 项提前减速</li>
+            <li>超调显著下降，曲线"软着陆"</li>
+            <li>对噪声敏感（微分量放大抖动），别贪大</li>
+          </ul></div>
+          <div class="info-card use"><h4>Ki → 消静差但变慢</h4><ul>
+            <li>误差长期存在就持续加码 → 终值精确贴目标</li>
+            <li>代价：相位滞后，超调通常变大、响应变慢</li>
+            <li>配合 Kd 一起加，是"PID 消静差"预设的套路</li>
+          </ul></div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li>上一页"数字间歇"的底层原理就在这：<strong>步进开环假设没掉步</strong>，闭环则每个控制周期读编码器、PID 拉回</li>
+              <li>控制周期（如 1 kHz）是离散采样——周期内发生的扰动，最快也要下一周期才看见</li>
+              <li>执行器要留线性裕度：u 长期顶限幅 = 系统已不在可线性控制区</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li><strong>STM32</strong>：定时器编码器模式硬件 4 倍频计数 + 另一定时器输出 PWM，主循环只做 PID</li>
+              <li><strong>Arduino</strong>：Encoder 库（中断计数）+ PID_v1 库，几十行跑起来</li>
+              <li>调试顺序口诀：<strong>先 P 后 D 最后 I</strong>——P 调到略振荡，加 D 压下去，最后少量 I 清静差</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Tab 3：呼应总结 ===== -->
+      <section id="tab-wrap" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>三种"停"的全面对比</h3>
+          <p style="color:var(--ink-soft); font-size:13px; margin:0 0 8px;">
+            间歇运动页放过三方案对比动画，这里补上工程维度——同一句"转到 90° 停住"，三条路线的成本与失效模式完全不同。
+          </p>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>维度</th><th>机械锁止（槽轮锁止弧）</th><th>步进开环</th><th>闭环（编码器 + PID）</th></tr></thead>
+              <tbody>
+                <tr><td><strong>停止精度</strong></td><td>几何精度，由加工决定，重复性极好</td><td>良好（不掉步时 = 步距角精度）</td><td>高（编码器分辨率内，实测验证）</td></tr>
+                <tr><td><strong>灵活性</strong></td><td>换零件才能改节奏</td><td>改代码即可</td><td>改代码即可（还能在线改动态特性）</td></tr>
+                <tr><td><strong>遇扰动行为</strong></td><td>撞歪了要等下一循环几何回位</td><td class="hl"><strong>掉步无告警</strong>，误差保持</td><td class="hl"><strong>编码器发现 → PID 拉回</strong></td></tr>
+                <tr><td><strong>成本</strong></td><td>零件加工费（一次付清）</td><td>最低（电机 + 驱动器）</td><td>编码器 + 调参工时</td></tr>
+                <tr><td><strong>失效模式</strong></td><td>锁止弧磨损 → 间隙增大</td><td>堵转/加减速过猛 → 静默丢步</td><td>编码器断线/计数溢出 → 反馈失真</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-block" style="margin-bottom:0;">
+            <div class="f-title">呼应总结</div>
+            <div class="f-note">
+              <strong>机构负责运动转换，控制负责"何时、何地停"</strong>——传感器扩展了机构的"感知边界"：
+              槽轮把停歇刻进几何，看不到外界；编码器 + PID 让机器知道自己在哪，被撞了能自己回来。
+              赛场上的可靠选择常常是混合体：机械结构保证大致节奏与安全限位，闭环保证最终精度与自恢复。
+            </div>
+          </div>
+        </div>
+
+        <details class="example-card" style="margin-top:16px;">
+          <summary>例题 · 编码器分辨率与控制周期匹配吗？</summary>
+          <div class="ex-body">
+            <p>底盘电机 <strong>300 rpm</strong>，配 <strong>500 线增量编码器、4 倍频解码</strong>；主控以 <strong>1 kHz</strong>（每 1 ms）读一次计数。求：每个控制周期的计数变化量，以及角度分辨率。</p>
+            <div class="step">① 300 rpm = 5 转/s；每转计数 = 500 × 4 = 2000 计数/转</div>
+            <div class="step">② 计数速率 = 5 × 2000 = 10000 计数/s → 每周期 1 ms = 10000 × 0.001 = <strong>10 计数</strong></div>
+            <div class="step">③ 分辨率 = 360° / 2000 = <strong>0.18°/计数</strong></div>
+            <div class="answer">每周期 10 计数、0.18°/计数。判读：1 kHz 控制下每周期只有 10 个计数，速度估计的量化误差高达 ±10%（少 1 个计数就差 10%）——要么提高控制频率、要么换更高线数编码器，要么用测周期法低速段细化。选编码器时"分辨率"和"控制周期"必须一起算。</div>
+          </div>
+        </details>
+      </section>
+
+      <div class="page-nav">
+        <a href="motors.html">← 电机原理</a>
+        <a href="chassis.html">底盘与悬挂 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { deg, rad } from './common/math.js';
+    import { COLORS, hatchPattern, ground, pinJoint, arrow, stepControls } from './common/draw.js';
+
+    injectSidebar('control');
+
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    });
+
+    /* ============================================================
+     * Tab 1 · 增量编码器：码盘 + A/B 方波 + 4 倍频计数
+     * 数据模型（全部纯函数，可被 createControls 任意 seek）：
+     *   N = 8 条刻线/转（演示刻度） → 每刻线周期 P4 = 45°
+     *   电角度 90° = 机械 11.25°（1/4 周期）
+     *   A(θ) = frac(θ/45) < 0.5；B(θ) = frac((θ−11.25)/45) < 0.5
+     *   分辨率 RES = 360/(8×4) = 11.25°/计数；每转 32 计数
+     *   φ(phase)：正转 φ = 720°·phase；反转 φ = 720°·(1−phase)（递减）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('enc-svg');
+      const mount = document.getElementById('enc-controls-mount');
+      const stepsMount = document.getElementById('enc-steps-mount');
+      const btnCw = document.getElementById('enc-cw');
+      const btnCcw = document.getElementById('enc-ccw');
+
+      const N = 8;            // 刻线数
+      const P4 = 360 / N;     // 刻线周期 = 45°
+      const RES = P4 / 4;     // 分辨率 11.25°/计数
+      const frac = (x) => ((x % 1) + 1) % 1;
+      const lvlA = (deg) => (frac(deg / P4) < 0.5 ? 1 : 0);
+      const lvlB = (deg) => (frac((deg - P4 / 4) / P4) < 0.5 ? 1 : 0);
+
+      let dir = 1;      // +1 正转 / -1 反转
+      let baseCount = 0; // 换向瞬间冻结的计数基准（保证换向连续）
+      const traveled = (phase) => Math.floor((phase * 720) / RES);
+      const currentCount = (phase) => (dir > 0 ? baseCount + traveled(phase) : baseCount - traveled(phase));
+      function setDir(d) {
+        if (d === dir) return;
+        baseCount = currentCount(ctl.getPhase()); // 换向不失位：从当前值继续数
+        dir = d;
+        btnCw.className = 'btn' + (d > 0 ? '' : ' secondary');
+        btnCcw.className = 'btn' + (d < 0 ? '' : ' secondary');
+        ctl.seek(0);
+      }
+      btnCw.addEventListener('click', () => setDir(1));
+      btnCcw.addEventListener('click', () => setDir(-1));
+
+      const mono = (x, y, txt, { size = 11, fill = '#5a6472', anchor = 'start', weight } = {}) => {
+        const t = svg('text', {
+          x, y, fill, 'font-size': size, 'font-family': 'monospace',
+          'text-anchor': anchor, ...(weight ? { 'font-weight': weight } : {}),
+        });
+        t.textContent = txt;
+        svgEl.appendChild(t);
+      };
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+        const phi = dir > 0 ? phase * 720 : 720 * (1 - phase);   // 当前机械角（deg）
+        const count = currentCount(phase);
+        const phiDeg = ((phi % 360) + 360) % 360;                // 码盘显示角
+        const aNow = lvlA(phi), bNow = lvlB(phi);
+        // 边沿检测（闪烁提示 ±1）：u 接近 0/0.5 即在某边沿附近
+        const uA = frac(phi / P4), uB = frac((phi - P4 / 4) / P4);
+        const edge = Math.min(uA, 1 - uA, Math.abs(uA - 0.5), uB, 1 - uB, Math.abs(uB - 0.5)) < 0.03;
+
+        // ---- 标题 ----
+        mono(350, 24, '增量编码器：两圈刻线错开 ¼ 周期 → 90° 电角度相位差', { size: 13.5, fill: COLORS.ink, anchor: 'middle', weight: 600 });
+
+        // ---- 码盘（左上） ----
+        const cx = 170, cy = 140, R = 95;
+        svgEl.appendChild(circle(cx, cy, R, { fill: '#e9e6dd', stroke: COLORS.ink, 'stroke-width': 2.2 }));
+        const disk = svg('g', { transform: `translate(${cx},${cy}) rotate(${phiDeg.toFixed(2)})` });
+        for (let i = 0; i < N; i++) {
+          const a = rad(i * P4);
+          disk.appendChild(line(76 * Math.cos(a), 76 * Math.sin(a), 93 * Math.cos(a), 93 * Math.sin(a),
+            { stroke: COLORS.drive, 'stroke-width': 7 }));
+          const b = rad(i * P4 + P4 / 4);
+          disk.appendChild(line(50 * Math.cos(b), 50 * Math.sin(b), 67 * Math.cos(b), 67 * Math.sin(b),
+            { stroke: COLORS.driven, 'stroke-width': 7 }));
+        }
+        disk.appendChild(circle(0, 0, 15, { fill: COLORS.frame }));
+        disk.appendChild(line(0, 0, 86, 0, { stroke: COLORS.ink, 'stroke-width': 2, opacity: 0.45 }));
+        svgEl.appendChild(disk);
+        svgEl.appendChild(pinJoint(cx, cy, 6, { pedestal: false }));
+        // 支座 + 地面
+        svgEl.appendChild(svg('polygon', {
+          points: `${cx - 18},${cy + 104} ${cx + 18},${cy + 104} ${cx - 11},${cy + 96} ${cx + 11},${cy + 96}`,
+          fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+        }));
+        svgEl.appendChild(ground(svgEl, 96, cy + 105, 148));
+
+        // 读数头（固定，指向上方刻线）——标签右对齐到读数头左侧，避开顶部居中标题
+        svgEl.appendChild(arrow(svgEl, cx, 34, cx, 50, { color: COLORS.hi, width: 2.6 }));
+        mono(cx - 12, 42, '读数头（固定不转）', { size: 11.5, fill: COLORS.hi, anchor: 'end', weight: 600 });
+        // A / B 刻线标注（箭头指向对应刻线圆环）
+        svgEl.appendChild(arrow(svgEl, 322, 66, 220, 62, { color: COLORS.drive, width: 1.8 }));
+        mono(326, 70, '外圈 = A 相刻线（绿）', { size: 11.5, fill: COLORS.drive });
+        svgEl.appendChild(arrow(svgEl, 322, 104, 222, 98, { color: COLORS.driven, width: 1.8 }));
+        mono(326, 108, '内圈 = B 相刻线（橙）', { size: 11.5, fill: COLORS.driven });
+        mono(326, 128, '两圈错开 1/4 刻线周期', { size: 11.5, fill: '#5a6472' });
+        mono(326, 146, '= 90° 电角度（电气相位差）', { size: 11.5, fill: '#5a6472' });
+
+        // ---- 信息面板（右上） ----
+        svgEl.appendChild(svg('rect', { x: 306, y: 158, width: 384, height: 96, fill: 'white', stroke: COLORS.grid, rx: 5 }));
+        mono(318, 178, `方向：${dir > 0 ? '正转 CW · A 超前 B 90°' : '反转 CCW · B 超前 A 90°'}　计数${dir > 0 ? '↑' : '↓'}`,
+          { size: 12.5, fill: dir > 0 ? COLORS.drive : COLORS.driven, weight: 600 });
+        // 大计数
+        const big = svg('text', {
+          x: 318, y: 224, 'font-size': 38, 'font-family': 'monospace',
+          fill: edge ? COLORS.hi : COLORS.ink, 'font-weight': 700,
+        });
+        big.textContent = count;
+        svgEl.appendChild(big);
+        mono(318 + String(count).length * 23 + 10, 224, '计数', { size: 12.5 });
+        mono(470, 208, `θ = ${(count * RES).toFixed(1)}°（计数×${RES}°）`, { size: 11.5 });
+        mono(470, 228, `A=${aNow}  B=${bNow}`, { size: 11.5 });
+        mono(470, 246, `${dir > 0 ? '每个边沿 +1' : '每个边沿 −1'} · 每周期 4 计数`, { size: 11.5, fill: edge ? COLORS.hi : '#5a6472' });
+
+        // ---- 波形（下部）：滚动窗口，竖线固定在窗口中心 ----
+        mono(350, 276, 'A / B 相方波（正交 · B 滞后 A 90° 电角度）', { size: 12.5, fill: COLORS.ink, anchor: 'middle', weight: 600 });
+        const x0 = 60, wv = 580, winHalf = 90; // 窗口 ±90°（4 个周期）
+        const SAMP = 480;
+        const yA = 322, yB = 384; // 两波形基线
+        let dA = '', dB = '';
+        for (let i = 0; i <= SAMP; i++) {
+          const th = phi - winHalf + (i / SAMP) * 2 * winHalf;
+          const x = x0 + (i / SAMP) * wv;
+          dA += (i === 0 ? '' : ' ') + x.toFixed(1) + ',' + (yA - lvlA(th) * 24).toFixed(1);
+          dB += (i === 0 ? '' : ' ') + x.toFixed(1) + ',' + (yB - lvlB(th) * 24).toFixed(1);
+        }
+        svgEl.appendChild(svg('polyline', { points: dA, fill: 'none', stroke: COLORS.drive, 'stroke-width': 2.2 }));
+        svgEl.appendChild(svg('polyline', { points: dB, fill: 'none', stroke: COLORS.driven, 'stroke-width': 2.2 }));
+        mono(48, yA - 8, 'A', { size: 13, fill: COLORS.drive, weight: 700 });
+        mono(48, yB - 8, 'B', { size: 13, fill: COLORS.driven, weight: 700 });
+        // 基线
+        svgEl.appendChild(line(x0, yA, x0 + wv, yA, { stroke: COLORS.grid, 'stroke-width': 0.7 }));
+        svgEl.appendChild(line(x0, yB, x0 + wv, yB, { stroke: COLORS.grid, 'stroke-width': 0.7 }));
+        // 当前时刻竖线（固定窗口中心）
+        const xl = x0 + wv / 2;
+        svgEl.appendChild(svg('polygon', { points: `${xl - 5},288 ${xl + 5},288 ${xl},296`, fill: COLORS.hi }));
+        svgEl.appendChild(line(xl, 296, xl, yB + 8, { stroke: COLORS.hi, 'stroke-width': 2, 'stroke-dasharray': '5 3' }));
+        mono(xl + 8, (yA + yB - 24) / 2 + 12, '当前时刻', { size: 10.5, fill: COLORS.hi });
+        // 时间轴
+        svgEl.appendChild(arrow(svgEl, x0, yB + 22, x0 + wv - 14, yB + 22, { color: COLORS.ink, width: 1.6 }));
+        mono(x0 + wv + 6, yB + 26, 't', { size: 11, fill: '#5a6472' });
+
+        // 底注
+        mono(350, yB + 50, dir > 0
+          ? '正转：沿时间轴 A 先动作、B 滞后 90° 电角度 → 每个边沿计数 +1（4 倍频）'
+          : '反转：波形整体镜像，B 先动作、A 滞后 → 判反方向，计数 −1（递减）',
+          { size: 11.5, fill: dir > 0 ? COLORS.drive : COLORS.driven, anchor: 'middle' });
+      }
+
+      const ctl = createControls(mount, { duration: 8000, onTick: (p) => render(p) });
+      ctl.seek(0);
+
+      // 分步四步
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.02, title: '① 码盘：A/B 刻线错开 90°', desc: '外圈 A（绿）、内圈 B（橙）各 8 条刻线，B 圈相对 A 圈<strong>错开 1/4 刻线周期 = 90° 电角度</strong>。读数头固定，刻线扫过时就输出脉冲——这就是"增量"的含义：动才有信号。' },
+          { at: 0.20, title: '② A 超前 B → 判正转', desc: '看中部方波：正转时 <strong>A 相先跳变、B 相滞后 90° 电角度</strong>。反过来 B 超前 A 就是反转——只看一相无法判方向，两相相位差才是方向的编码。' },
+          { at: 0.45, title: '③ 每周期 4 个边沿 → 4 倍频', desc: '一个刻线周期内 A 有 2 个边沿、B 有 2 个边沿，共 <strong>4 个可数事件</strong>。每个边沿都 +1，1000 线码盘就有 4000 计数/转——分辨率白赚 4 倍（看大数字在跳）。' },
+          { at: 0.72, title: '④ 反转：B 超前 A → 计数递减', desc: '点上方「反转 CCW」按钮（已为你切好）：波形镜像、<strong>计数开始递减</strong>。所以断电重启后计数清零——增量式不知道绝对位置，必须回零。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 150);
+      // 步骤④联动方向（事件委托，不改 stepControls 库）：步骤 4 = 反转
+      stepsMount.addEventListener('click', (e) => {
+        const b = e.target.closest('.step-btn');
+        if (!b) return;
+        setDir(+b.dataset.i === 3 ? -1 : 1);
+      });
+      tabCtls['hero'] = ctl;
+    })();
+
+    /* ============================================================
+     * Tab 2 · PID 闭环：自驱动 rAF（内部 state + 时间步进）
+     * 仿真：一阶惯性速度环 K/(Ts+1)（T=0.3s）+ 积分得位置 + 恒定负载扰动
+     *       位置式 PID + 积分限幅（anti-windup），dt = 0.02 s，窗口 6 s
+     * 参数/目标/扰动改变 → 整条响应重算重绘；播放沿预计算曲线推进
+     * ============================================================ */
+    (function () {
+      const diaEl = document.getElementById('pid-diagram');
+      const resEl = document.getElementById('pid-response');
+      const T = 0.3, dt = 0.02, K = 2.4, dLoad = 130, uMax = 150;
+      const Tsim = 6, jumpT = 3.5;
+
+      const params = { target: 120, Kp: 2.0, Ki: 0.5, Kd: 0.5 };
+      let jump = 0; // 0 = 无扰动；20 = 位置突跳 +20°
+
+      function simulate() {
+        const n = Math.round(Tsim / dt);
+        let y = 0, v = 0, I = 0, ePrev = null;
+        const arr = [];
+        for (let i = 0; i <= n; i++) {
+          const t = i * dt;
+          if (jump && i > 0 && (i - 1) * dt < jumpT && t >= jumpT) y += jump; // 扰动：位置突跳
+          const e = params.target - y;
+          if (ePrev === null) ePrev = e;
+          const D = (e - ePrev) / dt;
+          let u = params.Kp * e + params.Ki * I + params.Kd * D;
+          u = Math.max(-uMax, Math.min(uMax, u));
+          arr.push({ t, y, e, u, v });
+          if (params.Ki > 1e-9) I = Math.max(-uMax / params.Ki, Math.min(uMax / params.Ki, I + e * dt)); // 抗 windup
+          v += dt * ((K * u - v) / T - dLoad);
+          y += dt * v;
+          ePrev = e;
+        }
+        return arr;
+      }
+
+      let data = simulate();
+      let simT = 0, playing = false, lastTs = null, rafId = null;
+      let playIdx = 0;
+
+      function metrics(d) {
+        const peak = Math.max(...d.map(o => o.y));
+        const os = Math.max(0, (peak - params.target) / Math.max(params.target, 15) * 100);
+        const tail = d.filter(o => o.t > Tsim - 0.5);
+        const ybar = tail.reduce((s, o) => s + o.y, 0) / tail.length;
+        return { peak, os, ess: params.target - ybar };
+      }
+
+      function recompute({ keepTime = true } = {}) {
+        data = simulate();
+        if (!keepTime) simT = 0;
+        if (simT > Tsim) simT = Tsim;
+        playIdx = Math.min(data.length - 1, Math.round(simT / dt));
+        updateVerdict();
+        drawAll();
+      }
+
+      function updateVerdict() {
+        const el = document.getElementById('pid-verdict');
+        const m = metrics(data);
+        const f = (x) => x.toFixed(1);
+        if (params.Ki < 1e-9 && Math.abs(m.ess) > 3) {
+          el.className = 'verdict warn';
+          el.innerHTML = `<strong>稳态误差 e<sub>ss</sub> ≈ ${f(m.ess)}°</strong>：负载需要持续输出才能 hold 住，纯 P 顶不平（e<sub>ss</sub> = u<sub>稳</sub>/K<sub>p</sub>）——<code>加 Ki</code> 把它磨平。`;
+        } else if (m.os > 12) {
+          el.className = 'verdict bad';
+          el.innerHTML = `<strong>超调 ${f(m.os)}%</strong>（峰值 ${f(m.peak)}°）：K<sub>p</sub> 大、缺阻尼，冲过头再被拉回——<code>加 Kd</code> 提供阻尼或减小 K<sub>p</sub>。`;
+        } else if (m.os < 10 && Math.abs(m.ess) < 3) {
+          el.className = 'verdict good';
+          el.innerHTML = `<strong>调校良好</strong>：超调 ${f(m.os)}%、稳态误差 ${f(m.ess)}°——快、稳、准的平衡区。点「注入扰动」验证抗扰性。`;
+        } else {
+          el.className = 'verdict';
+          el.innerHTML = `超调 ${f(m.os)}% · 稳态误差 ${f(m.ess)}° —— 拖动 K<sub>p</sub>/K<sub>i</sub>/K<sub>d</sub> 滑块，或点三个预设看典型现象。`;
+        }
+      }
+
+      const monoT = (root, x, y, txt, { size = 11, fill = '#5a6472', anchor = 'start', weight } = {}) => {
+        const t = svg('text', {
+          x, y, fill, 'font-size': size, 'font-family': 'monospace', 'text-anchor': anchor,
+          ...(weight ? { 'font-weight': weight } : {}),
+        });
+        t.textContent = txt;
+        root.appendChild(t);
+      };
+
+      /* ---- 左：控制回路框图 ---- */
+      const FLOW = [[30, 78], [92, 78], [196, 78], [302, 78], [372, 78], [466, 78], [560, 78], [560, 150], [420, 150], [300, 150], [106, 150], [106, 92]];
+      function flowPoint(f) {
+        // 参数化折线：f ∈ 0~1 → 坐标
+        let total = 0;
+        const segs = [];
+        for (let i = 1; i < FLOW.length; i++) {
+          const L = Math.hypot(FLOW[i][0] - FLOW[i - 1][0], FLOW[i][1] - FLOW[i - 1][1]);
+          segs.push(L); total += L;
+        }
+        let s = frac01(f) * total;
+        for (let i = 0; i < segs.length; i++) {
+          if (s <= segs[i] || i === segs.length - 1) {
+            const r = segs[i] === 0 ? 0 : Math.min(1, s / segs[i]);
+            return [FLOW[i][0] + (FLOW[i + 1][0] - FLOW[i][0]) * r, FLOW[i][1] + (FLOW[i + 1][1] - FLOW[i][1]) * r];
+          }
+          s -= segs[i];
+        }
+        return FLOW[0];
+      }
+      const frac01 = (x) => ((x % 1) + 1) % 1;
+
+      function drawDiagram() {
+        clear(diaEl);
+        const cur = data[playIdx];
+        monoT(diaEl, 320, 22, '闭环控制回路（feedback loop）', { size: 13, fill: COLORS.ink, anchor: 'middle', weight: 600 });
+
+        // r → ⊕
+        monoT(diaEl, 12, 82, 'r', { size: 13, fill: COLORS.ink, weight: 700 });
+        diaEl.appendChild(arrow(diaEl, 22, 78, 90, 78, { color: COLORS.ink, width: 2 }));
+        // ⊕ 节点
+        diaEl.appendChild(circle(106, 78, 14, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 2 }));
+        monoT(diaEl, 111, 74, '+', { size: 12, fill: COLORS.ink, anchor: 'middle', weight: 700 });
+        monoT(diaEl, 111, 90, '−', { size: 13, fill: COLORS.hi, anchor: 'middle', weight: 700 });
+        // e → PID
+        diaEl.appendChild(arrow(diaEl, 120, 78, 194, 78, { color: COLORS.ink, width: 2 }));
+        monoT(diaEl, 152, 68, `e=${cur.e.toFixed(1)}°`, { size: 10.5, fill: COLORS.hi, anchor: 'middle' });
+        diaEl.appendChild(svg('rect', { x: 198, y: 54, width: 104, height: 48, fill: '#e2efec', stroke: COLORS.drive, 'stroke-width': 2.2, rx: 6 }));
+        monoT(diaEl, 250, 74, 'PID 控制器', { size: 13, fill: COLORS.drive, anchor: 'middle', weight: 700 });
+        monoT(diaEl, 250, 92, `Kp=${params.Kp.toFixed(1)} Ki=${params.Ki.toFixed(2)} Kd=${params.Kd.toFixed(2)}`, { size: 9, anchor: 'middle' });
+        // u → 电机
+        diaEl.appendChild(arrow(diaEl, 302, 78, 370, 78, { color: COLORS.ink, width: 2 }));
+        monoT(diaEl, 336, 68, `u=${cur.u.toFixed(0)}`, { size: 10.5, fill: COLORS.driven, anchor: 'middle' });
+        diaEl.appendChild(svg('rect', { x: 374, y: 54, width: 92, height: 48, fill: '#fbe9de', stroke: COLORS.driven, 'stroke-width': 2.2, rx: 6 }));
+        monoT(diaEl, 420, 74, '电机 + 驱动', { size: 12.5, fill: COLORS.driven, anchor: 'middle', weight: 700 });
+        monoT(diaEl, 420, 92, `v=${cur.v.toFixed(0)}°/s`, { size: 9, anchor: 'middle' });
+        // 输出
+        diaEl.appendChild(arrow(diaEl, 466, 78, 588, 78, { color: COLORS.ink, width: 2 }));
+        monoT(diaEl, 596, 82, 'θ', { size: 13, fill: COLORS.ink, weight: 700 });
+        monoT(diaEl, 530, 66, `θ=${cur.y.toFixed(1)}°`, { size: 10.5, fill: COLORS.drive, anchor: 'middle' });
+        monoT(diaEl, 530, 96, `(被控对象)`, { size: 9.5, anchor: 'middle' });
+        // 反馈支路
+        diaEl.appendChild(line(560, 78, 560, 150, { stroke: COLORS.ref, 'stroke-width': 1.8 }));
+        diaEl.appendChild(line(560, 150, 422, 150, { stroke: COLORS.ref, 'stroke-width': 1.8 }));
+        diaEl.appendChild(line(298, 150, 106, 150, { stroke: COLORS.ref, 'stroke-width': 1.8 }));
+        diaEl.appendChild(arrow(diaEl, 106, 150, 106, 94, { color: COLORS.ref, width: 1.8 }));
+        diaEl.appendChild(svg('rect', { x: 300, y: 136, width: 122, height: 28, fill: 'white', stroke: COLORS.ref, 'stroke-width': 1.6, rx: 5 }));
+        monoT(diaEl, 361, 154, '编码器 ×4 倍频', { size: 11, fill: '#5a6472', anchor: 'middle' });
+        monoT(diaEl, 200, 144, '反馈（实测角度）', { size: 10, fill: COLORS.ref });
+        monoT(diaEl, 320, 190, playing ? '信号沿回路流动（小点）· 每个控制周期重复一次' : '已暂停', { size: 10.5, fill: playing ? COLORS.drive : COLORS.ref, anchor: 'middle' });
+
+        // 流动小点（3 个相位错开，随 simT 前进）
+        for (let k = 0; k < 3; k++) {
+          const p = flowPoint(simT * 0.22 + k / 3);
+          diaEl.appendChild(circle(p[0], p[1], 3.4, { fill: COLORS.hi }));
+        }
+      }
+
+      /* ---- 右：响应曲线 ---- */
+      function drawResponse() {
+        clear(resEl);
+        const x0 = 56, y0 = 372, w = 556, h = 300, top = 72;
+        const m = metrics(data);
+        const peakAll = Math.max(...data.map(o => o.y), params.target + jump);
+        const yMax = Math.max(200, Math.ceil((peakAll + 15) / 10) * 10);
+        const X = (t) => x0 + (t / Tsim) * w;
+        const Y = (v) => y0 - (Math.max(0, Math.min(yMax, v)) / yMax) * h;
+
+        monoT(resEl, 320, 26, '阶跃响应（step response）', { size: 13, fill: COLORS.ink, anchor: 'middle', weight: 600 });
+        monoT(resEl, 320, 44, `Kp=${params.Kp.toFixed(1)}  Ki=${params.Ki.toFixed(2)}  Kd=${params.Kd.toFixed(2)} · 目标 ${params.target}°${jump ? ' · 含扰动 +20° @3.5s' : ''}`, { size: 10.5, anchor: 'middle' });
+
+        // 网格 + 刻度
+        for (let i = 0; i <= 4; i++) {
+          const v = (yMax / 4) * i, py = Y(v);
+          resEl.appendChild(line(x0, py, x0 + w, py, { stroke: i === 0 ? COLORS.ink : COLORS.grid, 'stroke-width': i === 0 ? 1.2 : 0.7 }));
+          monoT(resEl, x0 - 8, py + 4, String(Math.round(v)), { size: 10, anchor: 'end' });
+        }
+        for (let s = 0; s <= 6; s++) {
+          const px = X(s);
+          resEl.appendChild(line(px, y0, px, top, { stroke: s === 0 ? COLORS.ink : COLORS.grid, 'stroke-width': s === 0 ? 1.2 : 0.7 }));
+          monoT(resEl, px, y0 + 16, String(s), { size: 10, anchor: 'middle' });
+        }
+        monoT(resEl, 46, top - 8, 'θ (°)', { size: 10.5, anchor: 'end' });
+        monoT(resEl, x0 + w, y0 + 30, 't (s)', { size: 10.5, anchor: 'end' });
+
+        // 目标虚线
+        resEl.appendChild(line(x0, Y(params.target), x0 + w, Y(params.target), { stroke: '#2a7c4a', 'stroke-width': 1.6, 'stroke-dasharray': '7 4' }));
+        monoT(resEl, x0 + w - 4, Y(params.target) - 6, `目标 ${params.target}°`, { size: 10.5, fill: '#2a7c4a', anchor: 'end' });
+
+        // 扰动标记
+        if (jump) {
+          const px = X(jumpT);
+          resEl.appendChild(line(px, top, px, y0, { stroke: COLORS.hi, 'stroke-width': 1.4, 'stroke-dasharray': '4 3' }));
+          monoT(resEl, px + 6, top + 12, '扰动 +20°', { size: 10.5, fill: COLORS.hi });
+        }
+
+        // 峰值标记
+        if (m.peak > params.target + 2) {
+          const iPk = data.reduce((bi, o, i) => (o.y > data[bi].y ? i : bi), 0);
+          resEl.appendChild(circle(X(data[iPk].t), Y(m.peak), 3.5, { fill: 'none', stroke: COLORS.driven, 'stroke-width': 1.6 }));
+          monoT(resEl, X(data[iPk].t) + 8, Y(m.peak) + 4, `峰 ${m.peak.toFixed(1)}°`, { size: 10, fill: COLORS.driven });
+        }
+
+        // 响应曲线
+        const pts = data.map((o) => `${X(o.t).toFixed(1)},${Y(o.y).toFixed(1)}`).join(' ');
+        resEl.appendChild(svg('polyline', { points: pts, fill: 'none', stroke: COLORS.drive, 'stroke-width': 2.2 }));
+
+        // 当前时刻点
+        const cur = data[playIdx];
+        resEl.appendChild(line(X(cur.t), top, X(cur.t), y0, { stroke: COLORS.hi, 'stroke-width': 1.4, 'stroke-dasharray': '4 3', opacity: 0.6 }));
+        resEl.appendChild(circle(X(cur.t), Y(cur.y), 4.5, { fill: COLORS.hi, stroke: 'white', 'stroke-width': 1.5 }));
+        monoT(resEl, X(cur.t) + 9, Y(cur.y) - 8, `θ=${cur.y.toFixed(1)}°`, { size: 11, fill: COLORS.hi, weight: 600 });
+        if (playIdx >= data.length - 1) {
+          monoT(resEl, 320, 64, `稳态：e_ss ≈ ${m.ess.toFixed(1)}° · 超调 ${m.os.toFixed(1)}%`, { size: 10.5, fill: '#5a6472', anchor: 'middle' });
+        }
+      }
+
+      function drawAll() {
+        drawDiagram();
+        drawResponse();
+        const cur = data[playIdx];
+        document.getElementById('pid-r').textContent = params.target;
+        document.getElementById('pid-y').textContent = cur.y.toFixed(1);
+        document.getElementById('pid-e').textContent = cur.e.toFixed(1);
+        document.getElementById('pid-u').textContent = cur.u.toFixed(0);
+        document.getElementById('pid-v').textContent = cur.v.toFixed(0);
+      }
+
+      /* ---- 自驱动 rAF 循环 ---- */
+      const playBtn = document.getElementById('pid-play');
+      function setPlaying(p) {
+        playing = p;
+        playBtn.textContent = p ? '⏸ 暂停' : '▶ 播放';
+        if (p) lastTs = null;
+      }
+      function frame(ts) {
+        if (playing) {
+          if (lastTs !== null) {
+            simT += (ts - lastTs) / 1000;
+            if (simT >= Tsim) { simT = Tsim; setPlaying(false); }
+          }
+          lastTs = ts;
+          playIdx = Math.min(data.length - 1, Math.round(simT / dt));
+          drawAll();
+        } else {
+          lastTs = ts;
+        }
+        rafId = requestAnimationFrame(frame);
+      }
+      playBtn.addEventListener('click', () => {
+        if (!playing && simT >= Tsim) simT = 0; // 播完再按 = 从头播
+        setPlaying(!playing);
+      });
+      document.getElementById('pid-reset').addEventListener('click', () => {
+        simT = 0; playIdx = 0; drawAll();
+      });
+
+      // 滑块
+      const bindSlider = (id, key, fmt) => {
+        const el = document.getElementById(id);
+        const val = document.getElementById(id + '-val');
+        el.addEventListener('input', () => {
+          params[key] = parseFloat(el.value);
+          val.textContent = fmt(params[key]);
+          recompute({ keepTime: true });
+        });
+        return el;
+      };
+      const sTarget = bindSlider('pid-target', 'target', (v) => String(v));
+      const sKp = bindSlider('pid-kp', 'Kp', (v) => v.toFixed(1));
+      const sKi = bindSlider('pid-ki', 'Ki', (v) => v.toFixed(2));
+      const sKd = bindSlider('pid-kd', 'Kd', (v) => v.toFixed(2));
+
+      // 预设
+      const PRESETS = {
+        p: { target: 120, Kp: 3.2, Ki: 0, Kd: 0 },
+        pd: { target: 120, Kp: 2, Ki: 0, Kd: 0.5 },
+        pid: { target: 120, Kp: 2, Ki: 0.5, Kd: 0.5 },
+      };
+      document.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          Object.assign(params, PRESETS[btn.dataset.preset]);
+          sTarget.value = params.target; document.getElementById('pid-target-val').textContent = String(params.target);
+          sKp.value = params.Kp; document.getElementById('pid-kp-val').textContent = params.Kp.toFixed(1);
+          sKi.value = params.Ki; document.getElementById('pid-ki-val').textContent = params.Ki.toFixed(2);
+          sKd.value = params.Kd; document.getElementById('pid-kd-val').textContent = params.Kd.toFixed(2);
+          recompute({ keepTime: false });
+          setPlaying(true);
+        });
+      });
+
+      // 扰动
+      const jumpBtn = document.getElementById('pid-jump');
+      jumpBtn.addEventListener('click', () => {
+        jump = jump ? 0 : 20;
+        jumpBtn.textContent = jump ? '✕ 移除扰动' : '⚡ 注入扰动 +20°';
+        recompute({ keepTime: false });
+        setPlaying(true);
+      });
+
+      updateVerdict();
+      drawAll();
+      rafId = requestAnimationFrame(frame);
+      tabCtls['pid'] = { play: () => setPlaying(true), pause: () => setPlaying(false) };
+      setPlaying(false);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D 打印实操 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+  <style>
+    /* ===== 本页专用：解剖图热点 + 信息面板 + 首层三联 ===== */
+    .hotspot { cursor: pointer; }
+    .hotspot .hs-hit { fill: transparent; }
+    .hotspot .hs-ring {
+      fill: #ffffff; stroke: var(--accent); stroke-width: 2;
+      transition: fill var(--t-fast) var(--ease);
+    }
+    .hotspot .hs-num {
+      font: 650 12.5px var(--mono); fill: var(--accent-deep);
+      text-anchor: middle; dominant-baseline: middle; pointer-events: none;
+    }
+    .hotspot:hover .hs-ring { fill: var(--accent-soft); }
+    .hotspot.active .hs-ring { fill: var(--accent); }
+    .hotspot.active .hs-num { fill: #ffffff; }
+
+    .anatomy-panel {
+      margin-top: var(--sp-4);
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--accent);
+      border-radius: var(--r-md);
+      padding: var(--sp-4) var(--sp-5);
+    }
+    .anatomy-panel h4 {
+      margin: 0 0 10px; font-size: 16px; color: var(--accent-deep);
+      display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    }
+    .anatomy-panel h4 .ap-en {
+      font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); font-weight: 400;
+    }
+    .anatomy-panel dl {
+      display: grid; grid-template-columns: 96px 1fr; gap: 7px 14px;
+      margin: 0; font-size: 13px;
+    }
+    .anatomy-panel dt { color: var(--accent-2-deep); font-weight: 650; white-space: nowrap; }
+    .anatomy-panel dd { margin: 0; color: var(--ink); line-height: 1.62; }
+
+    .fl-panel { cursor: pointer; }
+    .fl-panel .fl-frame {
+      fill: #ffffff; stroke: var(--line-strong); stroke-width: 1.5;
+      transition: stroke var(--t-fast) var(--ease), stroke-width var(--t-fast) var(--ease);
+    }
+    .fl-panel:hover .fl-frame { stroke: var(--accent-bright); }
+    .fl-panel.active .fl-frame { stroke: var(--accent); stroke-width: 3; }
+
+    .flow-steps li svg.flow-wire {
+      width: 100%; max-width: 300px; height: auto; display: block;
+      margin-top: 9px; background: var(--bg-soft);
+      border: 1px solid var(--line); border-radius: 6px;
+    }
+    .sup-btn { padding: 4px 10px; }
+    .inline-link { color: var(--accent-deep); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+
+    <main class="main">
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 13 页 · 落地</span>
+          <span class="chip chip-ghost">≈ 30 min</span>
+          <span class="chip chip-ghost">前置：12 工程实现</span>
+        </div>
+        <h1 class="ph-title">3D 打印实操 <span class="en">FDM Printing · Bambu Lab P1S</span></h1>
+        <p class="ph-lead">
+          这门课的零件一大半出自这台机器。上一页讲"怎么设计得能打"，这一页让零基础的你
+          <strong>第一次打印就成功</strong>：认识机器、走完第一次打印、学会调参数、会诊断坏首层。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">FDM 熔融沉积建模</span>
+          <span class="tag">切片 slicing</span>
+          <span class="tag">首层 first layer</span>
+          <span class="tag">AMS 多供料系统</span>
+        </div>
+      </header>
+
+      <!-- ============ 13.1 认识机器 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.1</span>
+          <div>
+            <h2>认识机器：P1S 解剖图</h2>
+            <p class="sec-sub">点击图中的数字热点（8 个），下方面板显示该部件的"是什么 / 规格 / 它决定什么 / 新手误区"。</p>
+          </div>
+        </div>
+        <div class="stage">
+          <h3 style="margin:0 0 12px;">拓竹 Bambu Lab P1S · 正视 + 剖视混合示意</h3>
+          <svg id="anatomy-svg" viewBox="0 0 760 560" role="img" aria-label="P1S 打印机解剖图，含 8 个可点击热点"></svg>
+          <div class="anatomy-panel" id="anatomy-panel" aria-live="polite"></div>
+        </div>
+        <div class="cmp-note">
+          <strong>关键事实速记：</strong>
+          打印尺寸 <strong>256 × 256 × 256 mm</strong> · 工具头最大移动速度 <strong>500 mm/s</strong>、加速度 <strong>20 m/s²</strong>（约 2 g）·
+          出厂 <strong>自动调平</strong>（热床下的 ABL 传感器逐点测高）· <strong>纹理 PEI</strong> 打印板 ·
+          耗材兼容：<strong>PLA / PETG / TPU / PVA / PET</strong>（适合）、<strong>ABS / ASA</strong>（适合——封闭腔体正是 P1S 的优势）、
+          <strong>PA / PC</strong>（可以，用前必须干燥）。
+        </div>
+        <figure class="photo-fig" data-reveal>
+          <img src="figure/printer-bambu-p1s.png" alt="拓竹 Bambu Lab P1S 打印机（顶部带 AMS 多料系统）" loading="lazy">
+          <figcaption><strong>拓竹 Bambu Lab P1S</strong>（顶部为 AMS 多色/多料系统）——封闭腔体 CoreXY 打印机。
+          上面的解剖图是它的内部示意；这一张让你对照认识面板、腔门与顶盖 AMS，走进实验室能一眼认出这台机器。</figcaption>
+        </figure>
+      </section>
+
+      <!-- ============ 13.2 第一次打印 · 七步流程 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.2</span>
+          <div>
+            <h2>第一次打印：七步流程</h2>
+            <p class="sec-sub">从装软件到机器开动——照着走，第一次就能成功。</p>
+          </div>
+        </div>
+        <ol class="flow-steps vert">
+          <li><b>① 安装 Bambu Studio（切片软件）</b>
+            官网下载安装（Win10+）。安装向导里勾选 P1S 打印机和常用耗材预设；
+            <em>Bambu 网络插件必须装</em>——它是远程发送打印任务的前提。
+            <svg class="flow-wire" viewBox="0 0 300 70" aria-hidden="true">
+              <rect x="10" y="12" width="280" height="46" rx="6" fill="none" stroke="var(--line-strong)" stroke-width="1.5"/>
+              <rect x="22" y="22" width="70" height="26" rx="4" fill="#e2efec" stroke="#0e6b5c"/>
+              <text x="57" y="39" text-anchor="middle" font-size="11" fill="#0a4f44">文件</text>
+              <rect x="100" y="22" width="70" height="26" rx="4" fill="#e2efec" stroke="#0e6b5c"/>
+              <text x="135" y="39" text-anchor="middle" font-size="11" fill="#0a4f44">切片</text>
+              <rect x="178" y="22" width="70" height="26" rx="4" fill="#e2efec" stroke="#0e6b5c"/>
+              <text x="213" y="39" text-anchor="middle" font-size="11" fill="#0a4f44">校准</text>
+              <circle cx="268" cy="35" r="9" fill="#fbe9de" stroke="#d9662c" stroke-width="1.5"/>
+              <text x="268" y="39" text-anchor="middle" font-size="10" fill="#b34e1d">🔍</text>
+            </svg>
+          </li>
+          <li><b>② 绑定打印机</b>
+            Bambu Handy App「设备 → 绑定打印机」扫码，或 Studio 里用 Pin 码 / 局域网 IP + 访问码；
+            登录同一账号，设备列表自动同步。
+          </li>
+          <li><b>③ 新建项目、添加模型</b>
+            主页「创建新项目」→ 工具栏「添加」导入模型，或直接把 .stl / .3mf / .step 拖进窗口。
+            <svg class="flow-wire" viewBox="0 0 300 70" aria-hidden="true">
+              <rect x="70" y="8" width="160" height="54" rx="6" fill="none" stroke="var(--line-strong)" stroke-width="1.5"/>
+              <rect x="130" y="18" width="40" height="34" rx="3" fill="#e2efec" stroke="#0e6b5c" stroke-width="1.5"/>
+              <rect x="142" y="30" width="16" height="22" rx="2" fill="#0e6b5c" opacity="0.35"/>
+              <path d="M 100 35 h 22 M 105 30 l -6 5 6 5" stroke="#8a919b" stroke-width="1.5" fill="none"/>
+              <path d="M 200 35 h 22 M 217 30 l 6 5 -6 5" stroke="#8a919b" stroke-width="1.5" fill="none"/>
+            </svg>
+          </li>
+          <li><b>④ 选打印机 · 耗材 · 工艺</b>
+            打印机选 <em>P1S · 0.4 喷嘴</em>；耗材选 PLA Basic 等；
+            工艺用默认 <em>0.20 mm 层高</em>——0.4 喷嘴的合理默认，新手机械零件不要动它。
+          </li>
+          <li><b>⑤ 切片</b>
+            右上「<em>切片单盘</em>」→ 右侧出现逐层预览、颜色方案、耗材用量、预估时间。
+            看一眼支撑有没有把悬垂包住，再进下一步。
+          </li>
+          <li><b>⑥ 发送</b>
+            同一局域网：直接「打印单盘」WLAN 发送；断网环境：导出切片文件到 SD 卡，
+            插入打印机，屏幕「打印文件 → SD 卡」选文件。
+          </li>
+          <li><b>⑦ 开印：盯首层 5 分钟</b>
+            发送窗口可勾选打印前「热床调平」。开始后<strong>首层前 5 分钟不要走开</strong>——
+            90% 的失败发生在首层（见 13.5 诊断图）。首层完好，这件基本就成了。
+          </li>
+        </ol>
+        <div class="cmp-note">
+          <strong>切片（slicing）是什么：</strong>把 3D 模型横切成几百层、算出每一层喷嘴怎么走——
+          输出 G-code 给打印机执行。CAD 负责"长什么样"，切片负责"怎么打出来"。
+        </div>
+      </section>
+
+      <!-- ============ 13.3 切片参数 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.3</span>
+          <div>
+            <h2>切片参数怎么定</h2>
+            <p class="sec-sub">拖动滑块，看时间 / 强度 / 细节怎么互相挤兑——建立 trade-off 直觉。</p>
+          </div>
+        </div>
+        <div class="calc-card">
+          <div class="calc-title">参数权衡实验台</div>
+          <div class="calc-desc">以一个 50×50×50 mm 的方块为例（相对估算，用于建立直觉，不是精确值）。</div>
+          <div class="calc-grid">
+            <div class="calc-params">
+              <div class="param-row">
+                <label for="pc-lh">层高 layer height <span class="val" id="pc-lh-val">0.20</span> mm</label>
+                <input type="range" id="pc-lh" min="0.08" max="0.32" step="0.02" value="0.20">
+              </div>
+              <div class="param-row">
+                <label for="pc-wl">壁厚 wall loops <span class="val" id="pc-wl-val">2</span> 环</label>
+                <input type="range" id="pc-wl" min="1" max="5" step="1" value="2">
+              </div>
+              <div class="param-row">
+                <label for="pc-if">填充密度 infill <span class="val" id="pc-if-val">20</span> %</label>
+                <input type="range" id="pc-if" min="5" max="100" step="5" value="20">
+              </div>
+              <div class="param-row">
+                <label>支撑 support
+                  <select id="pc-sup" style="font-family:inherit; font-size:13px; padding:3px 8px; border-radius:6px; border:1px solid var(--line-strong); background:white;">
+                    <option value="none" selected>无</option>
+                    <option value="normal">正常</option>
+                    <option value="surface">仅支撑面</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="calc-output">
+              <div class="co-row"><span class="co-label">层数（50 mm 高）</span><span class="co-value" id="pc-layers">250</span></div>
+              <div class="co-row"><span class="co-label">预估时间（相对值）</span><span class="co-value" id="pc-time">1.0×</span></div>
+              <div class="calc-verdict ok" id="pc-strength">强度：中</div>
+              <div class="calc-verdict ok" id="pc-detail">细节：中</div>
+            </div>
+          </div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">三个参数各自的账</div>
+          <div class="f-note">
+            <strong>层高</strong>：细节的分辨率。0.20 是 0.4 喷嘴的默认甜点；0.12 出细节但时间近乎翻倍；
+            0.28+ 只适合草稿。<strong>层高↓ → 时间近乎反比暴涨</strong>。
+            <br><strong>壁厚（环数）</strong>：外壳圈数，强度的主力——受力件 3 环起，2 环是通用值。
+            <br><strong>填充</strong>：内部支撑结构。<strong>15~25% 够用了</strong>；超过 60% 基本只换来时间和材料，
+            想加强度先加壁环。齿轮、铰链这类受力件靠壁厚不靠填充。
+            <br><strong>支撑</strong>：45° 以上的悬垂才需要。支撑面=疤，拆完要打磨——所以第一选择是
+            <em>改摆放方向让悬垂消失</em>（工程实现页的 DFM 规则）。
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 13.4 耗材与 AMS ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.4</span>
+          <div>
+            <h2>耗材与 AMS</h2>
+            <p class="sec-sub">选对料是成功的一半；AMS 是 P1S 的自动送料系统。</p>
+          </div>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>耗材</th><th>特性</th><th>新手提示</th><th>俱乐部场景</th></tr></thead>
+            <tbody>
+              <tr class="hl"><td><strong>PLA</strong></td><td>刚度好、易打、不翘</td><td>新手首选，默认用它</td><td>结构件、外壳、夹具</td></tr>
+              <tr><td><strong>PETG</strong></td><td>耐冲击、韧</td><td>吸湿后拉丝——密封保存</td><td>受冲击件、 outdoor</td></tr>
+              <tr><td><strong>TPU</strong></td><td>柔性（软爪材料）</td><td>慢速打印，别开高速</td><td>柔顺爪、缓冲垫</td></tr>
+              <tr><td><strong>ABS / ASA</strong></td><td>耐温</td><td>必须封闭腔体（P1S 优势）</td><td>高温环境件</td></tr>
+              <tr><td><strong>PA / PC</strong></td><td>工程级强度</td><td>用前必须干燥</td><td>碳纤尼龙悬挂摆臂</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="sec-head sm"><span class="sec-num">AMS</span><h2>AMS 装料四步</h2></div>
+        <ol class="flow-steps">
+          <li><b>① 放料盘</b>注意绕线方向，料头从料盘下方出，放进 AMS 槽位</li>
+          <li><b>② 插入料口</b>料头剪成尖角，插入该槽位的入料口组件（AMS 自动夹送）</li>
+          <li><b>③ 确认信息</b>Studio 设备页确认该槽位耗材的类型与颜色</li>
+          <li><b>④ 切片选料</b>切片时在耗材栏选它，打印时 AMS 自动送退料</li>
+        </ol>
+        <div class="stage">
+          <svg id="ams-svg" viewBox="0 0 700 220" role="img" aria-label="AMS 料道路径示意"></svg>
+        </div>
+      </section>
+
+      <!-- ============ 13.5 首层诊断 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.5</span>
+          <div>
+            <h2>首层诊断：本页最重要的技能</h2>
+            <p class="sec-sub">点击三联图中的任一格，看现象、原因和对策。</p>
+          </div>
+        </div>
+        <div class="stage">
+          <svg id="fl-svg" viewBox="0 0 720 300" role="img" aria-label="首层三联诊断图"></svg>
+          <div class="anatomy-panel" id="fl-panel" aria-live="polite" style="margin-top:16px;"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">首层是打印成败的 90%</div>
+          <div class="f-note">
+            首层是整件的地基：它粘不住，后面全塌。两个变量决定首层：
+            <strong>板干不干净</strong>（指纹油污是首敌——见 13.6 的水膜判断法）和
+            <strong>喷嘴离板高度</strong>（太远不粘、太近压扁）。PEI 板选对类型（纹理 PEI）+ 干净 + 高度合适，
+            首层基本不会失败。
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 13.6 校准与维护 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.6</span>
+          <div>
+            <h2>校准与维护</h2>
+            <p class="sec-sub">P1S 只支持手动校准——这些操作一次学会，定期做。</p>
+          </div>
+        </div>
+        <div class="checklist">
+          <div class="cl-title">PEI 板清洁（最常被跳过、最有效）</div>
+          <ul>
+            <li><strong>洗洁精 + 海绵 + 温水</strong>洗——酒精擦纹理板只能把油摊开不能带走；<strong>禁丙酮</strong>（毁涂层）</li>
+            <li>判断法：冲水后水成<strong>均匀薄膜</strong> = 干净；<strong>成股流下</strong> = 还有油</li>
+            <li>取板拿边缘，别摸打印面；装回时确认板型号选的是纹理 PEI</li>
+          </ul>
+        </div>
+        <div class="stage">
+          <h3>水膜判断法</h3>
+          <svg id="wm-svg" viewBox="0 0 700 200" role="img" aria-label="水膜判断法示意"></svg>
+        </div>
+        <div class="checklist">
+          <div class="cl-title">流量校准（P1S = 手动模式）</div>
+          <ul>
+            <li><strong>流量比例</strong>：Studio「校准 → 流量比例 → 手动校准」。粗校准打 80%~120% 范围步长 5% 的样品块，<strong>看哪块表面最平滑</strong>；精校准 ±10% 步长 1%</li>
+            <li><strong>动态流量（K 值）</strong>：图案模式打印，<strong>看哪组拐角最锐利</strong>、无堆料无缺料；换新耗材 / 换喷嘴后要重做</li>
+            <li>校准前：耗材干燥、热端干净、板洗干净——脏状态下校准等于白做</li>
+          </ul>
+        </div>
+        <div class="checklist">
+          <div class="cl-title">首层不粘时的补救顺序</div>
+          <ul>
+            <li>① 加 <strong>brim 裙边</strong>（小接触面 / 细高件的救命稻草）</li>
+            <li>② 检查板类型选对（纹理 PEI）</li>
+            <li>③ 热床温度 +5 ℃</li>
+            <li>④ 洗板（水膜判断法）</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ 13.7 故障排除 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.7</span>
+          <div>
+            <h2>故障排除决策表</h2>
+            <p class="sec-sub">看到症状 → 先查最可能的原因，按序排除。</p>
+          </div>
+        </div>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>症状</th><th>最可能原因</th><th>对策</th></tr></thead>
+            <tbody>
+              <tr><td><strong>翘边 warping</strong></td><td>首层附着力不足 / 温度梯度</td><td>加 brim、热床 +5℃、避免冷风直吹</td></tr>
+              <tr><td><strong>拉丝 stringing</strong></td><td>耗材受潮 / 回抽不足</td><td>干燥耗材、回抽距离 +0.5mm</td></tr>
+              <tr><td><strong>层间开裂</strong></td><td>层间结合弱（层高过大 / 温度低）</td><td>层高降至 0.2、喷温 +5℃</td></tr>
+              <tr><td><strong>堵头 clog</strong></td><td>残料碳化 / 耗材灰渣</td><td>升温挤料、拆热端清理、冷拔</td></tr>
+              <tr><td><strong>表面小疙瘩</strong></td><td>过挤出</td><td>流量比例下调（见 13.6 校准）</td></tr>
+              <tr><td><strong>缝隙孔洞</strong></td><td>欠挤出</td><td>流量比例上调 / 检查堵头</td></tr>
+              <tr><td><strong>象脚 elephant foot</strong></td><td>首层压过扁（喷嘴太近 / 热床过热）</td><td>热床 −5℃、首层流量略降</td></tr>
+              <tr><td><strong>层错位 layer shift</strong></td><td>皮带松 / 喷头撞件</td><td>检查张紧、降速、查首层是否翘起撞头</td></tr>
+              <tr><td><strong>孔偏紧</strong></td><td>FDM 孔收缩公差</td><td><a class="inline-link" href="engineering.html">工程实现页 · 孔径配合速查 →</a></td></tr>
+              <tr><td><strong>支撑难拆</strong></td><td>支撑贴太紧</td><td>支撑接触面间距 +0.1mm、换树状支撑</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ 13.8 回到设计 ============ -->
+      <section data-reveal>
+        <div class="sec-head">
+          <span class="sec-num">13.8</span>
+          <div>
+            <h2>回到设计</h2>
+            <p class="sec-sub">打印机的边界，就是设计的边界。</p>
+          </div>
+        </div>
+        <div class="case-callout">
+          <div class="text">
+            <strong>打印实操 ↔ DFM 设计，一个闭环</strong>
+            45° 悬垂、层间强度方向、孔公差、打印方向——这些<strong>在 CAD 阶段就要让步</strong>，
+            而不是打坏了再来补。往回看：<a class="inline-link" href="engineering.html">工程实现页的 DFM 规则</a>负责"设计得能打"，
+            本页负责"打得出、打得好"；
+            悬挂摆臂、铜套铰这些真实零件的完整设计过程在<a class="inline-link" href="chassis.html">底盘与悬挂页</a>。
+            三页连起来，就是"从想到零件"的全部路径。
+          </div>
+        </div>
+        <div class="page-nav">
+          <a href="engineering.html">← 工程实现</a>
+          <a href="wrap-up.html">选型决策树 →</a>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    injectSidebar('printing');
+
+    /* ============================================================
+     * 13.1 P1S 解剖图：8 个热点 + 信息面板
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('anatomy-svg');
+      const panel = document.getElementById('anatomy-panel');
+      const NS = 'http://www.w3.org/2000/svg';
+      const el = (tag, attrs = {}) => {
+        const e = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        return e;
+      };
+
+      // —— 机身线框 ——
+      // 外壳（封闭机箱）
+      svgEl.appendChild(el('rect', { x: 140, y: 60, width: 480, height: 470, rx: 10, fill: '#fbfaf6', stroke: '#3a3f45', 'stroke-width': 3 }));
+      // 玻璃门示意（前半透明）
+      svgEl.appendChild(el('rect', { x: 156, y: 76, width: 448, height: 438, rx: 6, fill: '#e8f0ee', opacity: 0.5, stroke: '#8a919b', 'stroke-width': 1.5 }));
+      // 打印腔体边界 256³（示意）
+      svgEl.appendChild(el('rect', { x: 240, y: 200, width: 280, height: 260, fill: 'none', stroke: '#8a919b', 'stroke-width': 1.2, 'stroke-dasharray': '6 5' }));
+      const ct = el('text', { x: 380, y: 192, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 11 });
+      ct.textContent = '打印空间 256×256×256'; svgEl.appendChild(ct);
+      // 热床
+      svgEl.appendChild(el('rect', { x: 250, y: 436, width: 260, height: 16, rx: 3, fill: '#3a3f45' }));
+      const bt2 = el('text', { x: 380, y: 470, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11 });
+      bt2.textContent = '热床 + 纹理 PEI 板'; svgEl.appendChild(bt2);
+      // X/Y 门架（顶梁 + 竖梁）
+      svgEl.appendChild(el('rect', { x: 230, y: 118, width: 300, height: 14, rx: 3, fill: '#aab0b8' }));
+      svgEl.appendChild(el('rect', { x: 352, y: 118, width: 14, height: 90, rx: 3, fill: '#aab0b8' }));
+      // 打印头
+      svgEl.appendChild(el('rect', { x: 330, y: 132, width: 58, height: 62, rx: 5, fill: '#2a3a5c' }));
+      svgEl.appendChild(el('rect', { x: 348, y: 194, width: 22, height: 18, rx: 2, fill: '#8a919b' }));
+      // 打印中的模型（示意小方块 + 层纹）
+      svgEl.appendChild(el('rect', { x: 330, y: 392, width: 100, height: 44, fill: '#d9662c', opacity: 0.85, rx: 2 }));
+      for (let i = 1; i < 5; i++) {
+        svgEl.appendChild(el('line', { x1: 330, y1: 392 + i * 8.5, x2: 430, y2: 392 + i * 8.5, stroke: '#b34e1d', 'stroke-width': 1 }));
+      }
+      // AMS（顶部，四料道）
+      svgEl.appendChild(el('rect', { x: 200, y: 8, width: 360, height: 44, rx: 8, fill: '#e2efec', stroke: '#0e6b5c', 'stroke-width': 2 }));
+      for (let i = 0; i < 4; i++) {
+        svgEl.appendChild(el('circle', { cx: 240 + i * 90, cy: 30, r: 15, fill: '#fbfaf6', stroke: '#0e6b5c', 'stroke-width': 1.5 }));
+        svgEl.appendChild(el('circle', { cx: 240 + i * 90, cy: 30, r: 6, fill: ['#d9662c', '#0e6b5c', '#8a919b', '#b3372c'][i] }));
+      }
+      // PTFE 管（AMS → 打印头）
+      svgEl.appendChild(el('path', { d: 'M 380 52 C 380 90 359 100 359 132', fill: 'none', stroke: '#0e6b5c', 'stroke-width': 3, opacity: 0.6 }));
+      // 料架（背板 + 料盘）
+      svgEl.appendChild(el('rect', { x: 20, y: 150, width: 90, height: 160, rx: 6, fill: '#f2efe6', stroke: '#c9c6b9', 'stroke-width': 1.5 }));
+      svgEl.appendChild(el('circle', { cx: 65, cy: 200, r: 34, fill: 'none', stroke: '#8a919b', 'stroke-width': 8 }));
+      svgEl.appendChild(el('circle', { cx: 65, cy: 268, r: 34, fill: 'none', stroke: '#d9662c', 'stroke-width': 8 }));
+      // 屏幕
+      svgEl.appendChild(el('rect', { x: 632, y: 240, width: 46, height: 66, rx: 5, fill: '#232a31' }));
+      const st2 = el('text', { x: 655, y: 278, 'text-anchor': 'middle', fill: '#7fd6c2', 'font-size': 9 });
+      st2.textContent = '触屏'; svgEl.appendChild(st2);
+
+      // —— 8 个热点 ——
+      const HOTSPOTS = [
+        { x: 359, y: 163, n: 1, t: '打印头 / 工具头', en: 'Toolhead',
+          what: '全金属热端 + 0.4 mm 不锈钢喷嘴，最高 300 ℃；风扇闭环控速。',
+          spec: '热端 300 ℃ · 喷嘴 0.4 · 最大移速 500 mm/s、加速度 20 m/s²',
+          matter: '喷嘴直径决定层高下限与细节分辨率；热端温度上限决定能打什么料。',
+          pitfall: '换料后不挤料 → 先升温手动挤一段确认通道畅通再开印。' },
+        { x: 380, y: 444, n: 2, t: '热床（纹理 PEI 板）', en: 'Heatbed · Textured PEI',
+          what: '加热平台，表面是带纹理的 PEI 涂层——首层附着力的来源。',
+          spec: '温度按耗材自动设定（PLA 约 35~45 ℃ 量级预热逻辑由切片给定）',
+          matter: '板的干净程度直接决定首层成败；纹理面打完冷却后工件自动好取。',
+          pitfall: '用手摸打印面 = 上一枚指纹 = 一块粘不住的区域。' },
+        { x: 300, y: 300, n: 3, t: '打印腔体', en: 'Build Chamber',
+          what: '封闭机箱（塑料 + 玻璃门）围出的成型空间。',
+          spec: '256 × 256 × 256 mm',
+          matter: '封闭腔体 = 稳定温度场 → ABS/ASA 不翘边的关键；也是 P1S 相对开放机型的核心优势。',
+          pitfall: '设计零件超尺寸打不下——CAD 阶段就要对齐 256 这个数。' },
+        { x: 380, y: 30, n: 4, t: 'AMS（料道×4）', en: 'Auto Material System',
+          what: '自动多色供料系统：4 个槽位、自动送退料、内置烘干逻辑。',
+          spec: '4 料道 × 1.0 kg 料盘',
+          matter: '多色 / 多材料一件成型；换色自动剪接，代价是换色 purge 浪费一些料。',
+          pitfall: '料头必须剪尖角再插入料口——钝头卡在 PTFE 管里是最常见的送料故障。' },
+        { x: 65, y: 200, n: 5, t: '背置料架', en: 'Spool Holder',
+          what: '机外干燥料存放位（不用 AMS 的单色打印走这里）。',
+          spec: '适配 1 kg 料盘',
+          matter: 'PA/PETG 等吸湿料的临时中转；长期存放建议干燥盒。',
+          pitfall: '料盘缠绕（spaghetti）→ 打印中途断料——开印前理顺料线。' },
+        { x: 359, y: 125, n: 6, t: 'X/Y 门架', en: 'Gantry',
+          what: '顶置十字滑轨，打印头在它上面做平面运动。',
+          spec: '最大移速 500 mm/s、加速度 20 m/s²',
+          matter: '加速度决定实际速度——小零件全是加减速段，"标称速度"用不满。',
+          pitfall: '层错位（layer shift）先查皮带张紧与撞料。' },
+        { x: 655, y: 273, n: 7, t: '触摸屏', en: 'Touch Screen',
+          what: '机上控制：打印文件选择、调平 / 校准入口、耗材操作。',
+          spec: '侧置触屏',
+          matter: '无网环境的操控中心（SD 卡打印全靠它）。',
+          pitfall: '「校准」菜单里 P1S 只有手动选项——别找"自动校准"。' },
+        { x: 380, y: 530, n: 8, t: '底座 / 主控', en: 'Base',
+          what: '主板、电源、滤芯仓都在底座里；活性炭过滤打印异味。',
+          spec: '闭环风扇控制',
+          matter: '稳定性与散热的底座（字面意义）。',
+          pitfall: '别堵进出风口——ABS 长时间打印会热累积。' },
+      ];
+
+      HOTSPOTS.forEach((h) => {
+        const g = el('g', { class: 'hotspot', 'data-k': h.n, transform: `translate(${h.x},${h.y})` });
+        g.appendChild(el('circle', { class: 'hs-hit', r: 16 }));
+        g.appendChild(el('circle', { class: 'hs-ring', r: 13 }));
+        const num = el('text', { class: 'hs-num', y: 1 });
+        num.textContent = h.n; g.appendChild(num);
+        svgEl.appendChild(g);
+      });
+
+      function show(h) {
+        svgEl.querySelectorAll('.hotspot').forEach(g => g.classList.toggle('active', +g.dataset.k === h.n));
+        panel.innerHTML = `<h4>${h.t} <span class="ap-en">${h.en}</span></h4>
+          <dl>
+            <dt>是什么</dt><dd>${h.what}</dd>
+            <dt>规格</dt><dd>${h.spec}</dd>
+            <dt>它决定</dt><dd>${h.matter}</dd>
+            <dt>新手误区</dt><dd>${h.pitfall}</dd>
+          </dl>`;
+      }
+      svgEl.querySelectorAll('.hotspot').forEach(g => {
+        g.addEventListener('click', () => show(HOTSPOTS.find(h => h.n === +g.dataset.k)));
+      });
+      show(HOTSPOTS[0]);
+    })();
+
+    /* ============================================================
+     * 13.4 AMS 料道示意
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('ams-svg');
+      const NS = 'http://www.w3.org/2000/svg';
+      const el = (tag, attrs = {}, text) => {
+        const e = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        if (text) e.textContent = text;
+        return e;
+      };
+      // 料盘 → AMS 轮组 → PTFE 管 → 打印头
+      svgEl.appendChild(el('circle', { cx: 80, cy: 100, r: 38, fill: 'none', stroke: '#8a919b', 'stroke-width': 9 }));
+      const p1 = el('text', { x: 80, y: 104, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-weight': 600 });
+      p1.textContent = '料盘'; svgEl.appendChild(p1);
+      // AMS 箱
+      svgEl.appendChild(el('rect', { x: 190, y: 60, width: 150, height: 90, rx: 8, fill: '#e2efec', stroke: '#0e6b5c', 'stroke-width': 2 }));
+      const p2 = el('text', { x: 265, y: 80, 'text-anchor': 'middle', fill: '#0a4f44', 'font-size': 12, 'font-weight': 650 });
+      p2.textContent = 'AMS'; svgEl.appendChild(p2);
+      // 轮组
+      [215, 245, 275, 305].forEach((cx, i) => {
+        svgEl.appendChild(el('circle', { cx, cy: 118, r: 9, fill: '#fbfaf6', stroke: '#0e6b5c', 'stroke-width': 1.8 }));
+      });
+      // 料线：盘 → AMS
+      svgEl.appendChild(el('path', { d: 'M 118 100 C 150 100 170 118 206 118', fill: 'none', stroke: '#d9662c', 'stroke-width': 3 }));
+      // PTFE 管
+      svgEl.appendChild(el('path', { d: 'M 314 118 C 380 118 420 100 480 100', fill: 'none', stroke: '#0e6b5c', 'stroke-width': 5, opacity: 0.75 }));
+      const p3 = el('text', { x: 398, y: 86, 'text-anchor': 'middle', fill: '#0a4f44', 'font-size': 11.5 });
+      p3.textContent = 'PTFE 管（耗材通道）'; svgEl.appendChild(p3);
+      // 打印头
+      svgEl.appendChild(el('rect', { x: 480, y: 76, width: 50, height: 52, rx: 5, fill: '#2a3a5c' }));
+      svgEl.appendChild(el('rect', { x: 497, y: 128, width: 16, height: 14, rx: 2, fill: '#8a919b' }));
+      const p4 = el('text', { x: 505, y: 106, 'text-anchor': 'middle', fill: 'white', 'font-size': 10 });
+      p4.textContent = '打印头'; svgEl.appendChild(p4);
+      // 出料
+      svgEl.appendChild(el('path', { d: 'M 505 142 L 505 170', stroke: '#d9662c', 'stroke-width': 3, fill: 'none' }));
+      // 说明
+      const notes = [
+        [265, 170, '①料盘入槽 → ②料头剪尖插入料口 → 轮组夹送', '#5a6472', 11.5],
+        [265, 188, '③设备页确认类型颜色 → ④切片选料，打印自动送退', '#5a6472', 11.5],
+      ];
+      notes.forEach(([x, y, txt, c, fs]) => {
+        const t = el('text', { x, y, 'text-anchor': 'middle', fill: c, 'font-size': fs });
+        t.textContent = txt; svgEl.appendChild(t);
+      });
+      // 警示
+      const warn = el('text', { x: 640, y: 106, fill: '#b3372c', 'font-size': 11, 'text-anchor': 'middle' });
+      warn.textContent = '钝头会卡管'; svgEl.appendChild(warn);
+    })();
+
+    /* ============================================================
+     * 13.5 首层三联诊断
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('fl-svg');
+      const panel = document.getElementById('fl-panel');
+      const NS = 'http://www.w3.org/2000/svg';
+      const el = (tag, attrs = {}, text) => {
+        const e = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        if (text) e.textContent = text;
+        return e;
+      };
+
+      const CASES = [
+        { k: 'far', t: '① 喷嘴太远', lines: 'separate',
+          sym: '料线一颗颗分离、互不粘连；首层像撒在板上的珠子，轻碰即掉。',
+          cause: '喷嘴与板距离过大（Z 偏移过高）或热床没调平。',
+          fix: '降低 Z 偏移（每次 −0.05mm 试）；重跑自动调平。' },
+        { k: 'ok', t: '② 刚好', lines: 'joined',
+          sym: '料线相互搭接成密实平面、轻微压扁、表面均匀平滑。',
+          cause: '距离合适——这就是目标状态。',
+          fix: '保持不动，直接看完全件。' },
+        { k: 'near', t: '③ 喷嘴太近', lines: 'squished',
+          sym: '料被过度压扁挤向两侧、边缘翘起"象脚"、喷嘴刮擦板面有擦痕。',
+          cause: 'Z 偏移过低；热床过高温度叠加会加重。',
+          fix: '升高 Z 偏移（+0.05mm 逐步）；象脚可降热床 5℃。' },
+      ];
+
+      CASES.forEach((c, i) => {
+        const ox = 30 + i * 230;
+        const g = el('g', { class: 'fl-panel', 'data-k': c.k });
+        g.appendChild(el('rect', { class: 'fl-frame', x: ox, y: 30, width: 200, height: 220, rx: 8 }));
+        // 喷嘴
+        g.appendChild(el('rect', { x: ox + 86, y: 44, width: 28, height: 34, rx: 3, fill: '#2a3a5c' }));
+        g.appendChild(el('rect', { x: ox + 93, y: 78, width: 14, height: 20, fill: '#8a919b' }));
+        // 喷嘴与板的距离（差异）
+        const gapY = c.k === 'far' ? 108 : c.k === 'ok' ? 122 : 136;
+        // 板
+        g.appendChild(el('rect', { x: ox + 20, y: 150, width: 160, height: 16, rx: 2, fill: '#3a3f45' }));
+        g.appendChild(el('line', { x1: ox + 20, y1: 150, x2: ox + 180, y2: 150, stroke: '#232a31', 'stroke-width': 2 }));
+        // 挤出的料线
+        if (c.lines === 'separate') {
+          for (let j = 0; j < 6; j++) {
+            g.appendChild(el('circle', { cx: ox + 40 + j * 24, cy: 143, r: 5, fill: '#d9662c' }));
+          }
+        } else if (c.lines === 'joined') {
+          for (let j = 0; j < 4; j++) {
+            g.appendChild(el('rect', { x: ox + 34 + j * 34, y: 136, width: 32, height: 13, rx: 6, fill: '#d9662c' }));
+          }
+        } else {
+          for (let j = 0; j < 4; j++) {
+            g.appendChild(el('rect', { x: ox + 30 + j * 36, y: 138, width: 42, height: 11, rx: 5, fill: '#d9662c' }));
+          }
+          // 象脚翘边
+          g.appendChild(el('path', { d: `M ${ox + 26} 146 q -10 -8 -14 4`, stroke: '#b3372c', 'stroke-width': 2.5, fill: 'none' }));
+          g.appendChild(el('path', { d: `M ${ox + 174} 146 q 10 -8 14 4`, stroke: '#b3372c', 'stroke-width': 2.5, fill: 'none' }));
+        }
+        // 距离标注
+        g.appendChild(el('line', { x1: ox + 150, y1: 98, x2: ox + 150, y2: 150, stroke: '#0e6b5c', 'stroke-width': 1.4, 'stroke-dasharray': '3 3' }));
+        const gapTxt = el('text', { x: ox + 158, y: 128, fill: '#0e6b5c', 'font-size': 10.5 });
+        gapTxt.textContent = c.k === 'far' ? '远' : c.k === 'ok' ? '合适' : '近';
+        g.appendChild(gapTxt);
+        // 标题
+        const tt = el('text', { x: ox + 100, y: 196, 'text-anchor': 'middle', fill: '#232a31', 'font-size': 13.5, 'font-weight': 650 });
+        tt.textContent = c.t; g.appendChild(tt);
+        const sub = el('text', { x: ox + 100, y: 214, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 10.5 });
+        sub.textContent = ['线分离、掉件', '密实、平滑', '压扁、象脚'][i];
+        g.appendChild(sub);
+        // 点击提示
+        const hint = el('text', { x: ox + 100, y: 236, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 9.5 });
+        hint.textContent = '点击查看诊断'; g.appendChild(hint);
+        svgEl.appendChild(g);
+      });
+
+      function show(c) {
+        svgEl.querySelectorAll('.fl-panel').forEach(g => g.classList.toggle('active', g.dataset.k === c.k));
+        panel.innerHTML = `<h4>${c.t}</h4>
+          <dl>
+            <dt>现象</dt><dd>${c.sym}</dd>
+            <dt>原因</dt><dd>${c.cause}</dd>
+            <dt>对策</dt><dd>${c.fix}</dd>
+          </dl>`;
+      }
+      svgEl.querySelectorAll('.fl-panel').forEach(g => {
+        g.addEventListener('click', () => show(CASES.find(c => c.k === g.dataset.k)));
+      });
+      show(CASES[1]);
+    })();
+
+    /* ============================================================
+     * 13.6 水膜判断法
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('wm-svg');
+      const NS = 'http://www.w3.org/2000/svg';
+      const el = (tag, attrs = {}, text) => {
+        const e = document.createElementNS(NS, tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        if (text) e.textContent = text;
+        return e;
+      };
+      // 左：脏板（水成股）
+      svgEl.appendChild(el('rect', { x: 60, y: 60, width: 220, height: 90, rx: 4, fill: '#d8d5cc', stroke: '#3a3f45', 'stroke-width': 2 }));
+      [90, 130, 170, 210, 250].forEach((x, i) => {
+        svgEl.appendChild(el('path', { d: `M ${x} 60 q ${i % 2 ? 6 : -6} 45 0 90`, stroke: '#5a8fbf', 'stroke-width': 7, fill: 'none', opacity: 0.75, 'stroke-linecap': 'round' }));
+      });
+      const t1 = el('text', { x: 170, y: 176, 'text-anchor': 'middle', fill: '#b3372c', 'font-size': 13, 'font-weight': 650 });
+      t1.textContent = '水成股流下 → 还有油（粘不住）'; svgEl.appendChild(t1);
+      // 右：净板（水成膜）
+      svgEl.appendChild(el('rect', { x: 420, y: 60, width: 220, height: 90, rx: 4, fill: '#d8d5cc', stroke: '#3a3f45', 'stroke-width': 2 }));
+      svgEl.appendChild(el('rect', { x: 424, y: 64, width: 212, height: 82, rx: 3, fill: '#5a8fbf', opacity: 0.45 }));
+      const t2 = el('text', { x: 530, y: 176, 'text-anchor': 'middle', fill: '#0e6b5c', 'font-size': 13, 'font-weight': 650 });
+      t2.textContent = '水成均匀薄膜 → 干净（附着好）'; svgEl.appendChild(t2);
+      const t3 = el('text', { x: 350, y: 40, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+      t3.textContent = '冲一层水，看水流形态'; svgEl.appendChild(t3);
+    })();
+
+    /* ============================================================
+     * 13.3 切片参数计算器
+     * ============================================================ */
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const upd = () => {
+        const lh = parseFloat($('pc-lh').value);
+        const wl = parseInt($('pc-wl').value);
+        const inf = parseInt($('pc-if').value);
+        const sup = $('pc-sup').value;
+
+        $('pc-lh-val').textContent = lh.toFixed(2);
+        $('pc-wl-val').textContent = wl;
+        $('pc-if-val').textContent = inf;
+
+        const layers = Math.round(50 / lh);
+        // 时间启发式：∝层数 × (壁+填充系数)
+        const infillF = 0.55 + (inf / 100) * 0.9;
+        const wallF = 0.45 + wl * 0.16;
+        const supF = sup === 'none' ? 1 : sup === 'normal' ? 1.28 : 1.14;
+        const tRel = (50 / lh / 250) * infillF * wallF * supF;
+
+        $('pc-layers').textContent = layers;
+        $('pc-time').textContent = tRel.toFixed(2) + '×';
+
+        const st = $('pc-strength');
+        const sScore = wl * 2 + (inf >= 20 ? 1 : 0) + (inf >= 50 ? 1 : 0);
+        st.textContent = '强度：' + (sScore >= 6 ? '高（受力件可用）' : sScore >= 4 ? '中（通用件）' : '低（只够外观件）');
+        st.className = 'calc-verdict ' + (sScore >= 6 ? 'ok' : sScore >= 4 ? 'warn' : 'bad');
+
+        const dt = $('pc-detail');
+        dt.textContent = '细节：' + (lh <= 0.12 ? '高（0.12 层高，慢但精细）' : lh <= 0.2 ? '中（默认甜点）' : '低（草稿级）');
+        dt.className = 'calc-verdict ' + (lh <= 0.2 ? 'ok' : lh <= 0.24 ? 'warn' : 'bad');
+      };
+      ['pc-lh', 'pc-wl', 'pc-if', 'pc-sup'].forEach(id => $(id).addEventListener('input', upd));
+      upd();
+    })();
+  </script>
+</body>
+</html>

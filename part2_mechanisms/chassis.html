@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>底盘与悬挂 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+  <style>
+    .expl-view text { font-size: 11px; }
+    .hexa-svg text { font-size: 11.5px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 10 页 · 落地</span>
+          <span class="chip chip-ghost">≈ 25 min</span>
+          <span class="chip chip-ghost">前置：09 传感与控制</span>
+        </div>
+        <h1 class="ph-title">底盘与悬挂 <span class="en">Chassis &amp; Suspension</span></h1>
+        <p class="ph-lead">
+          <strong>底盘 = 机器人的"腿"，悬挂 = 它的"膝关节"。</strong>
+          电机输出的旋转要经过<strong>轮子（运动转换）</strong>变成整车运动，经过<strong>悬挂（弹性机构）</strong>保证轮子始终贴地。
+          这一页讲清楚四件事：麦轮怎么解算、我们自己的平行杆悬挂长什么样（三零件 + 铜套铰接的完整工程实现）、铰接为什么这样设计、底盘怎么选。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">麦轮运动学</span>
+          <span class="tag">平行杆悬挂</span>
+          <span class="tag">铜套铰接</span>
+          <span class="tag">六角沉孔</span>
+        </div>
+      </header>
+
+      <div class="mechanism-tabs" id="tabs">
+        <button class="tab active" data-tab="mecanum">麦轮运动学 ★</button>
+        <button class="tab" data-tab="suspension">我们的悬挂结构</button>
+        <button class="tab" data-tab="hinge">铰接设计（铜套）</button>
+        <button class="tab" data-tab="compare">底盘选型对比</button>
+      </div>
+
+      <!-- ===== 麦轮运动学解算器 ===== -->
+      <section id="tab-mecanum" class="tab-panel">
+        <div class="stage">
+          <svg id="mc-svg" viewBox="0 0 700 520"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>v<sub>x</sub> 前后速度 <span class="val" id="mc-vx-val">0.60</span> m/s</label>
+              <input type="range" id="mc-vx" min="-1" max="1" step="0.05" value="0.6">
+            </div>
+            <div class="param-row">
+              <label>v<sub>y</sub> 左右速度 <span class="val" id="mc-vy-val">0.00</span> m/s</label>
+              <input type="range" id="mc-vy" min="-1" max="1" step="0.05" value="0">
+            </div>
+            <div class="param-row">
+              <label>ω 自转角速度 <span class="val" id="mc-w-val">0.00</span> rad/s</label>
+              <input type="range" id="mc-w" min="-3" max="3" step="0.1" value="0">
+            </div>
+          </div>
+          <div class="verdict" id="mc-verdict"></div>
+          <div id="mc-controls-mount"></div>
+        </div>
+
+        <figure class="photo-fig" data-reveal>
+          <img src="assets/asabe/mecanum-wheel.png" alt="麦克纳姆轮实物" loading="lazy">
+          <figcaption><strong>麦轮实物</strong>——辊子与轮毂轴成 45°，辊子外缘包胶。
+          A/B 轮互为手性镜像，四个一组使用（对角同向、相邻反向）。辊子磨损不均会导致整车跑偏，赛季中要定期检查。</figcaption>
+        </figure>
+
+        <div class="formula-block">
+          <div class="f-title">逆运动学四步推导：从 (v<sub>x</sub>, v<sub>y</sub>, ω) 到四个轮速</div>
+          <div class="f-note">
+            <strong>第一步 · 分解底盘运动</strong>：刚体平面运动 = 3 个独立量——v<sub>tx</sub>（左右，右正）、v<sub>ty</sub>（前后，前正）、ω（yaw 自转，逆时针正）。
+            <br><strong>第二步 · 轮子轴心的速度</strong>：<span class="vec">v</span> = <span class="vec">v</span><sub>t</sub> + <span class="vec">ω</span> × <span class="vec">r</span>（<span class="vec">r</span> 是几何中心指向轮轴的矢量）——
+            自转给每个轮叠上一个切向速度，大小 ω·|<span class="vec">r</span>|，方向垂直于 <span class="vec">r</span>。
+            <br><strong>第三步 · 投影到辊子方向</strong>：轴心速度沿辊子 45° 方向的分量 v<sub>∥</sub> = <span class="vec">v</span>·<span class="vec hat">u</span> = (−v<sub>x</sub>+v<sub>y</sub>)/√2；
+            <strong>垂直分量被无视</strong>——垂直于辊子方向时辊子空转（自由滚动），不消耗能量也不产生约束力。
+            <br><strong>第四步 · 轮子真实转速</strong>：v<sub>w</sub> = v<sub>∥</sub>/cos45° = −v<sub>x</sub> + v<sub>y</sub>。代入各轮位置（a = 半轴距、b = 半轮距）得四轮速：
+          </div>
+          <div class="f-eq">
+            v<sub>w1</sub> = v<sub>ty</sub> − v<sub>tx</sub> + ω(a+b)　　v<sub>w2</sub> = v<sub>ty</sub> + v<sub>tx</sub> − ω(a+b)<br>
+            v<sub>w3</sub> = v<sub>ty</sub> − v<sub>tx</sub> − ω(a+b)　　v<sub>w4</sub> = v<sub>ty</sub> + v<sub>tx</sub> + ω(a+b)
+          </div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">更好用的算法：叠加法（全向底盘通吃）</div>
+          <div class="f-note">
+            全向底盘是<strong>纯线性系统</strong>——分别算出"纯前后""纯左右""纯自转"三种简单运动下各轮的转速，
+            <strong>相加</strong>就是合成运动的解。下面这张表就是解算器的全部秘密：
+            <div class="data-table-wrap" style="margin:10px 0 6px;">
+              <table class="data-table">
+                <thead><tr><th>运动</th><th>前左 FL</th><th>前右 FR</th><th>后左 RL</th><th>后右 RR</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>纯前后</strong> v<sub>ty</sub></td><td>+v</td><td>+v</td><td>+v</td><td>+v</td></tr>
+                  <tr><td><strong>纯左右</strong> v<sub>tx</sub></td><td>−v</td><td>+v</td><td>−v</td><td>+v</td></tr>
+                  <tr><td><strong>纯自转</strong> ω</td><td>+ω(a+b)</td><td>−ω(a+b)</td><td>−ω(a+b)</td><td>+ω(a+b)</td></tr>
+                  <tr class="hl"><td><strong>合成 = 三行相加</strong></td><td>Σ₁</td><td>Σ₂</td><td>Σ₃</td><td>Σ₄</td></tr>
+                </tbody>
+              </table>
+            </div>
+            验证一下动画解算器：纯前进（v<sub>x</sub>=0.6）时四轮同速；纯自转（ω≠0）时左负右正——对角相等。
+            <strong>为什么必须编码电机</strong>：四轮速度存在约束关系，任何一轮速度不准 → 辊子与地面<strong>滑动摩擦</strong> →
+            运动异常 + 麦轮寿命骤减。这就是底盘页反复强调"直流+编码器闭环"的力学根据。
+          </div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">为什么是麦轮，不是全向轮？四种安装构型怎么选</div>
+          <div class="f-note">
+            <strong>全向轮（Omni）vs 麦轮（Mecanum）</strong>：全向轮的辊子转轴与轮毂轴<strong>垂直</strong>，麦轮是 <strong>45°</strong>。
+            看似只差一个角度，但 45° 让麦轮可以<strong>像传统轮子一样装在相互平行的轴上</strong>——
+            全向轮要发挥同样功能，几根轮毂轴之间必须成 60°/90°/120°，制造麻烦。所以工业全向平台（如麦轮叉车）几乎都用麦轮。
+            <br><strong>四种安装构型</strong>（X/O 指辊子与地面接触形成的图形，正方/长方指接触点围成的形状）：
+            X-正方形——转动力矩都过同一点，yaw 无法主动旋转，几乎不用；X-长方形——能转但力臂短，少见；
+            O-正方形——理想但受底盘形状限制，可遇不可求；<strong>O-长方形——转动力臂长，最常用，我们选它</strong>。
+            <br>参考：知乎专栏《麦克纳姆轮浅谈》（<a href="https://zhuanlan.zhihu.com/p/20282234" target="_blank" rel="noopener">zhuanlan.zhihu.com/p/20282234</a>）。
+          </div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note"><h4>机械设计</h4><ul>
+            <li>四轮速度由 (v<sub>x</sub>, v<sub>y</sub>, ω) 唯一确定（叠加法三行相加）</li>
+            <li>辊子 45°：垂直分量被辊子"滚掉"，只留有效分量</li>
+            <li>O-长方形安装：旋转力臂长，转向响应好</li>
+          </ul></div>
+          <div class="info-card use"><h4>机械制造</h4><ul>
+            <li>麦轮成品购买（A/B 轮各 2，看标注区分，装错方向整车乱跑）</li>
+            <li>安装孔位与电机输出轴对中，偏心会抖</li>
+            <li>四轮必须用编码电机闭环（约束关系的力学要求）</li>
+          </ul></div>
+        </div>
+      </section>
+
+      <!-- ===== 我们的悬挂结构（平行杆） ===== -->
+      <section id="tab-suspension" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>悬挂模块总装：三个自制零件 + 一套标准件</h3>
+          <svg id="ex-svg" class="expl-view" viewBox="0 0 700 440" role="img" aria-label="悬挂模块爆炸图"></svg>
+          <div class="f-note" style="font-size:13px; color:var(--ink-soft); margin-top:8px;">
+            爆炸图（装配轴线为虚线）。真实装配时四个铜套铰把三个零件连成平行四边形，两根拉簧挂在靠近短对角线的位置。
+          </div>
+        </div>
+
+        <figure class="photo-fig" data-reveal>
+          <img src="assets/asabe/mobility-chassis.png" alt="悬挂底盘渲染图" loading="lazy">
+          <figcaption><strong>我们底盘的渲染图</strong>——四角各一组"底板连接架 + 平行摆臂 + 电机连接板"悬挂模块，
+          麦轮装在电机连接板的输出轴上。摆臂等长平行，无论怎么跳动，电机连接板始终保持竖直。</figcaption>
+        </figure>
+
+        <div class="stage">
+          <svg id="sp-svg" viewBox="0 0 700 420"></svg>
+          <div id="sp-controls-mount"></div>
+          <div id="sp-steps-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">平行杆悬挂：用四杆机构做"膝关节"</div>
+          <div class="f-note">
+            结构 = <strong>两根等长摆臂 + 底板连接架 + 电机连接板</strong>构成平行四边形机构：
+            轮子上下跳动时，电机连接板<strong>始终保持竖直</strong>（平行四边形的连杆保平行性质）——
+            电机姿态不变，受力方向稳定。
+            <strong>两根拉簧</strong>装在平行四边形<strong>靠近短对角线</strong>的位置：预紧力把轮子压向地面，
+            场地不平时轮子随路面浮动、弹簧伸缩吸能——四轮始终贴地。
+            <br><strong>为什么悬挂是"必需品"而不是"奢侈品"：</strong>
+            场地是拼接板 + 泡沫垫，接缝高差 2~5 mm；刚性底盘过一个接缝 = 一轮瞬时离地 =
+            打滑 + 编码器读数失真 + 闭环失效。悬挂用机械弹性给控制兜底。
+            <br><strong>限位与回中分工</strong>：弹簧管"回中"（把轮子压向地面），限位螺丝管"极限"（摆臂最大摆角，
+            防止过坎时摆臂翻过死点或撞坏结构）——弹簧拉不住极限工况，这是 M3×8 限位螺丝存在的理由。
+          </div>
+        </div>
+
+        <div class="stage">
+          <h3>摆动限位：M3×8 限位螺丝怎么工作</h3>
+          <svg id="lim-svg" viewBox="0 0 700 260"></svg>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note"><h4>机械设计</h4><ul>
+            <li>摆臂等长平行 → 电机板始终竖直（平行四边形性质）</li>
+            <li>拉簧装短对角线附近：轮行程 ±10~20 mm 内保持预紧</li>
+            <li>弹簧预紧力 &gt; 单轮载荷（保证全程压缩贴地）</li>
+            <li>限位螺丝限制最大摆角（防过死点/防撞）</li>
+          </ul></div>
+          <div class="info-card use"><h4>机械制造（往届方案演进）</h4><ul>
+            <li>早期：金属折弯 + 激光切割（强度高、加工繁琐）</li>
+            <li>后来：3D 打印全非标件（随时自制、成本低）</li>
+            <li>进阶：碳纤尼龙打印增强刚度与耐温</li>
+            <li>铰接用铜套（下一 tab 详解），拉簧买成品</li>
+          </ul></div>
+        </div>
+
+        <div class="stage">
+          <h3>电机怎么装上悬挂：法兰方案</h3>
+          <svg id="fl-svg" viewBox="0 0 700 280"></svg>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note"><h4>法兰直装（推荐）</h4><ul>
+            <li>42 步进：31 mm 孔距方孔 + Ø22.5 中孔止口</li>
+            <li>电机轴直接插麦轮/轮毂孔，零中间环节</li>
+            <li>电机连接板端面法兰局部加厚（侧壁 5 mm、法兰处更厚）</li>
+          </ul></div>
+          <div class="info-card use"><h4>联轴器 + 双支承（大扭矩时）</h4><ul>
+            <li>电机轴经联轴器接独立轮轴，轮轴两端轴承</li>
+            <li>悬臂轴受冲击易弯，双支承用于重载/大轮</li>
+            <li>多两个零件 + 需要对中，轻载场景不值得</li>
+          </ul></div>
+        </div>
+      </section>
+
+      <!-- ===== 铰接设计（铜套） ===== -->
+      <section id="tab-hinge" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>悬挂摆臂的铰接：为什么用铜套，不直接螺丝+螺母？</h3>
+          <svg id="hg-svg" viewBox="0 0 700 400"></svg>
+        </div>
+
+        <div class="info-grid" style="margin-top:16px;">
+          <div class="info-card good">
+            <h4>铜套方案 · 三条理由</h4>
+            <ul>
+              <li><strong>免调拧紧</strong>：铜套长度定死间隙，直接拧到死，不依赖"手感微调"</li>
+              <li><strong>受力均匀</strong>：铜套外壁是平滑圆柱面，与打印件孔<strong>面接触</strong>（螺丝是线接触）——不硌坏 3D 打印孔</li>
+              <li><strong>更接近理想铰</strong>：铜套被螺母压紧后严格竖直，摆臂摆动阻力小、回差小</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>直接螺丝+防松螺母的问题</h4>
+            <ul>
+              <li>拧松了旷、拧紧了卡——间隙全凭手感</li>
+              <li>螺纹面与孔点/线接触，打印孔快速磨损变大</li>
+              <li>螺丝头压摆臂的力不均匀 → 摆动偏摆</li>
+            </ul>
+          </div>
+        </div>
+
+        <ol class="flow-steps" data-reveal>
+          <li><b>STEP 1 · 压铜套</b>铜套压入底板连接架侧壁的 Ø6 轴颈空间，高 5 mm</li>
+          <li><b>STEP 2 · 套摆臂</b>摆臂孔 Ø6.4 套在铜套外圆上（间隙 0.2~0.4）</li>
+          <li><b>STEP 3 · 穿螺丝</b>大平头螺丝沿铰轴穿过，头部压住铜套端面（防摆臂轴向滑出）</li>
+          <li><b>STEP 4 · 拧螺母</b>防松螺母埋进侧壁背面的六角坑，拧到死</li>
+        </ol>
+
+        <div class="stage">
+          <h3>六角沉孔专题：Ø4.2 通孔 + Ø7.1 六角坑 × 深 2.8</h3>
+          <svg id="hx-svg" class="hexa-svg" viewBox="0 0 700 250"></svg>
+          <div class="f-note" style="font-size:13px; color:var(--ink-soft);">
+            <strong>为什么要埋螺母</strong>：防松螺母嵌进六角坑后<strong>不会转动</strong>（六边形的边卡住螺母的六个角）——
+            拧螺丝时只需要从外侧拧，螺母被坑锁死；拧到死也不会把打印件孔口拧花。
+            <strong>对比通孔方案</strong>：螺母直接压在打印件表面（点接触、会转、要扳手 hold 住）——装配费时且容易损伤。
+          </div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">配合尺寸（往届验证过的参数）</div>
+          <div class="f-note">
+            <strong>铰接空间约束</strong>：铜套隔离出 Ø6 × 高 5 mm 的空间，摆臂被约束在内、绕铜套转动；
+            大平头螺丝从轴向压住防滑出，防松螺母压紧铜套。
+            <br><strong>孔加工与配合</strong>：摆臂孔实配 Ø6.4（或先打 Ø6.2 再用 6.2 麻花钻扩孔——工序多但配合更精准）；
+            台阶 <strong>0.4 mm 下沉让位</strong>（螺母压铜套时侧壁受力内陷，实际空间略小于 5 mm 理论值，不下沉会卡死摆臂）；
+            摆臂厚度取 <strong>5 mm</strong>（强度与尺寸平衡）。
+            <br><strong>铰接螺纹连接</strong>：通孔 Ø4.2 + 六角坑（内切圆 Ø7.1 × 深 2.8）埋 M4 级防松螺母。
+            <br><strong>摆动限位（独立件）</strong>：M3×8 圆柱头内六角螺丝 + 底板连接架上的限位孔——限制摆臂最大摆角，与铰接螺丝是两回事。
+            <br><strong>底板连接架安装</strong>：与车底板四孔 30×30 方形布置、通孔 Ø4.2；
+            可选挂耳凸台 Ø11×2、R1.5 圆角、六角孔 Ø7.2 × 深 3 配 M4×12 外六角螺栓；底板/侧壁/后盖厚均 5 mm。
+          </div>
+        </div>
+
+        <div class="sec-head sm" data-reveal>
+          <span class="sec-num">转动副</span>
+          <div><h2>这套铰链是全站"转动副"的规范源</h2>
+          <p class="sec-sub">四杆、五杆、夹爪、槽轮——所有连杆机构的铰链都推荐照这套做</p></div>
+        </div>
+        <section class="build-card" data-reveal>
+          <div class="bc-head"><svg class="ic"><use href="#i-hinge"></use></svg> 转动副制作规范 · 铜套铰链</div>
+          <div class="bc-grid">
+            <div class="bc-main">
+              <p>凡是要<strong>转动</strong>的地方（连杆铰、摆臂铰、夹爪指铰），都不要打印一体铰链——层间强度低、摩擦大、间隙不可控。
+              标准做法：<strong>螺丝作轴 + 铜套作轴承 + 防松螺母埋六角坑</strong>。上面两张图就是完整的剖面与装配顺序。
+              运动转换章节（02~07 页）各机构的 build-card 都链接回这里。</p>
+            </div>
+            <table class="bc-params">
+              <tbody>
+                <tr><td>铜套</td><td>Ø6 外圆 × 高 5</td></tr>
+                <tr><td>摆臂孔</td><td>Ø6.4 实配（或 6.2 钻扩）</td></tr>
+                <tr><td>台阶让位</td><td>0.4 mm</td></tr>
+                <tr><td>摆臂厚</td><td>5 mm</td></tr>
+                <tr><td>六角坑</td><td>Ø7.1 × 深 2.8</td></tr>
+                <tr><td>通孔</td><td>Ø4.2</td></tr>
+                <tr><td>限位螺丝</td><td>M3×8 内六角</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="stage">
+          <h3>底板连接架建模八步（SolidWorks 教学流程）</h3>
+          <ol class="flow-steps" data-reveal>
+            <li><b>① 底板</b>5 mm 厚基体，30×30 四孔 Ø4.2</li>
+            <li><b>② 侧板</b>竖起侧壁，厚 5 mm</li>
+            <li><b>③ 后盖</b>封闭结构，提刚度</li>
+            <li><b>④ 通孔+六角下沉</b>Ø4.2 通孔 + Ø7.1×2.8 六角坑</li>
+            <li><b>⑤ 圆角</b>转角 R 处理，防应力集中</li>
+            <li><b>⑥ 限位孔</b>摆臂限位螺丝孔位</li>
+            <li><b>⑦ 过线孔</b>电机线穿过</li>
+            <li><b>⑧ 优化</b>减重 + 检查干涉</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ===== 底盘选型对比 ===== -->
+      <section id="tab-compare" class="tab-panel" style="display:none;">
+        <figure class="photo-fig" data-reveal style="margin-top:0;">
+          <img src="assets/asabe/整车装配体-photo.png" alt="整车装配体" loading="lazy">
+          <figcaption><strong>整车装配</strong>——悬挂模块四角各一组；底盘之上是立柱、机械臂与末端执行器。
+          悬挂模块是标准化设计：一组验证通过，四角直接复制。</figcaption>
+        </figure>
+
+        <div class="stage">
+          <h3>四种底盘怎么选</h3>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>维度</th><th>麦轮</th><th>全向轮 Omni</th><th>四轮差速</th><th>舵轮</th></tr></thead>
+              <tbody>
+                <tr><td><strong>自由度</strong></td><td>3（平移 2 + 自转）</td><td>3</td><td>2（前进 + 自转）</td><td>3（+转向机构）</td></tr>
+                <tr><td><strong>横移能力</strong></td><td class="hl">✓ 完整侧移</td><td>✓（辊子打滑略多）</td><td>✗ 必须先转向</td><td>✗（需转向循环）</td></tr>
+                <tr><td><strong>效率/续航</strong></td><td>辊子摩擦损失大</td><td>中等</td><td class="hl">最高（纯滚动）</td><td>高</td></tr>
+                <tr><td><strong>控制复杂度</strong></td><td>解算简单（线性公式）</td><td>解算简单</td><td>最简单</td><td>最高（转向环）</td></tr>
+                <tr><td><strong>越障/场地适应</strong></td><td>差（辊子细）</td><td>差</td><td>较好</td><td>较好</td></tr>
+                <tr><td><strong>典型场景</strong></td><td>场地赛分拣（要横移对位）</td><td>紧凑场地</td><td>循迹长直道</td><td>AGV/精准停靠</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-block" style="margin-bottom:0;">
+            <div class="f-title">选型直觉</div>
+            <div class="f-note">
+              场地赛要频繁<strong>横移对位</strong>（对准蛋、对准筐）→ 麦轮/全向轮；
+              只走直线和弯道 → 差速（效率最高、控制最简单）；
+              要重载精准停靠 → 舵轮。无论哪种，<strong>悬挂模块都是现代标配</strong>——
+              贴地性是循迹与闭环的前提。
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="page-nav">
+        <a href="control.html">← 传感与控制</a>
+        <a href="actuators.html">执行器选型 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { createControls, svg, line, circle, clear } from './common/controls.js';
+    import { TAU, deg } from './common/math.js';
+    import { COLORS, hatchPattern, ground, arrow, bar, stepControls } from './common/draw.js';
+
+    injectSidebar('chassis');
+
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+    });
+
+    /* ============================================================
+     * 麦轮运动学解算器
+     * O-长方形安装，A/B 轮镜像（A=左旋辊 45°↗，B=右旋辊 45°↘）
+     * 轮速（前左 FL=A、前右 FR=B、后左 RL=B、后右 RR=A 布局下）：
+     *   v_FL = vx - vy - ωL,  v_FR = vx + vy + ωL
+     *   v_RL = vx + vy - ωL,  v_RR = vx - vy + ωL
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('mc-svg');
+      const mount = document.getElementById('mc-controls-mount');
+      const verdictEl = document.getElementById('mc-verdict');
+      const P = { vx: 0.6, vy: 0, w: 0 };
+      const L = 0.15; // 半轮距（m，示意）
+
+      const bind = (k) => {
+        document.getElementById('mc-' + k).addEventListener('input', (e) => {
+          P[k] = parseFloat(e.target.value);
+          document.getElementById('mc-' + k + '-val').textContent = P[k].toFixed(2);
+          updateVerdict();
+        });
+      };
+      ['vx', 'vy', 'w'].forEach(bind);
+
+      function wheels() {
+        return {
+          FL: P.vx - P.vy - P.w * L,
+          FR: P.vx + P.vy + P.w * L,
+          RL: P.vx + P.vy - P.w * L,
+          RR: P.vx - P.vy + P.w * L,
+        };
+      }
+
+      function updateVerdict() {
+        const w = wheels();
+        const f = (v) => v.toFixed(2);
+        const mode = Math.abs(P.w) > 0.05 ? '自转中' : Math.abs(P.vy) > 0.05 ? '横移中' : '平移中';
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML = `<strong>${mode}</strong> · 四轮速度（正=前进）：<br>
+          前左 <code>${f(w.FL)}</code> · 前右 <code>${f(w.FR)}</code> · 后左 <code>${f(w.RL)}</code> · 后右 <code>${f(w.RR)}</code> m/s<br>
+          规律：对角相等时（FL=RR 且 FR=RL）→ 纯平移；对角异号 → 带自转`;
+      }
+
+      function render(phase) {
+        clear(svgEl);
+        const cx = 350, cy = 235;
+        const W = 200, H = 130; // 底盘半宽/半长（px）
+        const w = wheels();
+
+        // 底盘板（随 ω 旋转，随 vx/vy 平移展示运动趋势）
+        const drift = 26;
+        const px = cx + P.vy * drift * -1, py = cy - P.vx * 0; // 车头朝上：vy 左右漂
+        const bodyA = P.w * 0.35;
+        const bodyG = svg('g', { transform: `translate(${cx + Math.sin(phase * TAU) * P.vy * 22},${cy + Math.sin(phase * TAU) * P.vx * 22}) rotate(${deg(bodyA)})` });
+        // 板（剖面线 = 机架）
+        const hid = hatchPattern(svgEl);
+        bodyG.appendChild(svg('rect', { x: -W, y: -H, width: 2 * W, height: 2 * H, rx: 14, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2.2 }));
+        // 中心标记（箭头 = 车头方向）
+        bodyG.appendChild(arrow(bodyG, -0, -H + 16, 0, -H + 44, { color: COLORS.drive, width: 3 }));
+        const bt = svg('text', { x: 0, y: -H + 62, 'text-anchor': 'middle', fill: COLORS.drive, 'font-size': 11, 'font-weight': 600 });
+        bt.textContent = '前'; bodyG.appendChild(bt);
+        svgEl.appendChild(bodyG);
+
+        // 四轮（角上，随 bodyG 一起转 → 放进 bodyG）
+        const corners = [
+          { x: -W + 30, y: -H + 26, key: 'FL', name: 'FL·A轮', ax: 1 },
+          { x: W - 30, y: -H + 26, key: 'FR', name: 'FR·B轮', ax: -1 },
+          { x: -W + 30, y: H - 26, key: 'RL', name: 'RL·B轮', ax: -1 },
+          { x: W - 30, y: H - 26, key: 'RR', name: 'RR·A轮', ax: 1 },
+        ];
+        corners.forEach((c) => {
+          const spd = w[c.key];
+          const spinning = Math.abs(spd) > 0.01;
+          const rollA = phase * TAU * 2 * Math.sign(spd || 1);
+          // 轮体
+          const wheelG = svg('g', { transform: `translate(${c.x},${c.y})` });
+          wheelG.appendChild(svg('rect', { x: -14, y: -24, width: 28, height: 48, rx: 4, fill: COLORS.frame, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+          // 辊子（45° 斜线，A/B 镜像方向，随滚动相位转）
+          for (let i = 0; i < 4; i++) {
+            const yy = -18 + i * 12 + ((rollA * 6) % 12 + 12) % 12;
+            wheelG.appendChild(line(-11, yy, 11, yy - 8 * c.ax, { stroke: COLORS.driven, 'stroke-width': 3 }));
+          }
+          // 速度矢量（轮的线速度方向 = 世界系；教学近似画在轮心，长度∝|v|）
+          bodyG.appendChild(wheelG);
+          const lbl = svg('text', { x: c.x, y: c.y + 38, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10, 'font-family': 'monospace' });
+          lbl.textContent = c.name; bodyG.appendChild(lbl);
+        });
+
+        // 速度矢量（世界系，画在车体外）
+        const vcx = cx, vcy = cy;
+        if (Math.hypot(P.vx, P.vy) > 0.03 || Math.abs(P.w) > 0.05) {
+          svgEl.appendChild(arrow(svgEl, vcx, vcy, vcx - P.vy * 60, vcy - P.vx * 60, { color: COLORS.hi, width: 3, label: `v=(${P.vx.toFixed(1)},${P.vy.toFixed(1)})` }));
+          if (Math.abs(P.w) > 0.05) {
+            // ω 弧形箭头
+            const r = 42;
+            const dir = Math.sign(P.w);
+            const a0 = -Math.PI / 2 + 0.3, a1 = -Math.PI / 2 + 0.3 + dir * 1.6;
+            svgEl.appendChild(svg('path', {
+              d: `M ${vcx + r * Math.cos(a0)},${vcy + r * Math.sin(a0)} A ${r} ${r} 0 0 ${dir > 0 ? 1 : 0} ${vcx + r * Math.cos(a1)},${vcy + r * Math.sin(a1)}`,
+              fill: 'none', stroke: COLORS.hi, 'stroke-width': 2.5,
+            }));
+            const tipx = vcx + r * Math.cos(a1), tipy = vcy + r * Math.sin(a1);
+            const tang = a1 + dir * Math.PI / 2;
+            svgEl.appendChild(svg('polygon', {
+              points: `${tipx + 8 * Math.cos(tang)},${tipy + 8 * Math.sin(tang)} ${tipx + 4 * Math.cos(tang + 2.5)},${tipy + 4 * Math.sin(tang + 2.5)} ${tipx + 4 * Math.cos(tang - 2.5)},${tipy + 4 * Math.sin(tang - 2.5)}`,
+              fill: COLORS.hi,
+            }));
+            const wt = svg('text', { x: vcx + 58, y: vcy - 30, fill: COLORS.hi, 'font-size': 11, 'font-family': 'monospace' });
+            wt.textContent = `ω=${P.w.toFixed(1)}`; svgEl.appendChild(wt);
+          }
+        }
+
+        // 坐标系说明
+        const t = svg('text', { x: 350, y: 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+        t.textContent = 'O-长方形安装 · 对角 A/A、B/B；拖动滑块看四轮速度分配';
+        svgEl.appendChild(t);
+        const t2 = svg('text', { x: 350, y: 46, 'text-anchor': 'middle', fill: COLORS.ref, 'font-size': 11.5 });
+        t2.textContent = '橙斜线 = 辊子 45°（A 左旋 / B 右旋，互为镜像）——横移与自转全靠它';
+        svgEl.appendChild(t2);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 5000, onTick: (p) => render(p) });
+      tabCtls['mecanum'] = ctl;
+    })();
+
+    /* ============================================================
+     * 悬挂模块爆炸图（静态）：三零件 + 铜套 + 拉簧
+     * 装配轴线（竖直虚线）从上到下：底板连接架 → 摆臂×2 → 电机连接板
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('ex-svg');
+      const hid = hatchPattern(svgEl, 'hatch2');
+      const label = (x, y, text, color, anchor) => {
+        const t = svg('text', { x, y, fill: color || '#5a6472', 'font-size': 12.5, 'font-weight': 600, 'text-anchor': anchor || 'start' });
+        t.textContent = text; svgEl.appendChild(t);
+      };
+      const note = (x, y, text) => {
+        const t = svg('text', { x, y, fill: '#8a919b', 'font-size': 11 });
+        t.textContent = text; svgEl.appendChild(t);
+      };
+
+      const cx = 350;
+
+      // —— 底板连接架（顶部）——
+      const mountY = 70;
+      // 顶板（30×30 四孔）
+      svgEl.appendChild(svg('rect', { x: cx - 80, y: mountY, width: 160, height: 12, rx: 2, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      [[-56, 0], [56, 0]].forEach(([dx]) => {
+        [-1, 1].forEach((s) => {
+          svgEl.appendChild(circle(cx + dx + s * 0, mountY + 6, 3, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.2 }));
+        });
+      });
+      // 侧壁（左右两片向下）
+      svgEl.appendChild(svg('rect', { x: cx - 84, y: mountY + 12, width: 10, height: 78, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6 }));
+      svgEl.appendChild(svg('rect', { x: cx + 74, y: mountY + 12, width: 10, height: 78, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6 }));
+      label(cx + 108, mountY + 8, '① 底板连接架', COLORS.ink);
+      note(cx + 108, mountY + 24, '30×30 四孔连车底板');
+      note(cx + 108, mountY + 38, '侧壁压铜套；背面六角坑埋螺母');
+
+      // —— 装配轴线（虚线）——
+      [cx - 70, cx + 70].forEach((ax) => {
+        svgEl.appendChild(line(ax, mountY + 12, ax, 356, { stroke: COLORS.ref, 'stroke-width': 1.2, 'stroke-dasharray': '5 5' }));
+      });
+
+      // —— 平行摆臂（中部，两根）——
+      const armY = 210;
+      [-1, 1].forEach((s) => {
+        const g = svg('g', { transform: `translate(${cx + s * 130},${armY}) rotate(${s * -12})` });
+        g.appendChild(svg('rect', { x: -85, y: -6, width: 170, height: 12, rx: 3, fill: COLORS.drive, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+        // 两端孔
+        g.appendChild(circle(-74, 0, 5, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+        g.appendChild(circle(74, 0, 5, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+        svgEl.appendChild(g);
+      });
+      label(cx + 178, armY - 8, '② 平行杆 ×2', COLORS.drive);
+      note(cx + 178, armY + 8, '等长 · 孔 Ø6.4 套铜套');
+      note(cx + 178, armY + 22, '厚 5 mm · 两端铰接');
+
+      // —— 电机连接板（底部）——
+      const motY = 330;
+      const g3 = svg('g', { transform: `translate(${cx},${motY})` });
+      g3.appendChild(svg('rect', { x: -95, y: -14, width: 190, height: 14, rx: 2, fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      g3.appendChild(svg('rect', { x: -95, y: 0, width: 190, height: 8, rx: 1, fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 1.4, opacity: 0.75 }));
+      // 法兰孔位（42 步进示意：31 孔距 + 中孔）
+      [[-15.5, 0], [15.5, 0], [0, -15.5], [0, 15.5]].forEach(([fx, fy]) => {
+        g3.appendChild(circle(fx * 2, 0, 2.6, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1 }));
+      });
+      svgEl.appendChild(g3);
+      label(cx + 110, motY - 10, '③ 电机连接板', COLORS.driven);
+      note(cx + 110, motY + 6, '始终竖直（平行四边形）');
+      note(cx + 110, motY + 20, '法兰孔位按电机定');
+
+      // —— 铜套（中部两侧，黄铜色）——
+      [[cx - 70, 165], [cx + 70, 165], [cx - 70, 285], [cx + 70, 285]].forEach(([bx, by]) => {
+        svgEl.appendChild(svg('rect', { x: bx - 7, y: by - 5, width: 14, height: 10, rx: 2, fill: '#c9a24b', stroke: '#8a6d1f', 'stroke-width': 1.4 }));
+      });
+      label(cx - 205, 158, '铜套 ×4', '#8a6d1f', 'end');
+      note(cx - 205, 172, 'Ø6×5 黄铜', '#8a919b');
+      // note() 不支持 anchor 参数，补一个左对齐修正
+      const lastNote = svgEl.lastChild; lastNote.setAttribute('text-anchor', 'end');
+
+      // —— 拉簧（两条锯齿线，近短对角线）——
+      const springLine = (x1, y1, x2, y2, col) => {
+        let d = `M ${x1},${y1}`;
+        const n = 8;
+        for (let i = 1; i <= n; i++) {
+          const tt = i / (n + 1);
+          const zx = x1 + (x2 - x1) * tt + (i % 2 ? 8 : -8);
+          const zy = y1 + (y2 - y1) * tt;
+          d += ` L ${zx.toFixed(1)},${zy.toFixed(1)}`;
+        }
+        d += ` L ${x2},${y2}`;
+        svgEl.appendChild(svg('path', { d, fill: 'none', stroke: col, 'stroke-width': 2 }));
+      };
+      springLine(cx - 78, 240, cx - 30, 316, COLORS.hi);
+      springLine(cx + 78, 240, cx + 30, 316, COLORS.hi);
+      label(cx - 205, 262, '拉簧 ×2', COLORS.hi, 'end');
+      const ln2 = svgEl.lastChild;
+      ln2.setAttribute('text-anchor', 'end');
+      note(cx - 205, 276, '短对角线方向');
+      const ln3 = svgEl.lastChild;
+      ln3.setAttribute('text-anchor', 'end');
+
+      const t = svg('text', { x: 350, y: 24, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+      t.textContent = '悬挂模块爆炸图：三个自制打印件 + 铜套/螺丝/螺母标准件 + 成品拉簧';
+      svgEl.appendChild(t);
+    })();
+
+    /* ============================================================
+     * 平行杆悬挂动画：颠簸路面 → 轮子跟随 → 电机板保持竖直
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('sp-svg');
+      const mount = document.getElementById('sp-controls-mount');
+      const stepsMount = document.getElementById('sp-steps-mount');
+
+      // 路面轮廓（正弦颠簸）
+      const roadY = (x, t) => 340 - 18 * Math.sin(x / 90 + t * 2) - 10 * Math.sin(x / 47 + t * 1.3);
+
+      function render(phase) {
+        clear(svgEl);
+        const t = phase * 2;
+        const cx = 350;
+        // —— 路面 ——
+        let rd = `M 60,${roadY(60, t)}`;
+        for (let x = 62; x <= 640; x += 6) rd += ` L ${x},${roadY(x, t)}`;
+        svgEl.appendChild(svg('path', { d: rd, fill: 'none', stroke: COLORS.ink, 'stroke-width': 3 }));
+        // 路面下方地面符号（跟随几处）
+        for (let x = 80; x <= 620; x += 60) {
+          const y = roadY(x, t);
+          svgEl.appendChild(line(x, y, x - 8, y + 9, { stroke: COLORS.ink, 'stroke-width': 1.2 }));
+          svgEl.appendChild(line(x + 16, y, x + 8, y + 9, { stroke: COLORS.ink, 'stroke-width': 1.2 }));
+        }
+
+        // —— 悬挂模块（车架固定，轮子随路面） ——
+        const frameX = 330, frameY = 150; // 车架铰点（上）
+        const wheelX0 = cx + 60;          // 轮心 x（固定 x，y 随路面）
+        const wy = roadY(wheelX0, t) - 30;
+        const upper = { x: frameX, y: frameY };
+        const lower = { x: frameX, y: frameY + 44 };
+        const wheelUp = { x: wheelX0, y: wy - 22 };
+        const wheelLo = { x: wheelX0, y: wy + 22 };
+        // 摆臂（双线杆）
+        svgEl.appendChild(bar(upper.x, upper.y, wheelUp.x, wheelUp.y, { color: COLORS.drive, th: 8 }));
+        svgEl.appendChild(bar(lower.x, lower.y, wheelLo.x, wheelLo.y, { color: COLORS.drive, th: 8 }));
+        // 电机板（连接两摆臂末端，保持竖直 = 平行四边形连杆）
+        svgEl.appendChild(bar(wheelUp.x, wheelUp.y, wheelLo.x, wheelLo.y, { color: COLORS.driven, th: 9 }));
+        // 电机（板后侧）
+        svgEl.appendChild(svg('rect', { x: wheelUp.x + 8, y: wheelUp.y + 2, width: 34, height: 40, rx: 4, fill: '#2a3a5c', stroke: '#1a2540', 'stroke-width': 1.8 }));
+        const mt = svg('text', { x: wheelUp.x + 25, y: wheelUp.y + 26, 'text-anchor': 'middle', fill: 'white', 'font-size': 9.5 });
+        mt.textContent = '电机'; svgEl.appendChild(mt);
+        // 轮
+        svgEl.appendChild(circle(wheelX0, wy + 22 + 18, 26, { fill: COLORS.frame }));
+        svgEl.appendChild(circle(wheelX0, wy + 22 + 18, 9, { fill: COLORS.ref }));
+        // 拉簧（车架 → 摆臂中点，锯齿线）
+        const midArm = { x: (upper.x + wheelUp.x) / 2, y: (upper.y + wheelUp.y) / 2 };
+        const sprA = { x: frameX - 40, y: frameY + 8 };
+        let sd = `M ${sprA.x},${sprA.y}`;
+        const nZ = 7;
+        for (let i = 1; i <= nZ; i++) {
+          const tt = i / (nZ + 1);
+          const zx = sprA.x + (midArm.x - sprA.x) * tt + (i % 2 ? 9 : -9);
+          const zy = sprA.y + (midArm.y - sprA.y) * tt;
+          sd += ` L ${zx.toFixed(1)},${zy.toFixed(1)}`;
+        }
+        sd += ` L ${midArm.x},${midArm.y}`;
+        svgEl.appendChild(svg('path', { d: sd, fill: 'none', stroke: COLORS.driven, 'stroke-width': 2.4 }));
+        const st = svg('text', { x: (sprA.x + midArm.x) / 2 - 12, y: (sprA.y + midArm.y) / 2 - 8, fill: COLORS.driven, 'font-size': 10.5 });
+        st.textContent = '拉簧（预紧贴地）'; svgEl.appendChild(st);
+
+        // 车架（剖面线）
+        const hid = hatchPattern(svgEl);
+        svgEl.appendChild(svg('rect', { x: frameX - 70, y: frameY - 34, width: 140, height: 30, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2, rx: 4 }));
+        const ft = svg('text', { x: frameX, y: frameY - 14, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11 });
+        ft.textContent = '车架（固定）'; svgEl.appendChild(ft);
+
+        // 铰点
+        [upper, lower, wheelUp, wheelLo].forEach(p => {
+          svgEl.appendChild(circle(p.x, p.y, 5, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 2 }));
+        });
+
+        // 竖直参考线（验证电机板保持竖直）
+        svgEl.appendChild(line(wheelUp.x + 62, wheelUp.y, wheelUp.x + 62, wheelLo.y, { stroke: COLORS.hi, 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
+        const vt = svg('text', { x: wheelUp.x + 68, y: (wheelUp.y + wheelLo.y) / 2 + 4, fill: COLORS.hi, 'font-size': 10.5 });
+        vt.textContent = '始终竖直'; svgEl.appendChild(vt);
+
+        // 轮跳动量读数
+        const lift = (wy - 190).toFixed(0);
+        const lt = svg('text', { x: 350, y: 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+        lt.textContent = `颠簸路面：轮子随路面浮动（当前跳动 ${lift} px），电机板始终竖直，拉簧伸缩吸能`;
+        svgEl.appendChild(lt);
+      }
+
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      tabCtls['suspension'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 铰接剖面（重绘：PDF 真实同轴结构，双视图）
+     * 视图A：沿铰轴看（同心圆族）
+     * 视图B：过轴线全剖（水平同轴串：侧壁|铜套|摆臂|六角坑螺母|螺丝）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('hg-svg');
+      const hid = hatchPattern(svgEl);
+
+      /* ---- 视图A：沿铰轴看（左半，cx=190）---- */
+      const ax = 190, ay = 165;
+      // 侧壁外形（大矩形示意）
+      svgEl.appendChild(svg('rect', { x: ax - 120, y: ay - 95, width: 240, height: 190, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2, rx: 3 }));
+      // Ø6 轴颈（凸出侧壁的圆柱 → 正视图为圆）
+      svgEl.appendChild(circle(ax, ay, 34, { fill: '#d8d5cc', stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 铜套外圆（黄铜）
+      svgEl.appendChild(circle(ax, ay, 26, { fill: '#c9a24b', stroke: '#8a6d1f', 'stroke-width': 2 }));
+      // 摆臂孔 Ø6.4（套在铜套外转动 → 画在铜套外稍大处示意间隙）
+      svgEl.appendChild(circle(ax, ay, 30, { fill: 'none', stroke: COLORS.drive, 'stroke-width': 3, 'stroke-dasharray': '3 4' }));
+      // 大平头螺丝头（大圆盘）
+      svgEl.appendChild(circle(ax, ay, 17, { fill: '#aab0b8', stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 螺杆截面
+      svgEl.appendChild(circle(ax, ay, 8, { fill: '#8a919b', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 十字槽示意
+      svgEl.appendChild(line(ax - 8, ay, ax + 8, ay, { stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      svgEl.appendChild(line(ax, ay - 8, ax, ay + 8, { stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 六角沉孔虚线（侧壁背面，虚线=不可见轮廓）
+      const hexPts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + Math.PI / 6;
+        hexPts.push(`${(ax + 42 * Math.cos(a)).toFixed(1)},${(ay + 42 * Math.sin(a)).toFixed(1)}`);
+      }
+      svgEl.appendChild(svg('polygon', { points: hexPts.join(' '), fill: 'none', stroke: COLORS.ref, 'stroke-width': 1.6, 'stroke-dasharray': '6 4' }));
+      const va = svg('text', { x: ax, y: ay - 105, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 });
+      va.textContent = '视图 A · 沿铰轴看'; svgEl.appendChild(va);
+
+      /* ---- 视图B：过轴线全剖（右半，水平同轴串）---- */
+      const bx = 480, by = 165;
+      const axisY = by;
+      // 点画线（轴线）
+      svgEl.appendChild(line(bx - 130, axisY, bx + 130, axisY, { stroke: COLORS.ink, 'stroke-width': 1, 'stroke-dasharray': '12 3 3 3' }));
+      // 侧壁（左端，剖面线）
+      svgEl.appendChild(svg('rect', { x: bx - 118, y: by - 70, width: 24, height: 140, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 六角坑（侧壁右侧面，放大画：深 2.8 → 视觉 14px）
+      svgEl.appendChild(svg('rect', { x: bx - 94, y: by - 26, width: 14, height: 52, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 防松螺母（埋在六角坑里，横截面）
+      svgEl.appendChild(svg('rect', { x: bx - 91, y: by - 18, width: 11, height: 36, fill: '#aab0b8', stroke: COLORS.ink, 'stroke-width': 1.6 }));
+      // 尼龙嵌圈
+      svgEl.appendChild(svg('rect', { x: bx - 91, y: by - 5, width: 11, height: 10, fill: COLORS.driven, opacity: 0.65 }));
+      // 铜套（黄铜，从侧壁右侧面伸出，高5 → 视觉 50px）
+      svgEl.appendChild(svg('rect', { x: bx - 80, y: by - 25, width: 50, height: 50, fill: '#c9a24b', stroke: '#8a6d1f', 'stroke-width': 2 }));
+      // 摆臂（绿色，孔 Ø6.4 套铜套外 → 剖面画在铜套右侧，中间放大间隙）
+      svgEl.appendChild(svg('rect', { x: bx - 30, y: by - 27, width: 46, height: 54, fill: COLORS.drive, stroke: COLORS.ink, 'stroke-width': 2, rx: 2 }));
+      // 台阶 0.4 让位（摆臂根部两侧下沉示意）
+      svgEl.appendChild(svg('rect', { x: bx - 33, y: by - 24, width: 5, height: 48, fill: '#fbfaf6', stroke: 'none', opacity: 0.9 }));
+      // 大平头螺丝（头部大圆盘在右 + 螺杆沿轴线穿到螺母）
+      svgEl.appendChild(svg('rect', { x: bx + 16, y: by - 34, width: 12, height: 68, rx: 2, fill: '#aab0b8', stroke: COLORS.ink, 'stroke-width': 2 }));
+      svgEl.appendChild(svg('rect', { x: bx - 78, y: by - 7, width: 96, height: 14, fill: '#8a919b', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      // 螺纹示意（螺杆左端进入螺母区）
+      for (let i = 0; i < 6; i++) {
+        const sx = bx - 76 + i * 8;
+        svgEl.appendChild(line(sx, by - 7, sx + 4, by + 7, { stroke: COLORS.ink, 'stroke-width': 1 }));
+      }
+      const vb = svg('text', { x: bx, y: by - 92, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 });
+      vb.textContent = '视图 B · 过轴线全剖'; svgEl.appendChild(vb);
+
+      /* ---- 标注 ---- */
+      const callout = (x1, y1, x2, y2, text, color, anchor) => {
+        svgEl.appendChild(line(x1, y1, x2, y2, { stroke: color || COLORS.ref, 'stroke-width': 1.2 }));
+        const e = svg('text', { x: x2 + 6, y: y2 + 4, fill: color || '#5a6472', 'font-size': 11.5, 'text-anchor': anchor || 'start' });
+        e.textContent = text; svgEl.appendChild(e);
+      };
+      // 视图A标注
+      callout(ax + 26, ay - 18, ax + 60, ay - 60, '铜套外圆 Ø6（黄铜）', '#8a6d1f');
+      callout(ax - 17, ay - 6, ax - 66, ay - 42, '大平头螺丝头', null, 'end');
+      callout(ax + 30, ay + 20, ax + 62, ay + 58, '摆臂孔 Ø6.4（虚线=转动件）', COLORS.drive);
+      // 视图B标注
+      callout(bx - 80, by - 25, bx - 108, by - 68, '铜套压在侧壁上', '#8a6d1f', 'end');
+      callout(bx - 8, by - 27, bx - 16, by - 78, '摆臂（厚 5）', COLORS.drive, 'end');
+      callout(bx + 22, by - 20, bx + 60, by - 62, '大平头螺丝（防轴向滑出）');
+      callout(bx - 88, by + 20, bx - 108, by + 72, '防松螺母埋六角坑', null, 'end');
+      callout(bx - 31, by + 24, bx - 44, by + 78, '台阶 0.4 让位', COLORS.hi, 'end');
+      const cb = svg('text', { x: bx + 60, y: by - 62 + 18, fill: '#5a6472', 'font-size': 10.5 });
+      svgEl.appendChild(cb);
+      const eq = svg('text', { x: 350, y: 385, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13, 'font-weight': 600 });
+      eq.textContent = '同轴结构：侧壁 → 铜套(Ø6×5) → 摆臂孔(6.4 套转) → 大平头螺丝沿轴穿 → 螺母埋六角坑压紧';
+      svgEl.appendChild(eq);
+    })();
+
+    /* ============================================================
+     * 六角沉孔专题图（剖视 + 俯视）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('hx-svg');
+      const hid = hatchPattern(svgEl, 'hatch3');
+
+      // —— 剖视（左）：板厚 5（视觉 40px），Ø4.2 通孔 + 六角坑深 2.8（视觉 22px）——
+      const sx = 200, sy = 120;
+      svgEl.appendChild(svg('rect', { x: sx, y: sy - 40, width: 130, height: 80, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 六角坑（左侧内）
+      svgEl.appendChild(svg('rect', { x: sx, y: sy - 30, width: 22, height: 60, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 通孔 Ø4.2（窄缝）
+      svgEl.appendChild(svg('rect', { x: sx + 22, y: sy - 12, width: 108, height: 24, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 螺母（埋坑中）
+      svgEl.appendChild(svg('rect', { x: sx + 2, y: sy - 22, width: 20, height: 44, fill: '#aab0b8', stroke: COLORS.ink, 'stroke-width': 1.6 }));
+      // 螺杆
+      svgEl.appendChild(svg('rect', { x: sx + 22, y: sy - 8, width: 108, height: 16, fill: '#8a919b', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      // 标注
+      const a1 = svg('text', { x: sx + 65, y: sy - 52, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-weight': 600 });
+      a1.textContent = '剖视：通孔 Ø4.2 + 六角坑'; svgEl.appendChild(a1);
+      const d1 = svg('text', { x: sx + 11, y: sy + 58, 'text-anchor': 'middle', fill: '#8a6d1f', 'font-size': 11, 'font-weight': 600 });
+      d1.textContent = '深 2.8'; svgEl.appendChild(d1);
+      const d2 = svg('text', { x: sx + 76, y: sy + 58, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11 });
+      d2.textContent = '通孔 Ø4.2（螺丝穿过）'; svgEl.appendChild(d2);
+      // 引线
+      svgEl.appendChild(line(sx + 11, sy + 30, sx + 11, sy + 46, { stroke: '#8a6d1f', 'stroke-width': 1.2 }));
+      svgEl.appendChild(line(sx + 76, sy + 12, sx + 76, sy + 46, { stroke: COLORS.ref, 'stroke-width': 1.2 }));
+
+      // —— 俯视（右）：六角 + 内切圆 ——
+      const fx = 520, fy = 120;
+      const R = 34; // 六角外接圆（视觉）——内切圆 Ø7.1 视觉 48 → 外接 = 48/√3×… 用视觉比例
+      svgEl.appendChild(svg('rect', { x: fx - 70, y: fy - 70, width: 140, height: 140, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2, rx: 3 }));
+      // 六角孔
+      const pts = [];
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 + Math.PI / 6;
+        pts.push(`${(fx + R * Math.cos(a)).toFixed(1)},${(fy + R * Math.sin(a)).toFixed(1)}`);
+      }
+      svgEl.appendChild(svg('polygon', { points: pts.join(' '), fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      // 通孔圆
+      svgEl.appendChild(circle(fx, fy, 15, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      // 螺母叠影（虚线）
+      svgEl.appendChild(svg('polygon', { points: pts.map(p => p).join(' '), fill: 'none', stroke: '#aab0b8', 'stroke-width': 2.4, 'stroke-dasharray': '4 3', transform: `translate(${fx},${fy}) scale(.92) translate(${-fx},${-fy})` }));
+      const a2 = svg('text', { x: fx, y: fy - 84, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-weight': 600 });
+      a2.textContent = '俯视：内切圆 Ø7.1 六角坑'; svgEl.appendChild(a2);
+      const d3 = svg('text', { x: fx, y: fy + 92, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11 });
+      d3.textContent = '灰色虚线 = 螺母就位后：六边卡死不转'; svgEl.appendChild(d3);
+    })();
+
+    /* ============================================================
+     * 摆动限位示意（静态）：M3×8 限位螺丝 + 摆角范围
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('lim-svg');
+      const hid = hatchPattern(svgEl, 'hatch4');
+      const cx = 230, cy = 120;
+
+      // 底板连接架侧壁（固定，剖面线）
+      svgEl.appendChild(svg('rect', { x: cx - 16, y: cy - 60, width: 16, height: 130, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 铰点
+      svgEl.appendChild(circle(cx, cy, 6, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 2 }));
+      svgEl.appendChild(circle(cx, cy, 2, { fill: COLORS.ink }));
+      // 摆臂三个位置：中位（实线）± 极限（虚线）
+      const armLen = 150;
+      const drawArm = (ang, style) => {
+        const x2 = cx + armLen * Math.cos(ang), y2 = cy + armLen * Math.sin(ang);
+        svgEl.appendChild(bar(cx, cy, x2, y2, { color: style === 'solid' ? COLORS.drive : COLORS.ref, th: style === 'solid' ? 8 : 5, opacity: style === 'solid' ? 1 : 0.65 }));
+        // 摆臂上画出碰块（极限位被螺丝挡住）
+        if (style !== 'solid') {
+          const bx2 = cx + (armLen - 20) * Math.cos(ang), by2 = cy + (armLen - 20) * Math.sin(ang);
+          svgEl.appendChild(svg('rect', { x: bx2 - 6, y: by2 - 6, width: 12, height: 12, fill: COLORS.ref, stroke: COLORS.ink, 'stroke-width': 1.2, opacity: 0.8 }));
+        }
+      };
+      drawArm(0.45, 'limit');   // 上极限
+      drawArm(-0.45, 'limit');  // 下极限
+      drawArm(0.05, 'solid');   // 当前位
+      // 限位螺丝（两个，装在侧壁上，位于摆臂碰块扫过的圆弧上）
+      [0.45, -0.45].forEach((ang) => {
+        const r = armLen - 20;
+        const lx = cx + r * Math.cos(ang), ly = cy + r * Math.sin(ang);
+        svgEl.appendChild(circle(lx, ly, 7, { fill: COLORS.hi, stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      });
+      // 摆角弧标注
+      svgEl.appendChild(svg('path', {
+        d: `M ${cx + 60 * Math.cos(-0.45)},${cy + 60 * Math.sin(-0.45)} A 60 60 0 0 1 ${cx + 60 * Math.cos(0.45)},${cy + 60 * Math.sin(0.45)}`,
+        fill: 'none', stroke: COLORS.hi, 'stroke-width': 2, 'stroke-dasharray': '4 3',
+      }));
+      const at = svg('text', { x: cx + 76, y: cy + 4, fill: COLORS.hi, 'font-size': 11.5, 'font-weight': 600 });
+      at.textContent = '允许摆角'; svgEl.appendChild(at);
+
+      // 右侧文字说明
+      const rx = 480;
+      const lines = [
+        ['限位螺丝：M3×8 内六角', COLORS.ink, 13, true],
+        ['· 装在底板连接架上，位于摆臂碰块的扫掠圆弧上', '#5a6472', 11.5, false],
+        ['· 摆臂碰到螺丝 = 到达机械极限（红色圆点）', '#5a6472', 11.5, false],
+        ['', '#5a6472', 6, false],
+        ['分工：', COLORS.ink, 12, true],
+        ['· 弹簧管"回中"——把轮子压向地面（持续力）', '#5a6472', 11.5, false],
+        ['· 限位管"极限"——挡住过坎瞬间的冲击（峰值力）', '#5a6472', 11.5, false],
+        ['· 没有限位：过坎冲击全靠铜套铰承受 → 孔磨大、间隙变大', '#b3372c', 11.5, false],
+      ];
+      lines.forEach(([txt, col, fs, bold], i) => {
+        const t = svg('text', { x: rx, y: 70 + i * 22, fill: col, 'font-size': fs, 'font-weight': bold ? 650 : 400 });
+        t.textContent = txt; svgEl.appendChild(t);
+      });
+    })();
+
+    /* ============================================================
+     * 电机法兰方案（静态）：42 步进法兰 + 两种安装
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('fl-svg');
+      const hid = hatchPattern(svgEl, 'hatch5');
+
+      // —— 左：42 步进电机法兰正视 ——
+      const mx = 200, my = 130;
+      // 法兰板
+      svgEl.appendChild(svg('rect', { x: mx - 52, y: my - 52, width: 104, height: 104, fill: '#d8d5cc', stroke: COLORS.ink, 'stroke-width': 2, rx: 4 }));
+      // 机身（后方，虚线示意）
+      svgEl.appendChild(svg('rect', { x: mx - 42, y: my - 42, width: 84, height: 84, fill: 'none', stroke: COLORS.ref, 'stroke-width': 1.4, 'stroke-dasharray': '5 4' }));
+      // 中孔止口 Ø22.5
+      svgEl.appendChild(circle(mx, my, 22, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 2 }));
+      svgEl.appendChild(circle(mx, my, 8, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      // 42 机身轮廓
+      svgEl.appendChild(svg('rect', { x: mx - 40, y: my - 40, width: 80, height: 80, fill: 'none', stroke: COLORS.ink, 'stroke-width': 1.4, 'stroke-dasharray': '8 4' }));
+      // 四角安装孔 31×31 孔距
+      [[-15.5, -15.5], [15.5, -15.5], [-15.5, 15.5], [15.5, 15.5]].forEach(([dx, dy]) => {
+        svgEl.appendChild(circle(mx + dx, my + dy, 4, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.5 }));
+      });
+      // 标注
+      svgEl.appendChild(line(mx - 15.5, my + 15.5, mx + 15.5, my + 15.5, { stroke: COLORS.hi, 'stroke-width': 1.2 }));
+      const t1 = svg('text', { x: mx, y: my + 78, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+      t1.textContent = '42 步进：31 孔距 + Ø22.5 止口'; svgEl.appendChild(t1);
+      const t2 = svg('text', { x: mx, y: my + 94, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 11 });
+      t2.textContent = '虚线 = 42×42 机身外形'; svgEl.appendChild(t2);
+      const th = svg('text', { x: mx, y: my - 66, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 });
+      th.textContent = '法兰正视'; svgEl.appendChild(th);
+
+      // —— 右：安装侧视（电机连接板 + 电机 + 轮）——
+      const ix = 500, iy = 60;
+      // 电机连接板（竖直，橙色）
+      svgEl.appendChild(svg('rect', { x: ix - 12, y: iy, width: 16, height: 170, fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 2, rx: 2 }));
+      // 电机（机身 + 法兰）
+      svgEl.appendChild(svg('rect', { x: ix + 4, y: iy + 35, width: 84, height: 42, fill: '#2a3a5c', stroke: '#1a2540', 'stroke-width': 1.8, rx: 4 }));
+      const mt = svg('text', { x: ix + 46, y: iy + 60, 'text-anchor': 'middle', fill: 'white', 'font-size': 10 });
+      mt.textContent = '电机'; svgEl.appendChild(mt);
+      // 输出轴 + 轮
+      svgEl.appendChild(svg('rect', { x: ix + 88, y: iy + 50, width: 26, height: 12, fill: '#aab0b8', stroke: COLORS.ink, 'stroke-width': 1.6 }));
+      svgEl.appendChild(svg('rect', { x: ix + 114, y: iy + 24, width: 18, height: 64, rx: 3, fill: COLORS.frame, stroke: COLORS.ink, 'stroke-width': 2 }));
+      // 斜辊子
+      for (let i = 0; i < 4; i++) {
+        const yy = iy + 32 + i * 13;
+        svgEl.appendChild(line(ix + 114, yy, ix + 132, yy - 8, { stroke: COLORS.driven, 'stroke-width': 3 }));
+      }
+      // 法兰螺栓
+      [iy + 44, iy + 68].forEach((by) => {
+        svgEl.appendChild(circle(ix + 4, by, 3.5, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.2 }));
+      });
+      const it = svg('text', { x: ix + 60, y: iy + 105, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12.5, 'font-weight': 600 });
+      it.textContent = '法兰直装侧视'; svgEl.appendChild(it);
+      const it2 = svg('text', { x: ix + 60, y: iy + 122, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 11 });
+      it2.textContent = '电机贴板、轴直接插轮——零中间环节'; svgEl.appendChild(it2);
+      // 摆臂连接示意（板上下铰点）
+      [iy + 8, iy + 152].forEach((by) => {
+        svgEl.appendChild(circle(ix - 4, by, 5, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+      });
+      const at = svg('text', { x: ix - 22, y: iy + 180, 'text-anchor': 'middle', fill: COLORS.drive, 'font-size': 11 });
+      at.textContent = '↑↓ 与平行摆臂铰接'; svgEl.appendChild(at);
+    })();
+  </script>
+</body>
+</html>

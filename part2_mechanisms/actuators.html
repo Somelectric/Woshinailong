@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>执行器与驱动选型 · 机构设计 Part 2</title>
+  <link rel="stylesheet" href="common/style.css">
+</head>
+<body>
+  <div class="app">
+    <div id="sidebar-mount"></div>
+    <main class="main">
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 11 页 · 落地</span>
+          <span class="chip chip-ghost">≈ 25 min</span>
+          <span class="chip chip-ghost">前置：10 底盘与悬挂</span>
+        </div>
+        <h1 class="ph-title">执行器选型 <span class="en">Actuators</span></h1>
+        <p class="ph-lead">
+          <strong>机构设计到这一步 confront 现实：</strong>每个自由度都要一个执行器来驱动。
+          选错执行器，机构再漂亮也白搭——扭矩不够带不动，速度不匹配快不起来，控制方式不对停不准。
+          这一页教你算清楚、选明白。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">扭矩计算</span>
+          <span class="tag">特性曲线</span>
+          <span class="tag">减速比</span>
+          <span class="tag">悬挂轮组</span>
+        </div>
+      </header>
+
+      <!-- ===== 关节扭矩计算器 ===== -->
+      <section class="stage">
+        <h3>关节扭矩计算器 · 你的关节到底要多大力</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 14px;">
+          最常见的场景：一根臂上挂着负载，舵机/电机要把它们抬起来。静态保持扭矩 =
+          重量 × 臂长（水平最不利位置），再乘安全系数选执行器。
+        </p>
+        <div class="calc-card" style="margin:0;">
+          <div class="calc-title">静态保持扭矩（水平臂最不利工况）</div>
+          <div class="calc-desc">拖动滑块，右侧实时更新所需扭矩与选型判读</div>
+          <div class="calc-grid">
+            <div class="calc-params">
+              <div class="param-row">
+                <label>负载质量 m（末端 + 爪 + 对象） <span class="val" id="ac-m-val">0.20</span> kg</label>
+                <input type="range" id="ac-m" min="0.02" max="2" step="0.01" value="0.20">
+              </div>
+              <div class="param-row">
+                <label>臂长 L（关节到负载质心） <span class="val" id="ac-l-val">0.25</span> m</label>
+                <input type="range" id="ac-l" min="0.05" max="0.6" step="0.01" value="0.25">
+              </div>
+              <div class="param-row">
+                <label>臂仰角 θ <span class="val" id="ac-ang-val">0</span> °（0=水平，最不利）</label>
+                <input type="range" id="ac-ang" min="0" max="90" step="5" value="0">
+              </div>
+              <div class="param-row">
+                <label>安全系数 SF <span class="val" id="ac-sf-val">2.0</span>（动态冲击余量）</label>
+                <input type="range" id="ac-sf" min="1" max="3" step="0.1" value="2.0">
+              </div>
+            </div>
+            <div class="calc-output">
+              <div class="co-row">
+                <span class="co-label">静态扭矩 T = mgL·cosθ</span>
+                <span class="co-value"><span id="ac-nm">0.49</span> <small>N·m</small></span>
+              </div>
+              <div class="co-row">
+                <span class="co-label">同单位换算</span>
+                <span class="co-value"><span id="ac-kgcm">5.0</span> <small>kg·cm</small></span>
+              </div>
+              <div class="co-row">
+                <span class="co-label">含安全系数 SF 的需求</span>
+                <span class="co-value"><span id="ac-need">10.0</span> <small>kg·cm</small></span>
+              </div>
+              <div class="calc-verdict" id="ac-verdict">…</div>
+              <svg id="ac-svg" viewBox="0 0 300 130" style="background:#fbfaf6; border-radius:6px;"></svg>
+            </div>
+          </div>
+        </div>
+
+        <details class="example-card" style="margin-top:16px;">
+          <summary>例题 · 收蛋臂的腕关节选多大舵机？</summary>
+          <div class="ex-body">
+            <p>设末端 = 蜂窝筐 80 g + 蛋 42 g + 刮板与舵机摆臂 60 g ≈ <strong>0.18 kg</strong>；
+            腕关节到末端质心 ≈ <strong>0.12 m</strong>；水平伸直是最不利姿态。</p>
+            <p style="font-family:var(--mono); text-align:center;">T = 0.18 × 9.81 × 0.12 ≈ 0.21 N·m ≈ 2.2 kg·cm</p>
+            <p>动态启停冲击取 SF = 2 → 需求 ≈ <strong>4.4 kg·cm</strong>。</p>
+            <div class="answer">选 9~13 kg·cm 数字舵机（MG996R 级别）即可，裕度再翻倍；肩关节（承担整臂）则要 20 kg·cm 以上——同一台机器人里扭矩需求从头到尾差一个量级。</div>
+          </div>
+        </details>
+      </section>
+
+      <!-- ===== 四类执行器对比 ===== -->
+      <section class="stage">
+        <h3>四类执行器怎么选</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 10px;">
+          比赛机器人上真正会纠结的就这四种。核心差异在<strong>控制方式</strong>：
+          位置要不要自己闭环？速度能不能调？停下来靠什么保证？
+        </p>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>维度</th><th>舵机</th><th>步进电机</th><th>直流减速 + 编码器</th><th>无刷电机</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>本质</strong></td>
+                <td>直流电机 + 减速箱 + 电位器，<strong>位置闭环出厂内置</strong></td>
+                <td>同步电机按脉冲步进，<strong>开环</strong></td>
+                <td>直流电机 + 齿轮箱，<strong>闭环靠自己</strong>（编码器 + PID）</td>
+                <td>三相永磁同步，<strong>FOC 场向控制</strong></td>
+              </tr>
+              <tr>
+                <td><strong>控制信号</strong></td>
+                <td>PWM 脉宽 = 角度（50 Hz）</td>
+                <td>step/dir 脉冲 + 细分</td>
+                <td>PWM 功率 + 编码器反馈</td>
+                <td>三相 PWM（ESC/FOC）</td>
+              </tr>
+              <tr>
+                <td><strong>速度范围</strong></td>
+                <td>0.1~0.3 s/60°（有限摆角或 360° 连续型）</td>
+                <td>低速好，高速掉步（&gt;600 rpm 慎用）</td>
+                <td>宽（减速比定档）</td>
+                <td>极宽（几千~几万 rpm）</td>
+              </tr>
+              <tr>
+                <td><strong>扭矩特性</strong></td>
+                <td>堵转扭矩可用（保持力强）</td>
+                <td>低速扭矩大、随速度衰减</td>
+                <td>峰值高（减速箱放大）</td>
+                <td>高速高效，低速需 FOC 才稳</td>
+              </tr>
+              <tr>
+                <td><strong>停止方式</strong></td>
+                <td>到位自动保持（内部闭环）</td>
+                <td>脉冲停即停（<strong>掉步无告警</strong>）</td>
+                <td>PID 刹车，真实位置可验证</td>
+                <td>FOC 零速保持（强）</td>
+              </tr>
+              <tr>
+                <td><strong>驱动器</strong></td>
+                <td>无需（信号直驱）</td>
+                <td>A4988 / DRV8825（¥10~15）</td>
+                <td>TB6612 / DRV8833 + 编码器</td>
+                <td>ESC / ODrive / VESC（贵）</td>
+              </tr>
+              <tr>
+                <td><strong>典型成本</strong></td>
+                <td>¥15~120</td>
+                <td>¥25~40</td>
+                <td>¥30~80</td>
+                <td>¥150+</td>
+              </tr>
+              <tr class="hl">
+                <td><strong>什么时候选</strong></td>
+                <td>关节摆动、翻板、爪——<strong>首选</strong></td>
+                <td>低速轻载、要省调参、预算极紧</td>
+                <td><strong>底盘轮组当前主流</strong></td>
+                <td>高转速、高效率需求（飞轮、推进）</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">一句话选型</div>
+          <div class="f-note">
+            <strong>要角度 → 舵机</strong>（闭环白送）；<strong>要转速位置兼得、能调参 → 直流 + 编码器</strong>；
+            <strong>图省事且低速 → 步进</strong>（留 50% 扭矩裕度防掉步）；<strong>要飞起来 → 无刷</strong>。
+            记住执行器 = 电机 + 减速 + 反馈的组合体，三个部分都可以自己配，也可以买现成模组。
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 直流电机特性曲线 ===== -->
+      <section class="stage">
+        <h3>直流电机的脾气：扭矩-转速曲线</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 10px;">
+          同一电压下，直流电机的扭矩和转速近似<strong>线性互换</strong>：堵转时扭矩最大、转速 0；空载时转速最高、扭矩 0。
+          减速箱的作用就是把工作点搬到"低速大扭矩"象限。
+        </p>
+        <div class="chart-card" style="margin:0;">
+          <svg id="dc-svg" viewBox="0 0 700 300"></svg>
+        </div>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">怎么用这条线选减速比</div>
+          <div class="f-note">
+            1. 从任务定<strong>需求点</strong>（如轮子：0.3 N·m @ 150 rpm）。<br>
+            2. 在电机曲线上找<strong>效率甜点</strong>（大约在最大扭矩 1/4~1/3 处，转速同步取）。
+            例如 0.05 N·m @ 4500 rpm。<br>
+            3. 减速比 i = 4500/150 = <strong>30</strong>（转速对上了）；检查扭矩：0.05 × 30 × η(0.8) = 1.2 N·m ≥ 0.3 ✓（有余量给加速）。<br>
+            4. 反向验证启动：堵转扭矩 0.2 × 30 × 0.8 = 4.8 N·m，坡道起步无忧。<br>
+            <strong>速度不匹配用 i 除，扭矩不够用 i 乘</strong>——但每次乘除都在挪工作点，最终要让电机落在"甜点"附近跑。
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 轮组模块 ===== -->
+      <section class="stage">
+        <h3>轮组模块：电机 + 弹簧悬挂 + 轮</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 10px;">
+          现在比赛机器人的轮组普遍做成一体化模块——为什么？
+        </p>
+        <svg id="ws-svg" viewBox="0 0 700 260"></svg>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">悬挂不只是"过坎舒服"</div>
+          <div class="f-note">
+            比赛场地是拼接胶合板 + 泡沫垫：<strong>接缝高差、局部不平、载荷转移</strong>都会让刚性轮组瞬间离地。
+            离地 = 打滑 = 编码器读数与真实位移脱钩 = 闭环失效。弹簧悬挂把每个轮子<strong>独立压向地面</strong>，
+            是"用机械弹性给控制算法兜底"。设计要点：弹簧预紧力 &gt; 单轮承载（保证全程压缩贴地），
+            行程 ±10~20 mm 覆盖场地公差，导向机构（平行四边形或滑槽）保证轮子只上下、不歪斜。
+          </div>
+        </div>
+      </section>
+
+      <figure class="photo-fig" data-reveal>
+        <img src="figure/actuator-dc-gearmotor.jpg" alt="直流减速电机结构（电机 + 减速箱 + 编码器爆炸图）" loading="lazy">
+        <figcaption><strong>直流减速电机结构图</strong>（电机 + 减速箱 + 编码器爆炸图）——选执行器时它提醒你一件事：
+        <strong>电机不只提供扭矩，它的安装法兰、重量、走线方向都是结构件的一部分</strong>。
+        减速比、堵转扭矩、额定转速三个参数决定它能不能满足本页的扭矩计算结果；
+        它最终怎么装进车里，见<a href="chassis.html" style="color:var(--accent); font-weight:600;">底盘与悬挂页</a>。</figcaption>
+      </figure>
+
+      <div class="page-nav">
+        <a href="chassis.html">← 底盘与悬挂</a>
+        <a href="engineering.html">工程实现 →</a>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { injectSidebar } from './common/sidebar.js';
+    import { svg, line, circle, clear } from './common/controls.js';
+    import { motorTorque, dcMotorCurve, deg, TAU } from './common/math.js';
+
+    injectSidebar('actuators');
+
+    /* ===== 扭矩计算器 ===== */
+    (function () {
+      const P = { m: 0.20, l: 0.25, ang: 0, sf: 2.0 };
+      const bind = (k, fmt) => {
+        document.getElementById('ac-' + k).addEventListener('input', (e) => {
+          P[k] = parseFloat(e.target.value);
+          document.getElementById('ac-' + k + '-val').textContent = fmt(P[k]);
+          update();
+        });
+      };
+      bind('m', (v) => v.toFixed(2));
+      bind('l', (v) => v.toFixed(2));
+      bind('ang', (v) => v.toFixed(0));
+      bind('sf', (v) => v.toFixed(1));
+
+      function update() {
+        const t = motorTorque({ m_kg: P.m, L_m: P.l, angle_deg: P.ang });
+        const need = t.kgcm * P.sf;
+        document.getElementById('ac-nm').textContent = t.Nm.toFixed(2);
+        document.getElementById('ac-kgcm').textContent = t.kgcm.toFixed(1);
+        document.getElementById('ac-need').textContent = need.toFixed(1);
+
+        const v = document.getElementById('ac-verdict');
+        // 俱乐部常见舵机档位参考
+        let pick, cls;
+        if (need <= 2) { pick = '9 g 蓝舵机（1.2~1.8 kg·cm）勉强，建议 9~13 kg·cm 数字舵机'; cls = 'warn'; }
+        else if (need <= 10) { pick = '9~13 kg·cm 数字舵机（MG996R 级）✓'; cls = 'ok'; }
+        else if (need <= 20) { pick = '20 kg·cm 数字舵机 ✓'; cls = 'ok'; }
+        else if (need <= 35) { pick = '35 kg·cm 大扭矩舵机 ✓'; cls = 'ok'; }
+        else { pick = '超出常见舵机档位——考虑配平（弹簧/配重）或改丝杆推杆'; cls = 'bad'; }
+        v.className = 'calc-verdict ' + cls;
+        v.textContent = `选型建议：${pick}`;
+
+        drawArm();
+      }
+
+      function drawArm() {
+        const s = document.getElementById('ac-svg');
+        clear(s);
+        const jx = 40, jy = 100;
+        const armLen = Math.min(240, P.l * 400);
+        const a = -P.ang * Math.PI / 180;
+        const ex = jx + armLen * Math.cos(a), ey = jy + armLen * Math.sin(a);
+        // 关节
+        s.appendChild(circle(jx, jy, 9, { fill: '#232a31' }));
+        // 臂
+        s.appendChild(line(jx, jy, ex, ey, { stroke: '#0e6b5c', 'stroke-width': 6, 'stroke-linecap': 'round' }));
+        // 负载
+        s.appendChild(circle(ex, ey, 8 + P.m * 10, { fill: '#d9662c', stroke: '#7a3a12', 'stroke-width': 2 }));
+        // 力臂虚线（水平投影）
+        s.appendChild(line(jx, jy + 26, ex, jy + 26, { stroke: '#8a919b', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
+        s.appendChild(line(ex, ey + 4, ex, jy + 26, { stroke: '#8a919b', 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }));
+        const t1 = svg('text', { x: (jx + ex) / 2, y: jy + 40, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10, 'font-family': 'monospace' });
+        t1.textContent = `水平力臂 = L·cosθ = ${(P.l * Math.cos(P.ang * Math.PI / 180) * 1000).toFixed(0)} mm`;
+        s.appendChild(t1);
+        // 负载箭头
+        s.appendChild(line(ex, ey - 14 - P.m * 10, ex, ey - 4 - P.m * 10, { stroke: '#b3372c', 'stroke-width': 2.5 }));
+        s.appendChild(svg('polygon', { points: `${ex-4},${ey-4-P.m*10} ${ex+4},${ey-4-P.m*10} ${ex},${ey+2-P.m*10}`, fill: '#b3372c' }));
+        const t2 = svg('text', { x: ex + 8, y: ey - 8 - P.m * 10, fill: '#b3372c', 'font-size': 10, 'font-family': 'monospace' });
+        t2.textContent = `mg = ${(P.m * 9.81).toFixed(1)} N`;
+        s.appendChild(t2);
+      }
+
+      update();
+    })();
+
+    /* ===== 直流电机特性曲线（静态 SVG） ===== */
+    (function () {
+      const s = document.getElementById('dc-svg');
+      const STALL = 0.2, N0 = 6000; // N·m, rpm
+      const gx = 70, gy = 240, gw = 560, gh = 170;
+      // 坐标轴
+      s.appendChild(line(gx, gy, gx + gw, gy, { stroke: '#232a31', 'stroke-width': 1.5 }));
+      s.appendChild(line(gx, gy, gx, gy - gh, { stroke: '#232a31', 'stroke-width': 1.5 }));
+      // 扭矩-转速线
+      s.appendChild(line(gx, gy - gh, gx + gw, gy, { stroke: '#0e6b5c', 'stroke-width': 2.5 }));
+      // 甜点区（最大扭矩 1/4~1/3）：x = gx + (1 - T/Tstall)·gw
+      const sweetXa = gx + (1 - 1 / 3) * gw, sweetXb = gx + (1 - 0.25) * gw;
+      s.appendChild(svg('rect', { x: sweetXa, y: gy - (1 / 3) * gh, width: sweetXb - sweetXa, height: (1 / 3) * gh, fill: '#e2efec', opacity: 0.85 }));
+      const sw = svg('text', { x: (sweetXa + sweetXb) / 2, y: gy - 0.36 * gh, 'text-anchor': 'middle', fill: '#0e6b5c', 'font-size': 11, 'font-weight': 600 });
+      sw.textContent = '效率甜点';
+      s.appendChild(sw);
+      // 工作点示例
+      const wpx = gx + (1 - 4500 / N0) * gw, wpy = gy - (0.05 / STALL) * gh;
+      s.appendChild(circle(wpx, wpy, 5, { fill: '#d9662c' }));
+      const wp = svg('text', { x: wpx + 8, y: wpy - 8, fill: '#d9662c', 'font-size': 11, 'font-family': 'monospace' });
+      wp.textContent = '电机甜点 0.05 N·m @ 4500 rpm';
+      s.appendChild(wp);
+      // 需求点
+      const dqx = gx + (1 - 150 / N0) * gw, dqy = gy - (0.3 / STALL) * gh;
+      s.appendChild(circle(dqx, Math.max(gy - gh, dqy), 5, { fill: '#b3372c' }));
+      const dq = svg('text', { x: dqx - 8, y: Math.max(gy - gh, dqy) - 8, fill: '#b3372c', 'font-size': 11, 'text-anchor': 'end', 'font-family': 'monospace' });
+      dq.textContent = '任务需求 0.3 N·m @ 150 rpm';
+      s.appendChild(dq);
+      // i=30 减速箭头（甜点 → 需求）
+      s.appendChild(svg('path', {
+        d: `M ${wpx},${wpy} C ${wpx - 60},${wpy - 60} ${dqx + 40},${dqy + 40} ${dqx},${Math.max(gy - gh, dqy)}`,
+        fill: 'none', stroke: '#8a919b', 'stroke-width': 1.5, 'stroke-dasharray': '5 4',
+      }));
+      const iLbl = svg('text', { x: (wpx + dqx) / 2, y: (wpy + Math.max(gy - gh, dqy)) / 2 - 10, fill: '#5a6472', 'font-size': 12, 'font-weight': 600 });
+      iLbl.textContent = 'i = 30 减速箱把甜点搬到需求点';
+      s.appendChild(iLbl);
+      // 轴标
+      const ax = svg('text', { x: gx + gw / 2, y: gy + 28, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11, 'font-family': 'monospace' });
+      ax.textContent = '转速 rpm（0 → 空载 6000）';
+      s.appendChild(ax);
+      const ay = svg('text', { x: gx - 14, y: gy - gh / 2, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11, 'font-family': 'monospace', transform: `rotate(-90 ${gx - 14} ${gy - gh / 2})` });
+      ay.textContent = '扭矩 N·m（0 → 堵转 0.2）';
+      s.appendChild(ay);
+    })();
+
+    /* ===== 轮组模块图（静态 SVG） ===== */
+    (function () {
+      const s = document.getElementById('ws-svg');
+      // 底盘板
+      s.appendChild(svg('rect', { x: 80, y: 60, width: 300, height: 16, fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 2, rx: 3 }));
+      // 悬挂臂（斜向下）+ 弹簧
+      const hx = 230, hy = 76;
+      const ax = 230, ay = 175;
+      // 导向柱
+      s.appendChild(line(hx - 26, hy, hx - 26, ay - 30, { stroke: '#8a919b', 'stroke-width': 5 }));
+      s.appendChild(line(hx + 26, hy, hx + 26, ay - 30, { stroke: '#8a919b', 'stroke-width': 5 }));
+      // 弹簧（锯齿）
+      let sd = `M ${hx},${hy + 6}`;
+      for (let i = 0; i < 7; i++) {
+        sd += ` L ${hx + (i % 2 ? 12 : -12)},${hy + 14 + i * 12}`;
+      }
+      sd += ` L ${hx},${ay - 34}`;
+      s.appendChild(svg('path', { d: sd, fill: 'none', stroke: '#d9662c', 'stroke-width': 3 }));
+      // 电机
+      s.appendChild(svg('rect', { x: hx - 34, y: ay - 46, width: 68, height: 44, fill: '#2a3a5c', rx: 5, stroke: '#1a2540', 'stroke-width': 2 }));
+      const mt = svg('text', { x: hx, y: ay - 20, 'text-anchor': 'middle', fill: 'white', 'font-size': 10 });
+      mt.textContent = '直流电机+减速';
+      s.appendChild(mt);
+      // 轮
+      s.appendChild(circle(ax, ay + 22, 34, { fill: '#232a31' }));
+      s.appendChild(circle(ax, ay + 22, 13, { fill: '#8a919b' }));
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * TAU;
+        s.appendChild(line(ax + 13 * Math.cos(a), ay + 22 + 13 * Math.sin(a), ax + 30 * Math.cos(a), ay + 22 + 30 * Math.sin(a), { stroke: '#5a6472', 'stroke-width': 3 }));
+      }
+      // 地面（不平）
+      s.appendChild(svg('path', { d: 'M 60,262 L 200,262 L 215,250 L 300,250 L 318,262 L 620,262', fill: 'none', stroke: '#232a31', 'stroke-width': 3 }));
+      // 标注
+      const lbl = (x, y, t, c, anchor) => {
+        const e = svg('text', { x, y, fill: c || '#5a6472', 'font-size': 11.5, 'text-anchor': anchor || 'start' });
+        e.textContent = t; s.appendChild(e);
+      };
+      lbl(396, 68, '底盘板', '#232a31');
+      lbl(396, 130, '弹簧：预紧 > 单轮载荷，行程 ±10~20 mm', '#d9662c');
+      lbl(396, 150, '导向柱：轮子只上下、不歪斜', '#8a919b');
+      lbl(396, 190, '编码器（在电机尾部，图略）', '#2a3a5c');
+      lbl(396, 250, '场地接缝高差 → 悬挂吸收，轮不离地', '#232a31');
+      const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+      t.textContent = '一体化轮组模块：贴地性是闭环控制的前提';
+      s.appendChild(t);
+    })();
+  </script>
+</body>
+</html>
