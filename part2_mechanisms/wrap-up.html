@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>选型决策树 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
   <style>
@@ -125,11 +126,23 @@
   <div class="app">
     <div id="sidebar-mount"></div>
     <main class="main">
-      <h1 class="page-title">选型决策树 <span class="en">How to Choose</span></h1>
-      <p class="need-hint">
-        <strong>这节课的总结。</strong> 从"任务需求"反推"机构选型"——这是 Part 1 任务拆解方法论的延续。
-        永远先问"我要什么运动"，再问"用什么机构实现"。
-      </p>
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 14 页 · 收尾</span>
+          <span class="chip chip-ghost">≈ 15 min</span>
+          <span class="chip chip-ghost">前置：13 3D 打印实操</span>
+        </div>
+        <h1 class="ph-title">选型决策树 <span class="en">How to Choose</span></h1>
+        <p class="ph-lead">
+          <strong>这节课的总结。</strong> 从"任务需求"反推"机构选型"——这是 Part 1 任务拆解方法论的延续。
+          永远先问"我要什么运动"，再问"用什么机构实现"。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">任务 → 运动 → 机构</span>
+          <span class="tag">执行器</span>
+          <span class="tag">制造闭环</span>
+        </div>
+      </header>
 
       <section class="stage">
         <h3 style="margin:0 0 8px; font-size:18px;">设计流程：任务 → 运动 → 机构</h3>
@@ -147,7 +160,9 @@
           <span class="method-arrow">→</span>
           <div class="method-step"><strong>④ 耦合判断</strong> 能否合并子任务</div>
           <span class="method-arrow">→</span>
-          <div class="method-step"><strong>⑤ 选定</strong> 刮板扫入</div>
+          <div class="method-step"><strong>⑤ 执行器</strong> 算扭矩选电机</div>
+          <span class="method-arrow">→</span>
+          <div class="method-step"><strong>⑥ 制造</strong> <a href="engineering.html" style="color:var(--accent);">DFM 规则</a> / <a href="printing.html" style="color:var(--accent);">3D 打印实操</a> / 切割 / 购买</div>
         </div>
       </section>
 
@@ -200,6 +215,17 @@
             <div class="label">问 2 · 再问 3 个约束</div>
             <div class="name">精度？负载？速度？</div>
           </div>
+        </div>
+
+        <div class="tree-row" style="margin-top:24px;">
+          <a class="tree-node mech" href="actuators.html" style="border-color:var(--accent-2);">
+            <div class="label">落地 1</div>
+            <div class="name">执行器选型</div>
+          </a>
+          <a class="tree-node mech" href="engineering.html" style="border-color:var(--accent-2);">
+            <div class="label">落地 2</div>
+            <div class="name">工程实现</div>
+          </a>
         </div>
 
         <div class="tree-row">
@@ -292,7 +318,57 @@
         </div>
       </section>
 
-      <section class="stage" style="background:linear-gradient(135deg, #fafaf7, #fde7e0);">
+      <section class="stage">
+        <h3 style="margin:0 0 8px; font-size:18px;">附：往届方案参考——该继承什么，该升级什么</h3>
+        <p style="color:var(--ink-soft); font-size:13px; margin:0 0 12px;">
+          课程方法论参考往届参赛队的经验（含 2025 国际亚军 Machine Family 队），但你上场时的技术选型要按<strong>那一年的主流</strong>来。对照表：
+        </p>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>维度</th><th>往届赛车（2025 亚军）</th><th>现在的主流</th><th>怎么想</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>方法论</strong></td>
+                <td>任务拆解 → 解耦 → 耦合</td>
+                <td>不变</td>
+                <td class="hl"><strong>继承</strong>——这是设计思维，永不过时</td>
+              </tr>
+              <tr>
+                <td><strong>底盘驱动</strong></td>
+                <td>4× 42 步进直驱麦轮（开环）</td>
+                <td>直流减速 + 编码器闭环</td>
+                <td class="hl"><strong>升级</strong>——闭环应对负载突变与打滑</td>
+              </tr>
+              <tr>
+                <td><strong>轮组</strong></td>
+                <td>刚性安装</td>
+                <td>弹簧悬挂模块（贴地）</td>
+                <td class="hl"><strong>升级</strong>——贴地是闭环的前提</td>
+              </tr>
+              <tr>
+                <td><strong>主控</strong></td>
+                <td>Arduino Mega 2560</td>
+                <td>STM32（多路 PWM/编码器/定时器）</td>
+                <td class="hl"><strong>升级</strong>——接口与实时性跟上了执行器</td>
+              </tr>
+              <tr>
+                <td><strong>末端执行器</strong></td>
+                <td>刮板 + 压力传感器称重</td>
+                <td>思路不变；TPU 柔顺爪是新选项</td>
+                <td class="hl"><strong>继承</strong>——"能不夹就不夹"仍成立</td>
+              </tr>
+              <tr>
+                <td><strong>材料制造</strong></td>
+                <td>PLA 蜂窝筐 + 亚克力板 + 泡棉/织物</td>
+                <td>同思路 + 更强器材（拓竹/激光切割）</td>
+                <td class="hl"><strong>继承</strong>——按受力选料、按形状选工艺</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="stage" style="background:linear-gradient(135deg, #fafaf7, #e2efec);">
         <h3 style="margin:0 0 12px; font-size:18px;">给大一的三句话</h3>
         <div style="display:grid; gap:10px; font-size:14px; line-height:1.7;">
           <div><strong style="color:var(--accent);">① 先想清楚再动手。</strong> 把末端要走的轨迹画在纸上，再问"几自由度能实现"，最后才选机构。</div>
@@ -301,8 +377,15 @@
         </div>
       </section>
 
+      <figure class="photo-fig" data-reveal>
+        <img src="assets/asabe/farm-scene.jpeg" alt="比赛场地实拍" loading="lazy">
+        <figcaption><strong>这一切的终点</strong>——ASABE 比赛场地。任务在这里，约束在这里，
+        你的机构也要在这里、在 5 分钟内、在 ±0.5″ 的场地公差下可靠工作。
+        决策树的每一层（运动 → 机构 → 耦合 → 执行器 → 制造）都是在向这块场地收敛。</figcaption>
+      </figure>
+
       <div class="page-nav">
-        <a href="motion-complex.html">← 复杂曲线</a>
+        <a href="printing.html">← 3D 打印实操</a>
         <a href="index.html">回到首页 ↻</a>
       </div>
     </main>

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>摆动 & 有限转动 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
 </head>
@@ -10,11 +11,60 @@
     <div id="sidebar-mount"></div>
 
     <main class="main">
-      <h1 class="page-title">摆动 & 有限转动 <span class="en">Oscillation</span></h1>
-      <p class="need-hint">
-        <strong>什么时候需要这种运动？</strong> 末端要在某个角度范围内来回摆动（如分拣挡板、机械臂肩关节、好蛋释放铰链板）。
-        通常单驱动源（一个舵机或电机）就能搞定。
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 03 页 · 运动转换</span>
+          <span class="chip chip-ghost">≈ 30 min</span>
+          <span class="chip chip-ghost">前置：02 直线</span>
+        </div>
+        <h1 class="ph-title">旋转 → 摆动 <span class="en">Oscillation</span></h1>
+        <p class="ph-lead">
+          <strong>什么时候需要这种运动？</strong> 末端要在某个角度范围内来回摆动（分拣挡板、机械臂肩关节、好蛋释放铰链板）。
+          四杆、凸轮、舵机、齿条-齿轮四条路线——<strong>选型核心是"运动规律要不要自己定义、循环速度多快"</strong>。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">四杆 Grashof</span>
+          <span class="tag">传动角 μ</span>
+          <span class="tag">凸轮压力角</span>
+          <span class="tag">急回 K</span>
+        </div>
+      </header>
+
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">3.1</span>
+        <div><h2>本页方案横向对比</h2><p class="sec-sub">"摆动"的四条路线：规律、速度、精度怎么权衡</p></div>
+      </div>
+      <div class="cmp-wrap" data-reveal>
+        <table class="data-table cmp-table">
+          <thead><tr>
+            <th class="crit">维度</th>
+            <th>四杆机构</th>
+            <th>凸轮</th>
+            <th class="cmp-pick">舵机直驱</th>
+            <th>齿条-齿轮</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="crit">摆角范围</td><td>&lt;120°（摇杆）</td><td>&lt;60°</td><td class="cmp-pick">±90° 任意设</td><td>任意（齿条行程）</td></tr>
+            <tr><td class="crit">运动规律</td><td>杆长决定（连续函数）</td><td class="cmp-pick">几乎任意（含停歇）</td><td>代码任意</td><td>近似线性</td></tr>
+            <tr><td class="crit">循环速度</td><td class="cmp-pick">快（匀速电机）</td><td>快</td><td>慢~中（>2Hz 抖）</td><td>中</td></tr>
+            <tr><td class="crit">精度与重复</td><td>中（铰链间隙）</td><td>高（几何锁定）</td><td class="cmp-pick">高（闭环反馈）</td><td>中（齿背隙）</td></tr>
+            <tr><td class="crit">占用空间</td><td>中（四杆平面）</td><td>小</td><td class="cmp-pick">最小</td><td>大（齿条长）</td></tr>
+            <tr><td class="crit">成本制造</td><td>中（铰链要做精）</td><td>高（廓形加工）</td><td class="cmp-pick">最低（全成品）</td><td>中</td></tr>
+            <tr><td class="crit">俱乐部适用</td><td><span class="dots">●●●●○</span></td><td><span class="dots">●●○○○</span></td><td><span class="dots">●●●●●</span></td><td><span class="dots">●●○○○</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="cmp-note" data-reveal>
+        <strong>选型结论：</strong>低速、要可编程、省事 → <strong>舵机</strong>（自带电机+减速+闭环，比赛默认）；
+        高频循环（>2Hz）→ <strong>四杆</strong>（一个匀速电机顶舵机的抖动与电流尖峰）；
+        要"停歇+特定规律" → <strong>凸轮</strong>（代价是廓形加工）；大摆角大负载 → 齿条-齿轮。
       </p>
+      <ol class="flow-steps" data-reveal>
+        <li><b>需求</b>输出摆角 ψ=60°、急回 K=1.2</li>
+        <li><b>两位置综合</b>给定机架 d、摇杆 c，作图定曲柄 a 与连杆 b</li>
+        <li><b>Grashof 校验</b>a+b ≤ c+d（最短+最长 ≤ 其余两和）保证曲柄整转</li>
+        <li><b>传动角/急回</b>μ<sub>min</sub> ≥ 40°；K=(180°+θ)/(180°−θ) → θ=16.4° 回代微调</li>
+      </ol>
 
       <div class="mechanism-tabs" id="tabs">
         <button class="tab active" data-tab="four-bar">四杆机构 ★</button>
@@ -89,8 +139,48 @@
           </div>
         </div>
 
-        <div class="robot-callout">
-          <img src="../assets/asabe/storage-release.png" alt="Storage and release mechanism">
+        <details class="example-card">
+          <summary>推导 · 曲柄为什么存在？Grashof 条件的三式证明（浙大 朱秋国老师讲义）</summary>
+          <div class="ex-body">
+            <p>设四杆 a（曲柄）、b（连杆）、c（摇杆）、d（机架）。<strong>若 a 能整周回转，必有两次与机架共线</strong>——
+            一次折叠共线、一次拉伸共线。这两次机构都必须仍能装配（三角形两边之和 ≥ 第三边）：</p>
+            <p style="font-family:var(--mono); text-align:center; line-height:2;">
+              拉直（B、D 最远）：a + b ≤ c + d …且 a + c ≤ b + d …且 a + d ≤ b + c<br>
+              折叠（B、D 最近）：b ≤ (d − a) + c …等三式
+            </p>
+            <p><strong>三式两两相加</strong>，全部消去公共项，得到唯一幸存的条件族：</p>
+            <div class="answer">a ≤ b，a ≤ c，a ≤ d —— 曲柄是最短杆，且 s + l ≤ p + q（Grashof 条件）</div>
+            <p class="step">再按最短杆的身份分类：最短杆为连架杆 → 曲柄摇杆；为机架 → 双曲柄；为连杆 → 双摇杆。
+            这就是判定框里那行结论的完整来历——判定不是背口诀，是三角形不等式。</p>
+          </div>
+        </details>
+
+        <div class="formula-block">
+          <div class="f-title">传动角 μ · 这个机构"传力顺不顺"</div>
+          <div class="f-eq">cos μ = (b² + c² − BD²) / (2bc)　（μ 取锐角）</div>
+          <div class="f-note">
+            连杆推摇杆的力沿连杆方向，但只有<strong>沿摇杆垂直方向</strong>的分量才真正做功——
+            分量比例就是 sin μ。μ = 90° 传力最顺；<strong>μ<sub>min</sub> &lt; 40°</strong> 时机构效率骤降甚至自卡。
+            μ<sub>min</sub> 出现在曲柄与机架共线的两个位置（θ₁ = 0° 和 180°），判定框实时监控——
+            <strong>调滑块试试把 μ<sub>min</sub> 压到 40° 以下</strong>，看警告变色。
+            <br><strong>为什么不用舵机就好</strong>：舵机最简单，但高频循环（&gt;2 Hz）时舵机抖动、电流尖峰大、还可能过热——
+            四杆让一个匀速电机干所有活，缝纫机不需要舵机。反过来，低速、要可编程、负载小 → 舵机完胜（见 3.1 表）。
+          </div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">死点 · 急回 —— 四杆的两个"脾气"</div>
+          <div class="f-note">
+            <strong>死点</strong>：若改由摇杆驱动（曲柄作从动），当连杆与曲柄共线时（传动角 μ → 0°），
+            无论多大的力都推不动曲柄——机构"锁死"。对策：飞轮储能冲过死点、双机构错相布置、或干脆电机直驱曲柄侧。
+            <br><strong>急回</strong>：摇杆两极限位置对应曲柄两角度不等（差 = 极位夹角 θ），往复行程曲柄转角不同 →
+            <strong>回程更快</strong>。K = (180°+θ)/(180°−θ)，把 K 设计大，机器"干活慢、退回快"，省节拍时间——
+            牛头刨床、颚式破碎机都吃这个红利。
+          </div>
+        </div>
+
+        <div class="case-callout">
+          <img src="assets/asabe/storage-release.png" alt="Storage and release mechanism" loading="lazy">
           <div class="text">
             <strong>在我们的机器人上</strong>
             好蛋释放机构 = 简化版铰链四杆：侧置舵机驱动铰链板绕固定轴旋转。
@@ -100,49 +190,213 @@
         </div>
       </section>
 
-      <!-- ===== 其他机构（待开发） ===== -->
+      <!-- ===== 凸轮摆动从动件 ===== -->
       <section id="tab-cam" class="tab-panel" style="display:none;">
-        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
-          <div style="text-align:center; color:var(--ink-soft);">
-            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
-            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">凸轮摆动从动件 · 待开发</div>
-            <div style="font-size:13px; line-height:1.7; max-width:480px;">
-              原理：凸轮廓形决定摆杆运动规律。<br>
-              后续可根据需要补充动画演示。
+        <div class="stage">
+          <svg id="cam-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>r₀ · 基圆半径 <span class="val" id="cam-r0-val">55</span> mm</label>
+              <input type="range" id="cam-r0" min="35" max="80" value="55">
             </div>
+            <div class="param-row">
+              <label>h · 最大升程 <span class="val" id="cam-h-val">35</span> mm</label>
+              <input type="range" id="cam-h" min="10" max="55" value="35">
+            </div>
+            <div class="param-row">
+              <label>停歇段占比 <span class="val" id="cam-dwell-val">50</span> %</label>
+              <input type="range" id="cam-dwell" min="0" max="70" value="50">
+            </div>
+          </div>
+          <div id="cam-controls-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">压力角 α · 凸轮的"推力方向"问题</div>
+          <div class="f-eq">tan α = |ds/dφ| / (r₀ + s)</div>
+          <div class="f-note">
+            凸轮推从动件的力沿接触点法线方向，只有<strong>沿导路方向</strong>的分量在干活——
+            分量比例 = cos α。α 太大（&gt; 30°）时侧向分力剧增，导路摩擦卡死（自锁风险）。
+            从公式看：<strong>减小 h、放慢升程（β ↑）、增大基圆 r₀</strong> 都能压 α——
+            <strong>把 r₀ 滑块拉大试试，读数里 α 应明显下降</strong>；代价是整个凸轮变大变重。
+            "性能换体积"，这是机构设计最典型的权衡。
+            <br><strong>凸轮 vs 四杆</strong>：要"停歇 + 特定运动规律"（比如吸气门停顿等待）凸轮是唯一解——
+            廓形把整条 s(φ) 曲线刻进几何。但廓形必须精加工（CNC/慢走丝）；
+            俱乐部激光切割亚克力凸轮精度 ±0.1 mm，只够低速演示，比赛频繁循环会磨损漂移。
+          </div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good">
+            <h4>优点</h4>
+            <ul>
+              <li>廓形任意设计 → 摆杆运动规律（含停歇）几乎任意</li>
+              <li>能精确实现"升—停—回—停"的节奏</li>
+              <li>结构紧凑，一个凸轮就能驱动复杂摆动</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>缺点</h4>
+            <ul>
+              <li>点/线接触，磨损快、需润滑</li>
+              <li>廓形加工精度要求高（误差直接变运动误差）</li>
+              <li>回程靠弹簧/重力，高速可能跳脱（力封闭）</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>适用场景</h4>
+            <ul>
+              <li>发动机配气（凸轮轴开合气门）</li>
+              <li>自动机械的"时序"动作（缝纫机、包装机）</li>
+              <li>需要中途停歇的摆动</li>
+            </ul>
           </div>
         </div>
       </section>
 
+      <!-- ===== 直接舵机驱动 ===== -->
       <section id="tab-servo" class="tab-panel" style="display:none;">
-        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
-          <div style="text-align:center; color:var(--ink-soft);">
-            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
-            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">直接舵机驱动 · 待开发</div>
-            <div style="font-size:13px; line-height:1.7; max-width:480px;">
-              原理：舵机直接输出有限角度摆动，是最简单的实现方式。<br>
-              我们机器人上的好蛋释放铰链板就属于这种。
+        <div class="stage">
+          <svg id="servo-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>A · 摆角范围 <span class="val" id="servo-A-val">60</span> °</label>
+              <input type="range" id="servo-A" min="20" max="90" value="60">
             </div>
+            <div class="param-row">
+              <label>停顿占比 <span class="val" id="servo-dwell-val">50</span> %</label>
+              <input type="range" id="servo-dwell" min="0" max="70" value="50">
+            </div>
+          </div>
+          <div id="servo-controls-mount"></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good">
+            <h4>优点</h4>
+            <ul>
+              <li>最简单：舵机直接输出有限角度，无需连杆设计</li>
+              <li>角度可程序控制，能随时停在任意位置并保持</li>
+              <li>位置闭环（内置电位器），定位准、重复性好</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>缺点</h4>
+            <ul>
+              <li>摆角有限（常见 180°/270°），不能连续转</li>
+              <li>扭矩有限，大负载要选大舵机或加减速齿轮</li>
+              <li>掉电会松（除非用带制动/自锁的型号）</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>适用场景</h4>
+            <ul>
+              <li>有限角度的开关、翻板、释放</li>
+              <li>机械臂肩/肘/腕关节（多舵机串联）</li>
+              <li><strong>我们的好蛋释放铰链板就是这种</strong></li>
+            </ul>
           </div>
         </div>
       </section>
 
+      <!-- ===== 齿条-齿轮摆动 ===== -->
       <section id="tab-rack" class="tab-panel" style="display:none;">
-        <div class="stage" style="display:flex; align-items:center; justify-content:center; min-height:380px;">
-          <div style="text-align:center; color:var(--ink-soft);">
-            <div style="font-size:48px; margin-bottom:12px;">🚧</div>
-            <div style="font-size:18px; font-weight:600; color:var(--ink); margin-bottom:8px;">齿条-齿轮摆动 · 待开发</div>
-            <div style="font-size:13px; line-height:1.7; max-width:480px;">
-              原理：齿条直线运动 → 齿轮有限转动。<br>
-              适合需要精确角度控制且负载较大的场合。
+        <div class="stage">
+          <svg id="rack-svg" viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>r · 齿轮半径 <span class="val" id="rack-r-val">55</span> mm</label>
+              <input type="range" id="rack-r" min="40" max="80" value="55">
+            </div>
+            <div class="param-row">
+              <label>s · 齿条行程 <span class="val" id="rack-s-val">80</span> mm</label>
+              <input type="range" id="rack-s" min="30" max="120" value="80">
             </div>
           </div>
+          <div id="rack-controls-mount"></div>
+        </div>
+        <div class="info-grid">
+          <div class="info-card good">
+            <h4>优点</h4>
+            <ul>
+              <li>齿条往复 → 齿轮有限摆动，转换直接、刚性好</li>
+              <li>传动比 = 1/r，齿轮越小同样行程摆角越大</li>
+              <li>啮合传动可靠，可传递较大扭矩</li>
+            </ul>
+          </div>
+          <div class="info-card bad">
+            <h4>缺点</h4>
+            <ul>
+              <li>有齿隙（回程误差）</li>
+              <li>需要润滑，高速有噪音</li>
+              <li>齿条行程限制了最大摆角</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>适用场景</h4>
+            <ul>
+              <li>汽车转向器（齿轮齿条式）</li>
+              <li>需要大扭矩有限摆动的场合</li>
+              <li>直线执行器（气缸/丝杆）→ 旋转摆动</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">3.2</span>
+        <div><h2>驱动与安装</h2><p class="sec-sub">驱动点选在哪根杆上，是有讲究的</p></div>
+      </div>
+      <section class="drive-card" data-reveal>
+        <div class="dc-head"><svg class="ic"><use href="#i-motor"></use></svg> 驱动与安装 · 摆动机构</div>
+        <div class="dc-grid">
+          <div class="dc-item">
+            <h4>电机放哪</h4>
+            <p><strong>四杆</strong>：电机直驱<strong>曲柄轴</strong>——曲柄是唯一整转杆，<em>驱动点必须在这</em>（驱摇杆会死点锁死）。
+            <strong>凸轮</strong>：电机与凸轮同轴直驱（凸轮轴就是输入轴，两端轴承座——悬臂凸轮会啃从动杆）。
+            <strong>舵机</strong>：本身就是执行器，<em>耳片朝下</em>装在掌基/舵机座上，输出臂直接连摆杆。</p>
+          </div>
+          <div class="dc-item">
+            <h4>直驱还是传动</h4>
+            <p>四杆/凸轮转速高时，电机先经<em>同步带减速</em>再进（隔离振动与冲击反扭矩）；
+            比赛低速场景步进/减速直流<strong>直驱即可</strong>。舵机不需要任何外传动——它就是"电机+减速+闭环"三合一。</p>
+          </div>
+          <div class="dc-item">
+            <h4>电机座怎么做</h4>
+            <p>打印舵机座用标准耳片孔位（MG996R <em>49.5×10.1</em>，建议做 CAD 库文件）；
+            凸轮轴两端各一个轴承座；四杆曲柄轴电机座与机架铰孔<em>同板一次钻出</em>（同轴度）。</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="sec-head sm" data-reveal>
+        <span class="sec-num">3.3</span>
+        <div><h2>实物制作</h2><p class="sec-sub">转动副是四杆的生命线——间隙就是回差与振动</p></div>
+      </div>
+      <section class="build-card" data-reveal>
+        <div class="bc-head"><svg class="ic"><use href="#i-hinge"></use></svg> 实物制作 · 转动副（摆动机构的命脉）</div>
+        <div class="bc-grid">
+          <div class="bc-main">
+            <p>铰链间隙直接吃掉摆动精度：每个铰 0.1 mm 间隙，四杆末端就能漂 0.4 mm+。
+            <strong>打印一体铰链是新手大坑</strong>——层间强度低、摩擦大、间隙不可控。
+            永远用<strong>螺丝作轴 + 铜套作轴承 + 防松螺母埋六角坑</strong>的标准做法。
+            舵机路线则免掉这一切：输出臂与摆杆的连接用一颗 M3 自攻 + 舵机原装圆盘。</p>
+            <a class="bc-link" href="chassis.html">转动副规范 → 底盘与悬挂 · 铰接设计（铜套剖面 + 装配四步）<br>
+              <span style="font-size:12px; color:var(--ink-soft);">铜套 Ø6×5 压侧壁 / 摆臂孔 Ø6.4 / 台阶 0.4 让位 / 六角坑 Ø7.1×2.8 埋螺母</span></a>
+          </div>
+          <table class="bc-params">
+            <tbody>
+              <tr><td>铜套铰链</td><td>Ø6 外圆 × 高 5</td></tr>
+              <tr><td>杆孔</td><td>Ø6.4 实配（或 6.2 钻扩）</td></tr>
+              <tr><td>台阶让位</td><td>0.4 mm</td></tr>
+              <tr><td>螺母防转</td><td>六角坑 Ø7.1×2.8</td></tr>
+              <tr><td>舵机耳片</td><td>MG996R 49.5×10.1</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
       <div class="page-nav">
-        <a href="motion-linear.html">← 直线运动</a>
-        <a href="motion-intermittent.html">间歇运动 →</a>
+        <a href="motion-linear.html">← 旋转 → 直线</a>
+        <a href="motion-intermittent.html">连续 → 间歇 →</a>
       </div>
     </main>
   </div>
@@ -150,17 +404,21 @@
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
     import { createControls, svg, line, circle, clear, toSvg } from './common/controls.js';
-    import { fourBar, grashof, couplerPoint, TAU } from './common/math.js';
+    import { fourBar, grashof, couplerPoint, minTransmissionAngle, quickReturn, deg, TAU } from './common/math.js';
 
     injectSidebar('motion-oscillation');
 
-    // ===== Tabs 切换 =====
+    // ===== Tabs 切换（带动画暂停/恢复，省 CPU） =====
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
     document.querySelectorAll('#tabs .tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
-      });
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
 
     // ===== 四杆 hero demo =====
@@ -206,9 +464,15 @@
         'change-point': 'bad',
       };
       const cls = classes[g.type] || '';
+      const mu = minTransmissionAngle(lens);
+      const muDeg = deg(mu.muMin);
+      const muOK = muDeg >= 40;
+      const qr = quickReturn(lens);
       fbVerdict.className = 'verdict ' + cls;
       const symbol = g.grashof ? '✓' : '✗';
-      fbVerdict.innerHTML = `<strong>${symbol} ${g.type}</strong> · ${g.desc} <br>条件 s+l ≤ p+q：最短 ${Math.min(lens.a,lens.b,lens.c,lens.d)} + 最长 ${Math.max(lens.a,lens.b,lens.c,lens.d)} = ${Math.min(lens.a,lens.b,lens.c,lens.d)+Math.max(lens.a,lens.b,lens.c,lens.d)}，其余两杆和 = ${lens.a+lens.b+lens.c+lens.d - Math.min(lens.a,lens.b,lens.c,lens.d) - Math.max(lens.a,lens.b,lens.c,lens.d)}`;
+      fbVerdict.innerHTML = `<strong>${symbol} ${g.type}</strong> · ${g.desc} <br>条件 s+l ≤ p+q：最短 ${Math.min(lens.a,lens.b,lens.c,lens.d)} + 最长 ${Math.max(lens.a,lens.b,lens.c,lens.d)} = ${Math.min(lens.a,lens.b,lens.c,lens.d)+Math.max(lens.a,lens.b,lens.c,lens.d)}，其余两杆和 = ${lens.a+lens.b+lens.c+lens.d - Math.min(lens.a,lens.b,lens.c,lens.d) - Math.max(lens.a,lens.b,lens.c,lens.d)}
+        <br><strong>传动角 μ<sub>min</sub> = ${muDeg.toFixed(0)}°</strong> ${muOK ? '✓ ≥ 40°，传力良好' : '⚠ &lt; 40°：连杆对摇杆的力大部分变成侧向挤压，效率低、可能卡死——调整杆长'} ·
+        <strong>急回系数 K = ${qr.K.toFixed(2)}</strong>（极位夹角 θ = ${qr.thetaDeg.toFixed(0)}°，${qr.K > 1.05 ? '工作行程慢、回程快' : '往返速度近似相同'}）`;
     }
     updateVerdict();
     updateLabels();
@@ -320,6 +584,280 @@
       document.getElementById('fb-spd-val').textContent = currentSpeed + '×';
       ctl.setDuration(6000 / currentSpeed);
     });
+    tabCtls['four-bar'] = ctl;
+
+    // ===================================================================
+    // 凸轮摆动从动件（盘形凸轮 + 摆动滚子从动件）
+    // 廓形：升程 β → 远休 δ → 回程 β → 近休 δ（2β+2δ = 2π）
+    // ===================================================================
+    (function () {
+      const svgEl = document.getElementById('cam-svg');
+      const mount = document.getElementById('cam-controls-mount');
+      const P = { r0: 55, h: 35, dwell: 50 };
+      const bind = (k) => {
+        const el = document.getElementById('cam-' + k);
+        el.addEventListener('input', (e) => {
+          P[k] = parseInt(e.target.value);
+          document.getElementById('cam-' + k + '-val').textContent = P[k];
+        });
+      };
+      ['r0', 'h', 'dwell'].forEach(bind);
+
+      const O1 = { x: 250, y: 215 };          // 凸轮中心
+      const O2 = { x: 470, y: 95 };           // 摆杆固定支座
+      const BF = -48 * Math.PI / 180;         // 从动件方向（上右）
+      const RR = 10;                          // 滚子半径
+
+      function liftLaw(a, beta, delta) {
+        const x = ((a % TAU) + TAU) % TAU;
+        if (x < beta) return 0.5 * (1 - Math.cos(Math.PI * x / beta));                       // 升程
+        if (x < beta + delta) return 1;                                                       // 远休
+        if (x < 2 * beta + delta) return 0.5 * (1 + Math.cos(Math.PI * (x - beta - delta) / beta)); // 回程
+        return 0;                                                                             // 近休
+      }
+      function phaseName(a, beta, delta) {
+        const x = ((a % TAU) + TAU) % TAU;
+        if (x < beta) return '升程 ↑';
+        if (x < beta + delta) return '远休（停歇）';
+        if (x < 2 * beta + delta) return '回程 ↓';
+        return '近休（停歇）';
+      }
+
+      function render(phi) {
+        clear(svgEl);
+        const dwellRad = (P.dwell / 100) * Math.PI;
+        const beta = Math.PI - dwellRad;
+        const delta = dwellRad;
+        const lift = P.h * liftLaw(phi, beta, delta);
+
+        // 凸轮廓形（绕 O1 旋转，使升程高峰在 φ=β 时正好顶到从动件）
+        const camG = svg('g', { transform: `translate(${O1.x},${O1.y}) rotate(${deg(BF - phi)})` });
+        camG.appendChild(circle(0, 0, P.r0, { fill: 'none', stroke: '#ddd', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
+        let d = '';
+        const N = 96;
+        for (let i = 0; i <= N; i++) {
+          const a = (i / N) * TAU;
+          const rb = P.r0 + P.h * liftLaw(a, beta, delta);
+          d += (i === 0 ? 'M' : 'L') + (rb * Math.cos(a)).toFixed(1) + ',' + (rb * Math.sin(a)).toFixed(1);
+        }
+        d += 'Z';
+        camG.appendChild(svg('path', { d, fill: '#fde7e0', stroke: '#c8442a', 'stroke-width': 2 }));
+        camG.appendChild(circle(0, 0, 6, { fill: '#333' }));
+        svgEl.appendChild(camG);
+        // 凸轮轴支座
+        svgEl.appendChild(svg('polygon', { points: `${O1.x - 13},${O1.y + 13} ${O1.x + 13},${O1.y + 13} ${O1.x},${O1.y}`, fill: '#333' }));
+
+        // 滚子：始终贴在廓形上（沿 BF 方向，半径 = r0 + 当前升程 + RR）
+        const rContact = P.r0 + lift + RR;
+        const roller = { x: O1.x + rContact * Math.cos(BF), y: O1.y + rContact * Math.sin(BF) };
+        // 摆杆零位（升程=0 时滚子位置）参考线
+        const roller0 = { x: O1.x + (P.r0 + RR) * Math.cos(BF), y: O1.y + (P.r0 + RR) * Math.sin(BF) };
+        svgEl.appendChild(line(O2.x, O2.y, roller0.x, roller0.y, { stroke: '#ccc', 'stroke-width': 2, 'stroke-dasharray': '3 4' }));
+        // 摆杆
+        svgEl.appendChild(line(O2.x, O2.y, roller.x, roller.y, { stroke: '#2a5c8a', 'stroke-width': 5 }));
+        // 滚子
+        svgEl.appendChild(circle(roller.x, roller.y, RR, { fill: 'white', stroke: '#2a5c8a', 'stroke-width': 2 }));
+        // 摆杆支座 O2
+        svgEl.appendChild(svg('polygon', { points: `${O2.x - 13},${O2.y - 13} ${O2.x + 13},${O2.y - 13} ${O2.x},${O2.y}`, fill: '#333' }));
+        svgEl.appendChild(circle(O2.x, O2.y, 6, { fill: '#333' }));
+
+        // 标注
+        const lbl = (x, y, t, c) => {
+          const e = svg('text', { x, y, fill: c || '#555', 'font-size': 12, 'font-family': 'monospace' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(O1.x - 16, O1.y + 30, 'O₁');
+        lbl(O2.x + 10, O2.y - 8, 'O₂');
+        const psi = Math.atan2(roller.y - O2.y, roller.x - O2.x) * 180 / Math.PI;
+        const psi0 = Math.atan2(roller0.y - O2.y, roller0.x - O2.x) * 180 / Math.PI;
+        // 压力角（数值微分）
+        const eps = 1e-4;
+        const sNow = P.h * liftLaw(phi, beta, delta);
+        const sNext = P.h * liftLaw(phi + eps, beta, delta);
+        const dsdphi = (sNext - sNow) / eps;
+        const alphaNow = Math.atan(Math.abs(dsdphi) / (P.r0 + sNow)) * 180 / Math.PI;
+        const top = svg('text', { x: 350, y: 34, 'text-anchor': 'middle', fill: '#999', 'font-size': 13 });
+        top.textContent = `${phaseName(phi, beta, delta)} · 升程 ${lift.toFixed(0)} mm · 摆杆摆过 ${(psi - psi0).toFixed(0)}° · 压力角 α ≈ ${alphaNow.toFixed(0)}°`;
+        svgEl.appendChild(top);
+        const dir = svg('text', { x: O1.x - 80, y: O1.y + 60, fill: '#999', 'font-size': 12 });
+        dir.textContent = '凸轮匀速转动 ↺';
+        svgEl.appendChild(dir);
+      }
+
+      const cctl = createControls(mount, { duration: 6000, onTick: (phase) => render(phase * TAU) });
+      tabCtls['cam'] = cctl; cctl.pause();
+    })();
+
+    // ===================================================================
+    // 直接舵机驱动（有限转动 + 可停歇保持）
+    // ===================================================================
+    (function () {
+      const svgEl = document.getElementById('servo-svg');
+      const mount = document.getElementById('servo-controls-mount');
+      const P = { A: 60, dwell: 50 };
+      const bind = (k) => {
+        const el = document.getElementById('servo-' + k);
+        el.addEventListener('input', (e) => {
+          P[k] = parseInt(e.target.value);
+          document.getElementById('servo-' + k + '-val').textContent = P[k];
+        });
+      };
+      ['A', 'dwell'].forEach(bind);
+
+      const CX = 320, CY = 215;
+      const RH = 78; // 摇臂长度
+
+      // 返回当前角度与是否处于"转动中"
+      function motion(phi) {
+        const A = P.A;
+        const m = (100 - P.dwell) / 100;   // 运动占比
+        const half = Math.PI;
+        const dm = m * half;               // 每半圈的运动弧段
+        const x = ((phi % TAU) + TAU) % TAU;
+        const ease = (t) => 0.5 * (1 - Math.cos(Math.PI * t));
+        if (x < half - dm) return { ang: -A, moving: false };
+        if (x < half) { const t = (x - (half - dm)) / dm; return { ang: -A + 2 * A * ease(t), moving: true }; }
+        if (x < 2 * half - dm) return { ang: A, moving: false };
+        const t = (x - (2 * half - dm)) / dm; return { ang: A - 2 * A * ease(t), moving: true };
+      }
+
+      function render(phi) {
+        clear(svgEl);
+        const A = P.A;
+        const { ang, moving } = motion(phi);
+        const arad = ang * Math.PI / 180;
+        const tip = { x: CX + RH * Math.sin(arad), y: CY - RH * Math.cos(arad) };
+
+        // 摆角范围扇形（参考）
+        const amax = A * Math.PI / 180, amin = -A * Math.PI / 180;
+        const left = { x: CX + RH * Math.sin(amin), y: CY - RH * Math.cos(amin) };
+        const right = { x: CX + RH * Math.sin(amax), y: CY - RH * Math.cos(amax) };
+        svgEl.appendChild(svg('path', {
+          d: `M ${CX} ${CY} L ${left.x} ${left.y} A ${RH} ${RH} 0 0 1 ${right.x} ${right.y} Z`,
+          fill: '#fde7e0', opacity: 0.5,
+        }));
+        [left, right].forEach(Pt => {
+          svgEl.appendChild(line(CX, CY, Pt.x, Pt.y, { stroke: '#c8442a', 'stroke-width': 1, 'stroke-dasharray': '3 3', opacity: 0.6 }));
+        });
+
+        // 舵机本体
+        svgEl.appendChild(svg('rect', { x: CX - 55, y: CY - 4, width: 110, height: 60, fill: '#2a3a5c', stroke: '#1a2540', 'stroke-width': 2, rx: 4 }));
+        svgEl.appendChild(svg('rect', { x: CX - 72, y: CY + 16, width: 24, height: 14, fill: '#2a3a5c', stroke: '#1a2540', rx: 2 }));
+        svgEl.appendChild(svg('rect', { x: CX + 48, y: CY + 16, width: 24, height: 14, fill: '#2a3a5c', stroke: '#1a2540', rx: 2 }));
+        // 输出轴
+        svgEl.appendChild(circle(CX, CY, 12, { fill: '#444', stroke: '#222', 'stroke-width': 2 }));
+
+        // 摇臂 + 末端铰链板
+        svgEl.appendChild(line(CX, CY, tip.x, tip.y, { stroke: '#c8442a', 'stroke-width': 8, 'stroke-linecap': 'round' }));
+        const flapG = svg('g', { transform: `translate(${tip.x},${tip.y}) rotate(${ang})` });
+        flapG.appendChild(svg('rect', { x: -6, y: -5, width: 40, height: 24, fill: '#c8442a', stroke: '#7a2a18', 'stroke-width': 1.5, rx: 2 }));
+        svgEl.appendChild(flapG);
+        svgEl.appendChild(circle(tip.x, tip.y, 5, { fill: '#333' }));
+
+        // 标注
+        const lbl = (x, y, t, c, fs, anchor) => {
+          const e = svg('text', { x, y, fill: c || '#555', 'font-size': fs || 12, 'font-family': 'monospace', 'text-anchor': anchor || 'start' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(CX, CY + 80, '舵机', '#333', 13, 'middle');
+        const top = svg('text', { x: 350, y: 34, 'text-anchor': 'middle', fill: '#999', 'font-size': 13 });
+        top.textContent = `θ = ${ang.toFixed(0)}° / ±${A}° · ${moving ? '转动中' : '停歇保持'}`;
+        svgEl.appendChild(top);
+        lbl(500, 150, '舵机能停在任意', '#888', 12);
+        lbl(500, 168, '角度并保持（停歇）', '#888', 12);
+      }
+
+      const cctl = createControls(mount, { duration: 5000, onTick: (phase) => render(phase * TAU) });
+      tabCtls['servo'] = cctl; cctl.pause();
+    })();
+
+    // ===================================================================
+    // 齿条-齿轮摆动（齿条往复直线 → 齿轮有限摆动）
+    // 节线纯滚动：齿轮转角 = 齿条位移 / r
+    // ===================================================================
+    (function () {
+      const svgEl = document.getElementById('rack-svg');
+      const mount = document.getElementById('rack-controls-mount');
+      const P = { r: 55, s: 80 };
+      const bind = (k) => {
+        const el = document.getElementById('rack-' + k);
+        el.addEventListener('input', (e) => {
+          P[k] = parseInt(e.target.value);
+          document.getElementById('rack-' + k + '-val').textContent = P[k];
+        });
+      };
+      ['r', 's'].forEach(bind);
+
+      const O = { x: 350, y: 175 };
+
+      function gearTeethG(r, n, color) {
+        const g = svg('g');
+        const w = (2 * Math.PI * r / n) * 0.6;
+        const th = 7;
+        for (let i = 0; i < n; i++) {
+          const a = (i / n) * 360;
+          const tooth = svg('rect', { x: -w / 2, y: -r - th, width: w, height: th, fill: color, stroke: '#666', 'stroke-width': 1 });
+          tooth.setAttribute('transform', `rotate(${a})`);
+          g.appendChild(tooth);
+        }
+        return g;
+      }
+
+      function render(phi) {
+        clear(svgEl);
+        const r = P.r;
+        const n = Math.max(8, Math.round(r / 4));
+        const xoff = P.s * Math.sin(phi);             // 齿条位移
+        const gearAng = (xoff / r) * 180 / Math.PI;   // 齿轮转角（度）
+        const pitchY = O.y + r;                        // 齿条节线
+        const pitch = 2 * Math.PI * r / n;
+
+        // 齿条（随 xoff 平移）
+        const rackG = svg('g', { transform: `translate(${xoff},0)` });
+        rackG.appendChild(svg('rect', { x: 60, y: pitchY, width: 580, height: 26, fill: 'white', stroke: '#333', 'stroke-width': 2, rx: 2 }));
+        const cnt = Math.ceil(620 / pitch) + 1;
+        for (let i = -1; i < cnt; i++) {
+          const tx = 70 + i * pitch;
+          rackG.appendChild(svg('rect', { x: tx - pitch * 0.3, y: pitchY - 7, width: pitch * 0.6, height: 7, fill: 'white', stroke: '#666', 'stroke-width': 1 }));
+        }
+        svgEl.appendChild(rackG);
+        // 齿条导路 + 固定支座（V 形）
+        svgEl.appendChild(line(60, pitchY + 26, 640, pitchY + 26, { stroke: '#999', 'stroke-width': 2 }));
+        [60, 640].forEach(vx => {
+          svgEl.appendChild(svg('polygon', { points: `${vx},${pitchY + 26} ${vx - 10},${pitchY + 34} ${vx + 10},${pitchY + 34}`, fill: '#999' }));
+        });
+
+        // 齿轮（随 gearAng 旋转）
+        const gearG = svg('g', { transform: `translate(${O.x},${O.y}) rotate(${gearAng})` });
+        gearG.appendChild(circle(0, 0, r, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+        gearG.appendChild(gearTeethG(r, n, 'white'));
+        gearG.appendChild(line(0, 0, 0, -r, { stroke: '#c8442a', 'stroke-width': 4, 'stroke-linecap': 'round' }));
+        gearG.appendChild(line(0, 0, 0, r, { stroke: '#bbb', 'stroke-width': 2 }));
+        gearG.appendChild(circle(0, 0, 6, { fill: '#333' }));
+        svgEl.appendChild(gearG);
+
+        // 速度方向箭头
+        const vdir = Math.cos(phi) >= 0 ? 1 : -1;
+        const arrow = svg('text', { x: 350, y: pitchY + 52, 'text-anchor': 'middle', fill: '#c8442a', 'font-size': 18 });
+        arrow.textContent = vdir > 0 ? '→' : '←';
+        svgEl.appendChild(arrow);
+
+        // 标注
+        const lbl = (x, y, t, c, fs, anchor) => {
+          const e = svg('text', { x, y, fill: c || '#555', 'font-size': fs || 12, 'font-family': 'monospace', 'text-anchor': anchor || 'start' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(O.x, O.y - r - 12, '齿轮（有限摆动）', '#333', 12, 'middle');
+        lbl(350, pitchY + 78, '齿条（往复直线）', '#555', 12, 'middle');
+        const maxAng = (P.s / r) * 180 / Math.PI;
+        const top = svg('text', { x: 350, y: 34, 'text-anchor': 'middle', fill: '#999', 'font-size': 13 });
+        top.textContent = `齿条位移 ${xoff.toFixed(0)} mm · 齿轮摆角 ${gearAng.toFixed(0)}° / ±${maxAng.toFixed(0)}°`;
+        svgEl.appendChild(top);
+      }
+
+      const cctl = createControls(mount, { duration: 5000, onTick: (phase) => render(phase * TAU) });
+      tabCtls['rack'] = cctl; cctl.pause();
+    })();
   </script>
 </body>
 </html>

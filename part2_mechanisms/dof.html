@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>自由度 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
 </head>
@@ -10,11 +11,23 @@
     <div id="sidebar-mount"></div>
 
     <main class="main">
-      <h1 class="page-title">自由度 <span class="en">Degrees of Freedom</span></h1>
-      <p class="need-hint">
-        <strong>为什么要先讲自由度？</strong> 它是判断一个机构"能不能动"和"怎么动"的基本工具。
-        机构设计的第一个问题永远是：这个机构有几个自由度？需要几个原动件？
-      </p>
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 01 页 · 入门</span>
+          <span class="chip chip-ghost">≈ 15 min</span>
+          <span class="chip chip-ghost">前置：00 首页</span>
+        </div>
+        <h1 class="ph-title">自由度 <span class="en">Degrees of Freedom</span></h1>
+        <p class="ph-lead">
+          <strong>为什么要先讲自由度？</strong> 它是判断一个机构"能不能动"和"怎么动"的基本工具。
+          机构设计的第一个问题永远是：这个机构有几个自由度？需要几个原动件？
+        </p>
+        <div class="ph-tags">
+          <span class="tag">F = 3n − 2P<sub>L</sub> − P<sub>H</sub></span>
+          <span class="tag">滚子陷阱</span>
+          <span class="tag">虚约束</span>
+        </div>
+      </header>
 
       <div class="stage">
         <h3 style="margin:0 0 12px; font-size:18px;">平面机构自由度公式</h3>
@@ -55,8 +68,22 @@
               <button class="btn secondary" data-preset="fourbar">四杆机构（1 自由度）</button>
               <button class="btn secondary" data-preset="fivebar">五杆机构（2 自由度）</button>
               <button class="btn secondary" data-preset="locked">超约束结构（0 自由度）</button>
+              <button class="btn secondary" data-preset="roller">陷阱 1：凸轮 + 滚子（F 多 1？）</button>
+              <button class="btn secondary" data-preset="parallelogram">陷阱 2：平行四边形（F 少 1？）</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="formula-block">
+        <div class="f-title">公式的两个"例外"——考试和实操都会踩的坑</div>
+        <div class="f-note">
+          <strong>① 局部自由度（滚子）</strong>：凸轮从动件末端的滚子能自转，但它转不转<strong>不影响从动杆的运动</strong>——
+          这个自由度是"局部"的。计算时应把滚子与从动杆<strong>焊死</strong>再数：直接数会多算 1。
+          <br><strong>② 虚约束（冗余杆）</strong>：平行四边形四杆再加一根与连杆平行的杆，
+          运动上完全重复——约束是"虚"的，实际 F 比公式算的多 1。
+          它不是废料：它<strong>消除平行四边形翻成反平行的歧义</strong>、让受力对称。
+          <br><strong>口诀</strong>：滚子焊死算（去局部自由度），冗余杆拆掉算（去虚约束），得到"有效自由度"。
         </div>
       </div>
 
@@ -95,8 +122,8 @@
         </div>
       </div>
 
-      <div class="robot-callout">
-        <img src="../assets/asabe/end-effector-picking.png" alt="3-DOF arm">
+      <div class="case-callout">
+        <img src="assets/asabe/end-effector-picking.png" alt="3-DOF arm" loading="lazy">
         <div class="text">
           <strong>在我们的机器人上</strong>
           3-DOF 机械臂：3 个活动构件 + 3 个转动副，F = 3×3 − 2×3 − 0 = <strong>3</strong>。
@@ -106,7 +133,7 @@
 
       <div class="page-nav">
         <a href="index.html">← 首页</a>
-        <a href="motion-linear.html">直线运动 →</a>
+        <a href="motion-linear.html">旋转 → 直线 →</a>
       </div>
     </main>
   </div>
@@ -114,6 +141,7 @@
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
     import { svg, line, circle, clear, toSvg } from './common/controls.js';
+    import { TAU } from './common/math.js';
 
     injectSidebar('dof');
 
@@ -260,6 +288,76 @@
           svgEl.appendChild(t);
         }
       },
+      roller: {
+        // 凸轮 + 滚子从动件：直接数 F=2（滚子自转多算 1），有效 F=1
+        n: 3, pL: 3, pH: 1,
+        effF: 1,
+        meaning: '<strong>陷阱！</strong>直接数：n=3（凸轮/从动杆/滚子），P<sub>L</sub>=3，P<sub>H</sub>=1（凸轮副）→ F = 9−6−1 = <strong>2</strong>？<br>但滚子自转是<strong>局部自由度</strong>（焊死滚子运动不变）→ 有效 <strong>F = 1，1 个原动件</strong>即可。滚子的作用只是把滑动摩擦换成滚动摩擦。',
+        draw: (svgEl) => {
+          const camC = { x: 160, y: 230 };
+          const stemX = 430;
+          // 凸轮（蛋形）
+          let d = '';
+          for (let i = 0; i <= 72; i++) {
+            const a = (i / 72) * TAU;
+            const rb = 62 + 26 * Math.max(0, Math.sin(a));
+            const px = camC.x + rb * Math.cos(a), py = camC.y - rb * Math.sin(a);
+            d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1);
+          }
+          d += 'Z';
+          svgEl.appendChild(svg('path', { d, fill:'#e2efec', stroke:'#0e6b5c', 'stroke-width':2 }));
+          svgEl.appendChild(circle(camC.x, camC.y, 6, { fill:'#333' }));
+          svgEl.appendChild(svg('polygon', { points: `${camC.x-14},${camC.y+14} ${camC.x+14},${camC.y+14} ${camC.x},${camC.y}`, fill:'#333' }));
+          // 从动杆（竖直导路）
+          svgEl.appendChild(line(stemX - 40, 130, stemX - 40, 300, { stroke:'#c9c6b9', 'stroke-width':3 }));
+          svgEl.appendChild(line(stemX + 40, 130, stemX + 40, 300, { stroke:'#c9c6b9', 'stroke-width':3 }));
+          svgEl.appendChild(svg('rect', { x: stemX - 34, y: 120, width: 68, height: 46, fill:'#2a5c8a', rx:4, stroke:'#1a2540', 'stroke-width':2 }));
+          // 滚子
+          svgEl.appendChild(circle(stemX, 185, 22, { fill:'white', stroke:'#d9662c', 'stroke-width':3 }));
+          svgEl.appendChild(circle(stemX, 185, 4, { fill:'#d9662c' }));
+          svgEl.appendChild(line(stemX, 166, stemX, 142, { stroke:'#2a5c8a', 'stroke-width':8 }));
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '凸轮 + 从动杆 + 滚子：直接数 F=2，有效 F=1';
+          svgEl.appendChild(t);
+          const t2 = svg('text', { x: 300, y: 300, 'text-anchor':'middle', fill:'#d9662c', 'font-size':12.5 });
+          t2.textContent = '滚子自转 ↔ 从动杆升降 无关 → 局部自由度，减 1';
+          svgEl.appendChild(t2);
+        }
+      },
+      parallelogram: {
+        // 平行四边形 + 冗余杆：直接数 F=0（虚约束多算 1 个 P_L），有效 F=1
+        n: 4, pL: 6, pH: 0,
+        effF: 1,
+        meaning: '<strong>陷阱！</strong>直接数：n=4，P<sub>L</sub>=6 → F = 12−12 = <strong>0</strong>？<br>但中间那根杆与连杆平行等长——它加的约束是<strong>虚约束</strong>（拆掉运动不变）→ 有效 <strong>F = 1</strong>。冗余杆的真正作用：防"反平行"翻转 + 双点受力。',
+        draw: (svgEl) => {
+          const A = { x: 150, y: 240 }, B = { x: 450, y: 240 };
+          const C = { x: 190, y: 110 }, D = { x: 490, y: 110 };
+          const E = { x: 320, y: 175 }; // 冗余杆中点铰
+          svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#333', 'stroke-width':3 }));
+          [[A,'A'],[B,'B'],[C,'C'],[D,'D'],[E,'E']].forEach(([p, lab]) => {
+            svgEl.appendChild(circle(p.x, p.y, 6.5, { fill:'white', stroke:'#333', 'stroke-width':2 }));
+            const t = svg('text', { x: p.x, y: p.y - 12, 'text-anchor':'middle', fill:'#555', 'font-size':11, 'font-family':'monospace' });
+            t.textContent = lab; svgEl.appendChild(t);
+          });
+          svgEl.appendChild(line(A.x, A.y, C.x, C.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
+          svgEl.appendChild(line(B.x, B.y, D.x, D.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
+          svgEl.appendChild(line(C.x, C.y, D.x, D.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
+          // 冗余杆（平行于 CD，铰在 AC/BD 中点）
+          const M1 = { x: (A.x + C.x) / 2 + 40, y: (A.y + C.y) / 2 - 8 };
+          const M2 = { x: (B.x + D.x) / 2 - 40, y: (B.y + D.y) / 2 - 8 };
+          svgEl.appendChild(line(M1.x, M1.y, M2.x, M2.y, { stroke:'#d9662c', 'stroke-width':4, 'stroke-dasharray':'7 4' }));
+          svgEl.appendChild(circle(M1.x, M1.y, 5.5, { fill:'white', stroke:'#d9662c', 'stroke-width':2.5 }));
+          svgEl.appendChild(circle(M2.x, M2.y, 5.5, { fill:'white', stroke:'#d9662c', 'stroke-width':2.5 }));
+          svgEl.appendChild(svg('polygon', { points: `${A.x-18},${A.y+5} ${A.x+18},${A.y+5} ${A.x+13},${A.y+19} ${A.x-13},${A.y+19}`, fill:'#333' }));
+          svgEl.appendChild(svg('polygon', { points: `${B.x-18},${B.y+5} ${B.x+18},${B.y+5} ${B.x+13},${B.y+19} ${B.x-13},${B.y+19}`, fill:'#333' }));
+          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+          t.textContent = '平行四边形 + 冗余杆：直接数 F=0，有效 F=1';
+          svgEl.appendChild(t);
+          const t2 = svg('text', { x: 300, y: 300, 'text-anchor':'middle', fill:'#d9662c', 'font-size':12.5 });
+          t2.textContent = '虚线杆拆掉运动不变 → 虚约束（但防翻转、分担载荷）';
+          svgEl.appendChild(t2);
+        }
+      },
     };
 
     function renderPreset(name) {
@@ -271,12 +369,14 @@
       document.getElementById('dof-n').textContent = preset.n;
       document.getElementById('dof-pl').textContent = preset.pL;
       document.getElementById('dof-ph').textContent = preset.pH;
+      // 陷阱预设：公式直接算出的 F（rawF === F 恒成立；有效 F 在 meaning 里解释）
       document.getElementById('dof-result').textContent = F;
-      document.getElementById('dof-f').textContent = F;
+      document.getElementById('dof-f').textContent = preset.effF !== undefined ? preset.effF : F;
       document.getElementById('dof-meaning').innerHTML = preset.meaning;
 
+      const shown = preset.effF !== undefined ? preset.effF : F;
       const fEl = document.getElementById('dof-f');
-      fEl.style.color = F === 0 ? 'var(--bad)' : F === 1 ? 'var(--accent)' : F >= 2 ? 'var(--good)' : 'var(--bad)';
+      fEl.style.color = shown === 0 ? 'var(--bad)' : shown === 1 ? 'var(--accent)' : shown >= 2 ? 'var(--good)' : 'var(--bad)';
     }
 
     document.querySelectorAll('[data-preset]').forEach(btn => {

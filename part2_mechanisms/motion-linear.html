@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>直线运动 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
 </head>
@@ -10,11 +11,63 @@
     <div id="sidebar-mount"></div>
 
     <main class="main">
-      <h1 class="page-title">直线运动 <span class="en">Linear Motion</span></h1>
-      <p class="need-hint">
-        <strong>什么时候需要这种运动？</strong> 末端要沿一条直线往复运动（推、拉、夹、压）。
-        看似简单，但实现方式五花八门，选哪种取决于行程、精度、负载、动力源。
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 02 页 · 运动转换</span>
+          <span class="chip chip-ghost">≈ 30 min</span>
+          <span class="chip chip-ghost">前置：01 自由度</span>
+        </div>
+        <h1 class="ph-title">旋转 → 直线 <span class="en">Linear Motion</span></h1>
+        <p class="ph-lead">
+          <strong>什么时候需要这种运动？</strong> 末端要沿一条直线往复运动（推、拉、夹、压）。
+          看似简单，但实现方式五花八门——曲柄滑块、丝杆、齿条、同步带、气缸，
+          <strong>选哪种取决于行程、精度、负载、动力源</strong>。这一页五种全动画演示，并给你横向对比和设计流程。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">曲柄滑块</span>
+          <span class="tag">丝杆滑台</span>
+          <span class="tag">齿轮齿条</span>
+          <span class="tag">同步带</span>
+          <span class="tag">气缸</span>
+        </div>
+      </header>
+
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">2.1</span>
+        <div><h2>本页方案横向对比</h2><p class="sec-sub">同一个"直线运动"需求，五条路线怎么选</p></div>
+      </div>
+      <div class="cmp-wrap" data-reveal>
+        <table class="data-table cmp-table">
+          <thead><tr>
+            <th class="crit">维度</th>
+            <th>曲柄滑块</th>
+            <th class="cmp-pick">丝杆滑台</th>
+            <th>齿轮齿条</th>
+            <th>同步带</th>
+            <th>气缸</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="crit">典型行程</td><td>≤ 2a，受限</td><td>由丝杆长定（≤1 m 级）</td><td>任意长（拼接）</td><td>任意长（接带）</td><td>≤ 200 mm 级</td></tr>
+            <tr><td class="crit">重复精度</td><td>低（开环、间隙）</td><td class="cmp-pick">高（0.05 mm 级）</td><td>中（齿隙）</td><td>中（带背隙）</td><td>低（两端限位）</td></tr>
+            <tr><td class="crit">负载/推力</td><td>中（减速比大）</td><td class="cmp-pick">大（导程小=力放大）</td><td>中</td><td>小~中</td><td>大（缸径决定）</td></tr>
+            <tr><td class="crit">速度</td><td>快（连续旋转）</td><td>慢（受丝杆临界转速限制）</td><td>快</td><td class="cmp-pick">最快</td><td>快（气动冲击）</td></tr>
+            <tr><td class="crit">自锁/断电保持</td><td>✗</td><td class="cmp-pick">✓（小导程自锁）</td><td>✗</td><td>✗</td><td>✓（闭阀保压）</td></tr>
+            <tr><td class="crit">成本与制造</td><td class="cmp-pick">最低（两根杆）</td><td>中（丝杆+螺母成品）</td><td>中</td><td>中（GT2 全成品）</td><td>高（气源系统）</td></tr>
+            <tr><td class="crit">俱乐部适用</td><td><span class="dots">●●●○○</span></td><td><span class="dots">●●●●●</span></td><td><span class="dots">●●●○○</span></td><td><span class="dots">●●●●○</span></td><td><span class="dots">●●○○○</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="cmp-note" data-reveal>
+        <strong>选型结论：</strong>要精度和推力选<strong>丝杆</strong>（分辨率=导程/3200，自锁防掉落）；
+        要无限长行程选<strong>齿条</strong>；要安静快速选<strong>同步带</strong>；只要"推出去-收回来"的二位置粗暴动作选<strong>曲柄滑块</strong>；
+        已有气源、要快切二位置选<strong>气缸</strong>。
       </p>
+      <ol class="flow-steps" data-reveal>
+        <li><b>需求</b>行程 H=120 mm、推力 50 N、精度 ±0.5 mm</li>
+        <li><b>选型</b>±0.5 mm → 丝杆（曲柄滑块/同步带达不到）</li>
+        <li><b>定导程</b>分辨率 = 导程/(200×16 细分) → T8 丝杆 = 8/3200 = 0.0025 mm/步 ✓</li>
+        <li><b>校核推力</b>F = 2πηT/导程 → 42 步进 45 N·cm 经 T8 ≈ 56 N ✓</li>
+      </ol>
 
       <div class="mechanism-tabs" id="tabs">
         <button class="tab active" data-tab="hero">曲柄滑块 ★</button>
@@ -26,7 +79,7 @@
 
       <section id="tab-hero" class="tab-panel">
         <div class="stage">
-          <svg id="cs-svg" viewBox="0 0 700 320"></svg>
+          <svg id="cs-svg" viewBox="0 0 700 380"></svg>
           <div class="params">
             <div class="param-row">
               <label>a · 曲柄长度 <span class="val" id="cs-a-val">50</span> mm</label>
@@ -41,7 +94,31 @@
               <input type="range" id="cs-e" min="-30" max="30" value="0">
             </div>
           </div>
+          <div class="verdict" id="cs-verdict"></div>
           <div id="cs-controls-mount"></div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">曲柄滑块 = 四杆的"摇杆拉直"</div>
+          <div class="f-eq">行程 H ≈ 2a　·　x(θ) = a·cosθ + √(b² − (a·sinθ + e)²)</div>
+          <div class="f-note">
+            把四杆的摇杆换成滑块（转动副 → 移动副），末端就从摆动变成直线往复。
+            <strong>行程近似 = 2 倍曲柄长</strong>（偏置 e 会引入不对称）；
+            连杆越长，滑块运动越接近标准正弦——越短则"中点快、两端慢"的畸变越明显。
+            <strong>把 e 滑块拉离 0 试试</strong>：往复两个半程的时间不再相等（这正是"急回"在滑块机构里的表现）。
+            <br><strong>对比丝杆：为什么还会选它</strong>——曲柄滑块不用丝杆和导轨，一个电机 + 两根杆就能做直线往复；
+            精度差（杆长误差与铰链间隙直接吃掉重复精度），但速度快、结构极简、不需要任何精密件，
+            适合"推出去-收回来"的二位置粗暴场景（冲床、推料）。
+          </div>
+        </div>
+
+        <div class="formula-block">
+          <div class="f-title">偏置曲柄滑块的急回</div>
+          <div class="f-note">
+            e = 0 时机构对称，去程回程时间相等；e ≠ 0 时滑块极限位置对应的曲柄角不再相差 180°——
+            一个方向走得快、另一个方向走得慢。<strong>冲床利用它：慢行程压切（力大可控），快行程返回（省时）</strong>。
+            判定框实时显示当前偏置下的行程与急回比。
+          </div>
         </div>
 
         <div class="info-grid">
@@ -74,42 +151,97 @@
 
       <section id="tab-screw" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <defs>
-              <pattern id="screw-thread" x="0" y="0" width="14" height="20" patternUnits="userSpaceOnUse">
-                <line x1="0" y1="20" x2="14" y2="0" stroke="#888" stroke-width="1.5"/>
-              </pattern>
-            </defs>
-            <rect x="200" y="120" width="380" height="40" fill="url(#screw-thread)" stroke="#666" stroke-width="2"/>
-            <rect x="500" y="80" width="80" height="120" fill="#c8442a" stroke="#333" stroke-width="2" rx="4"/>
-            <text x="540" y="145" text-anchor="middle" fill="white" font-size="13">螺母滑台</text>
-            <line x1="200" y1="180" x2="580" y2="180" stroke="#666" stroke-width="2"/>
-            <line x1="200" y1="180" x2="200" y2="220" stroke="#666" stroke-width="2"/>
-            <line x1="580" y1="180" x2="580" y2="220" stroke="#666" stroke-width="2"/>
-            <circle cx="180" cy="140" r="22" fill="white" stroke="#333" stroke-width="2"/>
-            <text x="180" y="145" text-anchor="middle" font-size="11">电机</text>
-            <text x="350" y="60" text-anchor="middle" fill="#999" font-size="13">丝杆旋转 → 螺母沿轴向直线移动</text>
-          </svg>
+          <svg id="sw-svg" viewBox="0 0 700 330"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>丝杆导程 L <span class="val" id="sw-lead-val">8</span> mm</label>
+              <input type="range" id="sw-lead" min="2" max="8" step="2" value="8">
+            </div>
+          </div>
+          <div class="verdict" id="sw-verdict"></div>
+          <div id="sw-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">丝杆的"分辨率"——一步走多远</div>
+          <div class="f-eq">分辨率 = L / (步数 × 细分) = 8 / (200 × 16) = 0.0025 mm</div>
+          <div class="f-note">
+            旋转 → 直线的转换比由<strong>导程 L</strong> 一个参数决定：<strong>电机转一圈，螺母恰好走一个导程</strong>——
+            纯几何关系、无滑差。俱乐部 3D 打印机的经典配置：导程 8 mm 丝杆 + 1.8° 步进（200 步/转）+ 16 细分 →
+            每步 0.0025 mm。这就是为什么丝杆是"精密直线"的代名词——降速比大到不需要齿轮。
+            代价：速度慢（要 1 m/min 就得让丝杆以 125 rpm 高速旋转，还受临界转速限制）。
+            <strong>把导程滑到 2 mm 试试</strong>：同样一圈电机，滑台只走 1/4——慢而精。
+            <br><strong>为什么俱乐部首选它</strong>：精度、推力、断电自锁（小导程螺旋角小于摩擦角）三项全占；
+            缺的只是速度——而比赛直线动作（升降、夹爪开合）恰恰不需要快。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li>导程小 → <strong>慢而精</strong>：分辨率高，且同样电机扭矩下推力更大（F ∝ T/L）</li>
+              <li>梯形丝杆（T8）<strong>能自锁</strong>：断电不坠落；滚珠丝杆效率高（&gt;90%）但不自锁</li>
+              <li>长行程要校核临界转速（甩振）与丝杆下垂</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>丝杆光杆<strong>买成品</strong>（T8 丝杆 + 黄铜螺母，几块钱一套）</li>
+              <li>螺母座 / 滑台 3D 打印；孔位按光杆与导轨实测尺寸留 0.2 mm 余量</li>
+              <li>俱乐部 3D 打印机的 Z 轴就是它——拆一台对照上图看</li>
+            </ul>
+          </div>
         </div>
         <div class="info-grid">
           <div class="info-card good"><h4>优点</h4><ul><li>精度高（微米级）</li><li>减速比大（导程小则更慢）</li><li>能自锁（梯形螺纹）</li></ul></div>
           <div class="info-card bad"><h4>缺点</h4><ul><li>速度慢</li><li>滚珠丝杆成本高</li><li>长行程时丝杆下垂</li></ul></div>
           <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机、CNC</li><li>精密定位台</li><li>升降柱</li></ul></div>
         </div>
+        <p style="margin: 18px 0 0; font-size: 14px;">
+          拓展视频：<a href="https://www.bilibili.com/video/BV1qV4y1d7sy" target="_blank" rel="noopener">浙大机械学院博士师姐的手搓丝杆滑台教程（B 站）</a>
+          ——从光杆、螺母到滑台装配的全流程实拍，看完你就知道这台动画里每个零件长什么样。
+        </p>
       </section>
 
       <section id="tab-rack" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <g transform="translate(350, 160)">
-              <circle r="60" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="gear-teeth"></g>
-              <rect x="-300" y="55" width="600" height="40" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="rack-teeth"></g>
-              <circle r="6" fill="#c8442a"/>
-              <text x="0" y="-90" text-anchor="middle" fill="#999" font-size="13">齿轮旋转 → 齿条直线移动</text>
-            </g>
-          </svg>
+          <svg id="rk-svg" viewBox="0 0 700 330"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>小齿轮齿数 z <span class="val" id="rk-z-val">16</span></label>
+              <input type="range" id="rk-z" min="10" max="30" step="1" value="16">
+            </div>
+          </div>
+          <div class="verdict" id="rk-verdict"></div>
+          <div id="rk-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">齿轮齿条的传动关系</div>
+          <div class="f-eq">v<sub>齿条</sub> = ω · r = π·m·z·n / 60　　每转位移 = π·m·z = 节圆周长</div>
+          <div class="f-note">
+            齿轮转一圈，齿条走<strong>一个节圆周长</strong>——和卷尺拉开同一个道理，且齿与齿槽啮合，
+            <strong>理论上零滑差</strong>。齿数 z 越多，同转速下齿条走得越快（r = mz/2 变大），
+            但同样电机扭矩下推力越小（F = T/r）。动画里红点是轮齿上的标记，绿点是齿条上的标记——
+            两者始终同步前移，这就是"无滑差"的可视化验证。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li><strong>行程无限</strong>：齿条接多长走多长，这是丝杆做不到的</li>
+              <li>效率高（~95%）；F = T/r，小齿轮 = 大推力（液压转向都用小齿轮）</li>
+              <li>有齿隙 → 回程误差；重载要加消隙机构（双片齿条预紧）</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>小齿轮<strong>买成品</strong>（模数 1~2，内孔配电机轴 D 形或键槽）</li>
+              <li>齿条可<strong>激光切割</strong>或打印——务必按同模数生成齿形，节距对不上会顶齿</li>
+              <li>安装时调中心距：留 0.1~0.2 mm 侧隙，既能转又不旷</li>
+            </ul>
+          </div>
         </div>
         <div class="info-grid">
           <div class="info-card good"><h4>优点</h4><ul><li>传动效率高</li><li>行程理论上无限</li><li>结构紧凑</li></ul></div>
@@ -120,16 +252,43 @@
 
       <section id="tab-belt" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <circle cx="180" cy="160" r="50" fill="white" stroke="#333" stroke-width="2"/>
-            <circle cx="520" cy="160" r="50" fill="white" stroke="#333" stroke-width="2"/>
-            <rect x="320" y="100" width="60" height="40" fill="#c8442a" stroke="#333" stroke-width="2" rx="2"/>
-            <line x1="180" y1="110" x2="520" y2="110" stroke="#666" stroke-width="3"/>
-            <line x1="180" y1="210" x2="520" y2="210" stroke="#666" stroke-width="3"/>
-            <circle cx="180" cy="160" r="6" fill="#c8442a"/>
-            <circle cx="520" cy="160" r="6" fill="#c8442a"/>
-            <text x="350" y="80" text-anchor="middle" fill="#999" font-size="13">主动轮旋转 → 同步带直线运动</text>
-          </svg>
+          <svg id="bt-svg" viewBox="0 0 700 330"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>传动比 i = z₁/z₂ <span class="val" id="bt-i-val">1.0</span></label>
+              <input type="range" id="bt-i" min="0" max="3" step="1" value="1">
+            </div>
+          </div>
+          <div class="verdict" id="bt-verdict"></div>
+          <div id="bt-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">同步带的传动关系</div>
+          <div class="f-eq">v<sub>带</sub> = ω<sub>1</sub>·r<sub>1</sub> = ω<sub>2</sub>·r<sub>2</sub>　　n<sub>2</sub> = n<sub>1</sub>·z<sub>1</sub>/z<sub>2</sub></div>
+          <div class="f-note">
+            带是<strong>同一根</strong>，所以两轮边缘线速度必然相等——这就是带传动的"合同"。
+            同步带内壁有齿，与轮槽啮合，<strong>无滑差</strong>（平皮带会打滑）。
+            两轮转向<strong>相同</strong>（带绕外圈），这是它与齿轮副（转向相反）的关键区别。
+            红色标记点随带走一圈，注意上下两段带移动方向相反。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li><strong>远距离</strong>传动首选：中心距几米都行（齿轮做不到）</li>
+              <li>同步带无滑差、无齿隙，精度介于丝杆与平皮带之间</li>
+              <li>高速轻载；大扭矩会跳齿</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li><strong>GT2 皮带轮 + 皮带全部买成品</strong>（3D 打印机同款，便宜量足）</li>
+              <li><strong>张紧机构必备</strong>：长孔 + 螺钉调中心距，或加惰轮张紧</li>
+              <li>皮带按行程裁长度、接头用同步带扣——比赛队直接买环形带</li>
+            </ul>
+          </div>
         </div>
         <div class="info-grid">
           <div class="info-card good"><h4>优点</h4><ul><li>远距离传动效率高</li><li>无齿隙（同步带）</li><li>噪音低、无需润滑</li></ul></div>
@@ -140,14 +299,41 @@
 
       <section id="tab-cylinder" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <rect x="200" y="120" width="280" height="80" fill="white" stroke="#333" stroke-width="2" rx="4"/>
-            <rect x="220" y="140" width="200" height="40" fill="#fde7e0" stroke="#c8442a" stroke-width="2" rx="2"/>
-            <rect x="420" y="150" width="180" height="20" fill="#666"/>
-            <line x1="220" y1="160" x2="220" y2="200" stroke="#c8442a" stroke-width="3" stroke-dasharray="4 4"/>
-            <line x1="420" y1="160" x2="420" y2="200" stroke="#c8442a" stroke-width="3" stroke-dasharray="4 4"/>
-            <text x="320" y="100" text-anchor="middle" fill="#999" font-size="13">气缸（或电动推杆）→ 直接输出直线运动</text>
-          </svg>
+          <svg id="cy-svg" viewBox="0 0 700 330"></svg>
+          <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;">
+            <button class="btn" id="cy-mode">切换：双作用气缸</button>
+          </div>
+          <div class="verdict" id="cy-verdict"></div>
+          <div id="cy-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">气缸的输出力</div>
+          <div class="f-eq">F = p · A = p · πD²/4　　伸出更快更猛（有杆腔面积小）</div>
+          <div class="f-note">
+            气缸把"压强 × 面积"直接变成直线力——<strong>不需要任何中间传动</strong>。
+            0.5 MPa（5 bar）+ 32 mm 缸径 → F ≈ 400 N，比舵机大一个量级。
+            双作用缸两个口交替进排气：左口进气伸出、右口进气缩回；
+            <strong>两端的磁感应限位开关</strong>给控制器"到位"信号（这就是它的"反馈"）。
+            气缸只有"伸出/缩回"两个稳定位置，中间停不住——要中间停请用上面三个电动方案。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li><strong>两位置</strong>快速切换的最简方案：到位由限位开关告知</li>
+              <li>力 = 压强 × 面积：缸径翻倍力翻 4 倍；伸出/缩回速度不同（有杆腔面积小）</li>
+              <li>冲击大：末端加速度可达数十 g，抓易碎品要靠气路节流阀缓冲</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li><strong>全买成品</strong>：SMC / 亚德客气缸几十一百元，自带限位磁环</li>
+              <li>系统四件套：<strong>气泵 + 电磁阀 + 气管 + 节流阀</strong>（电磁阀决定换向时序）</li>
+              <li>气路快插接头免加工；只有安装支架需要自己打印</li>
+            </ul>
+          </div>
         </div>
         <div class="info-grid">
           <div class="info-card good"><h4>优点</h4><ul><li>直接出直线运动，最简单</li><li>响应快（气动）</li><li>力大（液压）</li></ul></div>
@@ -156,14 +342,65 @@
         </div>
       </section>
 
-      <div class="robot-callout">
-        <img src="../assets/asabe/end-effector-picking.png" alt="end effector">
-        <div class="text">
-          <strong>在我们的机器人上</strong>
-          末端刮板的扫动其实就是一种简化曲柄滑块——舵机驱动刮板绕一个轴摆动，把鸡蛋扫入收集筐。
-          如果刮板要做长行程直线运动（而不是摆动），可以考虑改成齿条或同步带方案。
-        </div>
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">2.2</span>
+        <div><h2>驱动与安装</h2><p class="sec-sub">电机放哪、怎么传、怎么固定——五种方案各不同</p></div>
       </div>
+      <section class="drive-card" data-reveal>
+        <div class="dc-head"><svg class="ic"><use href="#i-motor"></use></svg> 驱动与安装 · 直线机构</div>
+        <div class="dc-grid">
+          <div class="dc-item">
+            <h4>电机放哪</h4>
+            <p><strong>丝杆</strong>：电机与丝杆同轴直联（联轴器），远端加轴承座——<em>悬臂是丝杆下垂与抖动的主因</em>。
+            <strong>齿条</strong>：电机装在滑座上随动，小齿轮装电机轴。<strong>同步带</strong>：电机座在带轮端。
+            <strong>曲柄滑块</strong>：电机轴与曲柄销同轴直驱。气缸：无电机（电磁阀控制气路）。</p>
+          </div>
+          <div class="dc-item">
+            <h4>直驱还是传动</h4>
+            <p>丝杆本身就是"旋转→直线"的减速器（导程小 = 减速比大），<em>一般不再外加减速</em>；
+            齿条/同步带通常电机直驱小齿轮/带轮（它们没有减速效应，需要时再加行星减速箱）。</p>
+          </div>
+          <div class="dc-item">
+            <h4>电机座怎么做</h4>
+            <p>打印 L 形电机座，42 步进按 <em>31 mm 孔距</em> 标准孔（建议做成 CAD 库文件）；
+            轴承座孔比轴承外径 <em>+0.1</em>；同步带电机座留<em>长孔</em>调中心距张紧。</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="sec-head sm" data-reveal>
+        <span class="sec-num">2.3</span>
+        <div><h2>实物制作</h2><p class="sec-sub">移动副（导轨滑块）+ 转动副（曲柄铰）</p></div>
+      </div>
+      <section class="build-card" data-reveal>
+        <div class="bc-head"><svg class="ic"><use href="#i-wrench"></use></svg> 实物制作 · 直线机构</div>
+        <div class="bc-grid">
+          <div class="bc-main">
+            <p><strong>移动副（直线导轨）两种做法</strong>：① 光轴 Ø8 + 直线轴承 LM8UU（标准件最顺滑，滑台打印机同款）；
+            ② 打印滑块 + 光杆（孔放大 0.2、贴 PTFE 膜减摩——便宜，摩擦大一点）。
+            <strong>平行度是生命线</strong>：两根光轴的孔必须在同一块板上一次钻出，分次钻必卡。
+            <strong>丝杆螺母座</strong>：打印件留 0.2 余量配 T8 黄铜螺母（加热后压入）。
+            曲柄滑块的曲柄销是<strong>转动副</strong>——做法见右侧链接。</p>
+            <a class="bc-link" href="chassis.html">转动副规范 → 底盘与悬挂 · 铰接设计（铜套）<br>
+              <span style="font-size:12px; color:var(--ink-soft);">螺丝作轴 + 铜套作轴承 + 防松螺母埋六角坑：免调拧紧、面接触不硌坏打印孔</span></a>
+          </div>
+          <table class="bc-params">
+            <tbody>
+              <tr><td>光轴</td><td>Ø8 + LM8UU 直线轴承</td></tr>
+              <tr><td>打印滑块孔</td><td>光杆 Ø8 + 0.2 间隙</td></tr>
+              <tr><td>丝杆</td><td>T8 + 黄铜螺母（成品）</td></tr>
+              <tr><td>螺母座余量</td><td>0.2 mm（压入）</td></tr>
+              <tr><td>导轨平行</td><td>同板一次钻孔</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <figure class="photo-fig" data-reveal>
+        <img src="assets/asabe/end-effector-picking.png" alt="末端执行器实物" loading="lazy">
+        <figcaption><strong>末端执行器实物（往届赛车）</strong>——刮板的扫动是简化曲柄机构的摆动，
+        把鸡蛋扫入收集筐。若要做长行程直线运动（而非摆动），本页的齿条或同步带方案是升级路径。</figcaption>
+      </figure>
 
       <div class="page-nav">
         <a href="dof.html">← 自由度</a>
@@ -175,22 +412,29 @@
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
     import { createControls, svg, line, circle, clear } from './common/controls.js';
-    import { crankSlider, TAU } from './common/math.js';
+    import { crankSlider, deg, TAU } from './common/math.js';
+    import { COLORS, hatchPattern, ground, pinJoint, sliderGuide, arrow, bar } from './common/draw.js';
 
     injectSidebar('motion-linear');
 
-    // Tab 切换
+    // ===== Tab 切换（带动画暂停/恢复）=====
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
     document.querySelectorAll('#tabs .tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
-      });
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
 
     // 曲柄滑块动画
+    (function () {
     const csSvg = document.getElementById('cs-svg');
     const csCtlMount = document.getElementById('cs-controls-mount');
+    const csVerdict = document.getElementById('cs-verdict');
     const lens = { a: 50, b: 160, e: 0 };
 
     function bindSlider(name) {
@@ -198,26 +442,52 @@
       el.addEventListener('input', (e) => {
         lens[name] = parseInt(e.target.value);
         document.getElementById('cs-' + name + '-val').textContent = lens[name];
+        updateVerdict();
       });
     }
     ['a','b','e'].forEach(bindSlider);
 
+    // 行程与急回：扫描整圈取滑块极限
+    function strokeInfo() {
+      let mn = Infinity, mx = -Infinity, thMn = 0, thMx = 0;
+      for (let i = 0; i < 360; i++) {
+        const th = (i / 360) * TAU;
+        const s = crankSlider({ ...lens, theta1: th });
+        if (s.valid) {
+          if (s.sliderPos < mn) { mn = s.sliderPos; thMn = th; }
+          if (s.sliderPos > mx) { mx = s.sliderPos; thMx = th; }
+        }
+      }
+      // 急回：两个极限位置的曲柄角（以右侧极限为参考）
+      let d = Math.abs(thMx - thMn);
+      const H = mx - mn;
+      // 去程（mn→mx）与回程（mx→mn）的曲柄转角
+      let fwd = d, bwd = TAU - d;
+      if (lens.e < 0) { const tmp = fwd; fwd = bwd; bwd = tmp; }
+      return { H, fwd, bwd, K: fwd / bwd };
+    }
+
+    function updateVerdict() {
+      const { H, K, fwd, bwd } = strokeInfo();
+      csVerdict.className = 'verdict';
+      csVerdict.innerHTML = `<strong>行程 H = ${H.toFixed(1)} mm ≈ 2a = ${2 * lens.a} mm</strong> ·
+        ${lens.e === 0 ? 'e = 0：对心式，往复等时（K = 1.00）' : `e = ${lens.e}：偏置式，<strong>急回系数 K = ${K.toFixed(2)}</strong>（去程 ${deg(fwd).toFixed(0)}° / 回程 ${deg(bwd).toFixed(0)}° 曲柄转角）`}`;
+    }
+
     function render(theta1) {
       clear(csSvg);
       const sol = crankSlider({ ...lens, theta1 });
-      const ox = 200, oy = 160;
+      const ox = 200, oy = 130;
 
       // 导路
-      csSvg.appendChild(line(50, oy + lens.e, 650, oy + lens.e, { stroke: '#ddd', 'stroke-width': 1, 'stroke-darray': '4 4' }));
-      // 实线导路（滑块运动路径）
-      csSvg.appendChild(line(50, oy + lens.e + 50, 650, oy + lens.e + 50, { stroke: '#eee', 'stroke-width': 1 }));
+      csSvg.appendChild(line(50, oy + lens.e, 650, oy + lens.e, { stroke: '#ddd', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
 
       // 机架（曲柄支座）
-      csSvg.appendChild(circle(ox, oy, 8, { fill: '#333' }));
-      csSvg.appendChild(svg('polygon', { points: `${ox-15},${oy+8} ${ox+15},${oy+8} ${ox+10},${oy+22} ${ox-10},${oy+22}`, fill: '#333' }));
+      csSvg.appendChild(circle(ox, oy, 8, { fill: '#232a31' }));
+      csSvg.appendChild(svg('polygon', { points: `${ox-15},${oy+8} ${ox+15},${oy+8} ${ox+10},${oy+22} ${ox-10},${oy+22}`, fill: '#232a31' }));
 
       if (!sol.valid || sol.sliderPos === null) {
-        const t = svg('text', { x: 350, y: 60, 'text-anchor':'middle', fill:'#a13030', 'font-size':14 });
+        const t = svg('text', { x: 350, y: 60, 'text-anchor':'middle', fill:'#b3372c', 'font-size':14 });
         t.textContent = '⚠ 装配失败：连杆长度不足，请增大 b';
         csSvg.appendChild(t);
         return;
@@ -229,19 +499,19 @@
       // 连杆（蓝）
       csSvg.appendChild(line(crankEnd.x, crankEnd.y, slider.x, slider.y, { stroke: '#2a5c8a', 'stroke-width': 4 }));
       // 曲柄（红）
-      csSvg.appendChild(line(ox, oy, crankEnd.x, crankEnd.y, { stroke: '#c8442a', 'stroke-width': 5 }));
+      csSvg.appendChild(line(ox, oy, crankEnd.x, crankEnd.y, { stroke: '#d9662c', 'stroke-width': 5 }));
 
       // 滑块（橙色矩形）
-      csSvg.appendChild(svg('rect', { x: slider.x - 25, y: slider.y - 18, width: 50, height: 36, fill: '#c8442a', stroke:'#333', 'stroke-width': 2, rx: 3 }));
+      csSvg.appendChild(svg('rect', { x: slider.x - 25, y: slider.y - 18, width: 50, height: 36, fill: '#d9662c', stroke:'#232a31', 'stroke-width': 2, rx: 3 }));
 
       // 关节
       [crankEnd, slider].forEach(p => {
-        csSvg.appendChild(circle(p.x, p.y, 5, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
+        csSvg.appendChild(circle(p.x, p.y, 5, { fill: 'white', stroke: '#232a31', 'stroke-width': 2 }));
       });
 
       // 标签
       const lbl = (x, y, t) => {
-        const e = svg('text', { x, y, fill:'#555', 'font-size':11, 'font-family':'monospace' });
+        const e = svg('text', { x, y, fill:'#5a6472', 'font-size':11, 'font-family':'monospace' });
         e.textContent = t;
         csSvg.appendChild(e);
       };
@@ -249,15 +519,661 @@
       lbl(crankEnd.x + 8, crankEnd.y - 5, 'B');
       lbl(slider.x - 5, slider.y - 25, 'C');
 
-      const hint = svg('text', { x: 350, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
-      hint.textContent = `θ₁ = ${(theta1 * 180 / Math.PI).toFixed(0)}°`;
+      const hint = svg('text', { x: 350, y: 30, 'text-anchor':'middle', fill:'#5a6472', 'font-size':13 });
+      hint.textContent = `θ₁ = ${(theta1 * 180 / Math.PI).toFixed(0)}° · 滑块 x = ${sol.sliderPos.toFixed(0)} mm`;
       csSvg.appendChild(hint);
+
+      // 位移-时间曲线（底部小图）
+      const gx = 70, gy = 320, gw = 400, gh = 45;
+      csSvg.appendChild(svg('rect', { x: gx - 10, y: gy - gh - 12, width: gw + 20, height: gh + 28, fill: 'white', stroke: '#e3e1d8', 'stroke-width': 1, rx: 4 }));
+      csSvg.appendChild(line(gx, gy, gx + gw, gy, { stroke: '#8a919b', 'stroke-width': 1 }));
+      let d = '';
+      const { H } = strokeInfo();
+      for (let i = 0; i <= 96; i++) {
+        const th = (i / 96) * TAU;
+        const s = crankSlider({ ...lens, theta1: th });
+        if (!s.valid) continue;
+        const x = gx + (i / 96) * gw;
+        const y = gy - ((s.sliderPos - (ox - lens.a - 40)) / (H + 1e-6)) * gh * 0.9;
+        d += (d === '' ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+      }
+      csSvg.appendChild(svg('path', { d, fill: 'none', stroke: '#0e6b5c', 'stroke-width': 2 }));
+      // 当前点
+      const cy2 = gy - ((sol.sliderPos - (ox - lens.a - 40)) / (H + 1e-6)) * gh * 0.9;
+      const cx2 = gx + (((theta1 % TAU) + TAU) % TAU / TAU) * gw;
+      csSvg.appendChild(circle(cx2, cy2, 4, { fill: '#d9662c' }));
+      const gt = svg('text', { x: gx, y: gy - gh - 16, fill: '#5a6472', 'font-size': 10, 'font-family': 'monospace' });
+      gt.textContent = '滑块位移 x(θ₁)——注意 e≠0 时曲线不对称';
+      csSvg.appendChild(gt);
     }
 
-    createControls(csCtlMount, {
+    updateVerdict();
+    tabCtls['hero'] = createControls(csCtlMount, {
       duration: 4000,
       onTick: (phase) => render(phase * TAU),
     });
+    })();
+
+    /* ============================================================
+     * 丝杆滑台：丝杆旋转（螺纹相位平移错觉）→ 螺母滑台沿导轨平移
+     * 分辨率 = 导程/(200×16)；两端支座剖面线；导轨 sliderGuide
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('sw-svg');
+      const mount = document.getElementById('sw-controls-mount');
+      const verdictEl = document.getElementById('sw-verdict');
+      let lead = 8;                 // 导程 mm
+      const STEPS = 200, MICRO = 16; // 步进 1.8° + 16 细分
+      const REVS = 2;               // 每周期电机转 2 圈
+      const PX_PER_MM = 15;         // 绘图比例（lead=8×2圈=16mm→240px，视觉行程充足）
+      const SCREW_X = 130, SCREW_W = 440; // 丝杆左端/长度
+      const AXIS_Y = 150;
+
+      document.getElementById('sw-lead').addEventListener('input', (e) => {
+        lead = parseInt(e.target.value);
+        document.getElementById('sw-lead-val').textContent = lead;
+        updateVerdict();
+      });
+
+      function updateVerdict() {
+        const res = lead / (STEPS * MICRO); // mm/步
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML =
+          `<strong>导程 L = ${lead} mm</strong> · 电机每转位移 = ${lead} mm · ` +
+          `分辨率 = ${lead}/(200×16) = <strong>${res.toFixed(4)} mm/步</strong> · ` +
+          `动画中电机转 ${REVS} 圈 → 滑台共走 ${(REVS * lead).toFixed(0)} mm（导程减半，位移减半）`;
+      }
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+
+        // 电机转角（REVS 圈/周期）与滑台位移：位移 = 圈数 × 导程（纯几何）
+        const ang = phase * TAU * REVS;
+        const dispMm = phase * REVS * lead;               // 滑台位移 mm
+        const travelPx = dispMm * PX_PER_MM;              // px 位移
+        // 螺纹相位：螺旋面在固定角位置以相同轴向速度"流过"（旋转错觉）
+        const threadShift = travelPx;
+
+        // —— 机架：两端支座（剖面线）——
+        [SCREW_X - 26, SCREW_X + SCREW_W + 26].forEach((bx) => {
+          svgEl.appendChild(svg('rect', {
+            x: bx - 12, y: AXIS_Y - 52, width: 24, height: 104,
+            fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.8, rx: 2,
+          }));
+        });
+        // 地面
+        svgEl.appendChild(ground(svgEl, 70, AXIS_Y + 86, 560));
+
+        // —— 丝杆（旋转错觉：螺纹 pattern 随相位平移）——
+        const bandH = 30;
+        const gScrew = svg('g', {});
+        // 底色杆身
+        gScrew.appendChild(svg('rect', {
+          x: SCREW_X, y: AXIS_Y - bandH / 2, width: SCREW_W, height: bandH,
+          fill: COLORS.frameFill, stroke: COLORS.ink, 'stroke-width': 2, rx: 3,
+        }));
+        // 螺纹线：相位平移
+        const pitchPx = 16;
+        const off = ((threadShift % pitchPx) + pitchPx) % pitchPx;
+        for (let x = -pitchPx; x < SCREW_W + pitchPx; x += pitchPx) {
+          const lx = x + (pitchPx - off);
+          gScrew.appendChild(line(SCREW_X + lx, AXIS_Y + bandH / 2 - 3,
+            SCREW_X + lx + pitchPx * 0.6, AXIS_Y - bandH / 2 + 3,
+            { stroke: COLORS.frame, 'stroke-width': 2.4, 'stroke-linecap': 'round' }));
+        }
+        svgEl.appendChild(gScrew);
+
+        // —— 导轨（sliderGuide，滑台下面）——
+        svgEl.appendChild(sliderGuide(svgEl, SCREW_X - 10, SCREW_X + SCREW_W + 10, AXIS_Y + 58, { th: 6 }));
+
+        // —— 螺母滑台（跟随位移）——
+        const nutW = 76, nutH = 58;
+        const nutX = SCREW_X + 40 + travelPx;
+        const gNut = svg('g', {});
+        // 螺母块（剖面线：它是套在丝杆上的）
+        gNut.appendChild(svg('rect', {
+          x: nutX - nutW / 2, y: AXIS_Y - nutH / 2, width: nutW, height: nutH,
+          fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 2, rx: 3,
+        }));
+        // 载物台（橙，从动件）
+        gNut.appendChild(svg('rect', {
+          x: nutX - nutW / 2 - 8, y: AXIS_Y + nutH / 2, width: nutW + 16, height: 16,
+          fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 1.8, rx: 2,
+        }));
+        svgEl.appendChild(gNut);
+        const nt = svg('text', { x: nutX, y: AXIS_Y + 6, 'text-anchor': 'middle', fill: '#fbfaf6', 'font-size': 11.5, 'font-family': 'monospace', 'font-weight': 700 });
+        nt.textContent = '螺母+滑台';
+        svgEl.appendChild(nt);
+
+        // —— 电机（左端，主动件绿）——
+        svgEl.appendChild(svg('rect', {
+          x: 58, y: AXIS_Y - 42, width: 46, height: 84,
+          fill: COLORS.drive, stroke: COLORS.ink, 'stroke-width': 2, rx: 5,
+        }));
+        const mt = svg('text', { x: 81, y: AXIS_Y + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 11, 'font-family': 'monospace', 'font-weight': 700 });
+        mt.textContent = '步进';
+        svgEl.appendChild(mt);
+        // 联轴器
+        svgEl.appendChild(svg('rect', { x: 104, y: AXIS_Y - 10, width: 16, height: 20, fill: COLORS.ink, rx: 2 }));
+
+        // —— 角速度箭头（电机 → 丝杆）——
+        svgEl.appendChild(arrow(svgEl, 60, AXIS_Y - 58, 96, AXIS_Y - 58, { color: COLORS.drive, width: 2.4, label: 'ω' }));
+
+        // —— 滑台速度箭头 ——
+        svgEl.appendChild(arrow(svgEl, nutX - 30, AXIS_Y - 52, nutX + 30, AXIS_Y - 52, { color: COLORS.hi, width: 2.6, label: 'v = ω·L/2π' }));
+
+        // —— 标记：红点固定在丝杆某一"牙"的螺旋面上（视觉上随螺旋前进）——
+        // 同一个物理牙：轴向位置随螺旋前进，同时上/下缘交替闪烁表现旋转
+        const markSide = Math.sin(ang * 1.0) > 0 ? 1 : -1;
+        const mx = SCREW_X + (travelPx % SCREW_W);
+        svgEl.appendChild(circle(mx, AXIS_Y + markSide * (bandH / 2 - 2), 4.5, { fill: COLORS.hi, stroke: 'white', 'stroke-width': 1.4 }));
+
+        // —— 读数条 ——
+        const barY = AXIS_Y + 104;
+        const totalPx = REVS * lead * PX_PER_MM;
+        svgEl.appendChild(line(SCREW_X, barY, SCREW_X + SCREW_W, barY, { stroke: COLORS.grid, 'stroke-width': 8, 'stroke-linecap': 'round' }));
+        svgEl.appendChild(line(SCREW_X, barY, SCREW_X + travelPx, barY, { stroke: COLORS.drive, 'stroke-width': 8, 'stroke-linecap': 'round' }));
+        svgEl.appendChild(circle(SCREW_X + travelPx, barY, 6, { fill: COLORS.drive, stroke: 'white', 'stroke-width': 2 }));
+        const t1 = svg('text', { x: 350, y: 34, 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 13.5, 'font-weight': 600 });
+        t1.textContent = `电机 ${((ang / TAU) % 1 * 360).toFixed(0)}°（第 ${Math.floor(ang / TAU) + 1} 圈）· 滑台位移 = ${dispMm.toFixed(1)} / ${(REVS * lead).toFixed(0)} mm`;
+        svgEl.appendChild(t1);
+        const t2 = svg('text', { x: 350, y: 54, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+        t2.textContent = `丝杆每转一圈 → 螺母恰好前进一个导程 L = ${lead} mm（纯几何，无滑差）`;
+        svgEl.appendChild(t2);
+        const t3 = svg('text', { x: SCREW_X, y: barY - 14, fill: '#5a6472', 'font-size': 10.5, 'font-family': 'monospace' });
+        t3.textContent = '位移 0';
+        svgEl.appendChild(t3);
+        const t4 = svg('text', { x: SCREW_X + SCREW_W, y: barY - 14, 'text-anchor': 'end', fill: '#5a6472', 'font-size': 10.5, 'font-family': 'monospace' });
+        t4.textContent = `${REVS * lead} mm`;
+        svgEl.appendChild(t4);
+        // 行程两端支座标注
+        const t5 = svg('text', { x: SCREW_X - 26, y: AXIS_Y + 76, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10.5 });
+        t5.textContent = '支座（剖）';
+        svgEl.appendChild(t5);
+        const t6 = svg('text', { x: SCREW_X + SCREW_W + 26, y: AXIS_Y + 76, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10.5 });
+        t6.textContent = '支座（剖）';
+        svgEl.appendChild(t6);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      tabCtls['screw'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 齿轮齿条：梯形齿啮合，标记点验证无滑差
+     * 齿条位移 = ω·r·t；齿条齿按节距与轮齿对齐
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('rk-svg');
+      const mount = document.getElementById('rk-controls-mount');
+      const verdictEl = document.getElementById('rk-verdict');
+      let z = 16;
+      const M = 4;             // 模数（绘图比例 px/mm 权且当 1）
+      const CX = 200, CY = 130; // 齿轮中心
+      const OMEGA = 1.2;        // rad/s（演示角速度）
+
+      document.getElementById('rk-z').addEventListener('input', (e) => {
+        z = parseInt(e.target.value);
+        document.getElementById('rk-z-val').textContent = z;
+        updateVerdict();
+      });
+
+      function updateVerdict() {
+        const r = (M * z) / 2;
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML =
+          `<strong>z = ${z}</strong> · 节圆半径 r = mz/2 = ${r.toFixed(0)} mm · ` +
+          `齿条速度 v = ω·r = ${(OMEGA * r).toFixed(0)} mm/s · 每转位移 = π·m·z = ${(Math.PI * M * z).toFixed(0)} mm`;
+      }
+
+      // 梯形齿：齿轮轮廓（以节圆为基准，齿顶 +add，齿根 −add），实现见 render 内
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+        const r = (M * z) / 2;
+        const add = M * 1.0;              // 齿顶高
+        const pitchArc = TAU / z;          // 角齿距
+        const ang = phase * TAU * 0.9;     // 齿轮转角（0.9 圈演示）
+        const rackX = ang * r;             // 齿条位移 = 弧长积分（无滑差）
+        // 齿条节线 y（节圆与节线相切处）
+        const rackY = CY + r;
+
+        // —— 齿轮（梯形齿）——
+        const gGear = svg('g', { transform: `translate(${CX},${CY}) rotate(${deg(ang)})` });
+        let d = '';
+        const halfTooth = pitchArc * 0.25; // 齿半宽（角）
+        const halfGap = pitchArc * 0.25;
+        for (let i = 0; i < z; i++) {
+          const a0 = i * pitchArc;
+          const p0 = { x: (r - add) * Math.cos(a0 - halfGap - halfTooth), y: (r - add) * Math.sin(a0 - halfGap - halfTooth) };
+          const p1 = { x: (r + add) * Math.cos(a0 - halfTooth * 0.6), y: (r + add) * Math.sin(a0 - halfTooth * 0.6) };
+          const p2 = { x: (r + add) * Math.cos(a0 + halfTooth * 0.6), y: (r + add) * Math.sin(a0 + halfTooth * 0.6) };
+          const p3 = { x: (r - add) * Math.cos(a0 + halfGap + halfTooth), y: (r - add) * Math.sin(a0 + halfGap + halfTooth) };
+          if (i === 0) d += `M ${p0.x.toFixed(1)},${p0.y.toFixed(1)} `;
+          d += `L ${p1.x.toFixed(1)},${p1.y.toFixed(1)} L ${p2.x.toFixed(1)},${p2.y.toFixed(1)} L ${p3.x.toFixed(1)},${p3.y.toFixed(1)} `;
+          const a4 = (i + 1) * pitchArc - halfGap - halfTooth;
+          const p4 = { x: (r - add) * Math.cos(a4), y: (r - add) * Math.sin(a4) };
+          d += `A ${(r - add).toFixed(1)} ${(r - add).toFixed(1)} 0 0 1 ${p4.x.toFixed(1)},${p4.y.toFixed(1)} `;
+        }
+        d += 'Z';
+        gGear.appendChild(svg('path', { d, fill: '#e9e6dd', stroke: COLORS.ink, 'stroke-width': 2 }));
+        // 辐条标记线
+        gGear.appendChild(line(0, 0, r + add - 4, 0, { stroke: COLORS.drive, 'stroke-width': 3 }));
+        gGear.appendChild(circle(0, 0, Math.max(8, r * 0.14), { fill: COLORS.frame }));
+        gGear.appendChild(circle(0, 0, Math.max(3, r * 0.05), { fill: COLORS.bg }));
+        svgEl.appendChild(gGear);
+
+        // —— 齿条（梯形齿朝上，与齿轮节线啮合）——
+        // 齿轮顺时针转（ang 增大，SVG y 向下）→ 节线接触点向左移动 → 齿条左移
+        const rackW = 620;
+        const gRack = svg('g', { transform: `translate(${-rackX},0)` });
+        const rackX0 = CX - rackW / 2; // 齿条左端（组内坐标，平移由 transform 承担）
+        const pitchLin = pitchArc * r; // 线齿距 = 角齿距 × r
+        const toothH = add * 2;
+        const halfW = pitchLin * 0.25;
+        let rd = '';
+        // 齿相位：让啮合点（组内 x = CX）恰为齿槽中心——与齿轮在 z%4=0 时底点的"齿"对上
+        const nLeft = Math.ceil((CX - rackX0) / pitchLin);
+        const nRight = Math.ceil((rackX0 + rackW + pitchLin * 2 - CX) / pitchLin);
+        for (let k = -nLeft; k <= nRight; k++) {
+          const cxT = CX + (k + 0.5) * pitchLin; // 齿槽在 CX（齿在 ±半齿距处）
+          rd += `M ${(cxT - halfW).toFixed(1)},${rackY} L ${(cxT - halfW * 0.6).toFixed(1)},${rackY - toothH} L ${(cxT + halfW * 0.6).toFixed(1)},${rackY - toothH} L ${(cxT + halfW).toFixed(1)},${rackY} `;
+        }
+        gRack.appendChild(svg('path', { d: rd, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+        // 齿条本体（从动件橙）
+        gRack.appendChild(svg('rect', {
+          x: rackX0, y: rackY, width: rackW + pitchLin * 2, height: 34,
+          fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 2,
+        }));
+        svgEl.appendChild(gRack);
+
+        // —— 机架：齿轮支座（剖面）+ 齿条导轨 ——
+        svgEl.appendChild(svg('polygon', {
+          points: `${CX - 16},${CY + r + 44} ${CX + 16},${CY + r + 44} ${CX - 10},${CY + r + 20} ${CX + 10},${CY + r + 20}`,
+          fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+        }));
+        svgEl.appendChild(ground(svgEl, 100, CY + r + 47, 500));
+        // 齿条导向（下侧滑轨）
+        svgEl.appendChild(sliderGuide(svgEl, 80, 620, CY + r + 36, { th: 5 }));
+
+        // —— 标记点（无滑差验证）——
+        // 轮标记（红）：固定在初始时刻位于啮合点（正下方）的那个轮齿上
+        // 齿轮顺时针（SVG y 向下，ang 增大 = 顺时针视觉）→ 啮合点轮缘向左 → 齿条左移
+        const markInitA = Math.PI / 2; // 初始角：正下方（啮合点）
+        const markNow = {
+          x: CX + (r - add * 0.4) * Math.cos(markInitA + ang),
+          y: CY + (r - add * 0.4) * Math.sin(markInitA + ang),
+        };
+        svgEl.appendChild(circle(markNow.x, markNow.y, 5, { fill: COLORS.hi, stroke: 'white', 'stroke-width': 1.5 }));
+        // 齿条标记（绿）：初始与轮标记重合于啮合点，随齿条平移（同速）
+        const rackMark = { x: CX - rackX, y: rackY - 6 };
+        svgEl.appendChild(circle(rackMark.x, rackMark.y, 5, { fill: COLORS.drive, stroke: 'white', 'stroke-width': 1.5 }));
+        // 速度箭头（齿条向左）
+        svgEl.appendChild(arrow(svgEl, rackMark.x - 10, rackMark.y - 24, rackMark.x - 66, rackMark.y - 24, { color: COLORS.driven, width: 2.6, label: 'v=ω·r' }));
+        // ω 箭头（齿轮中心上方）
+        svgEl.appendChild(arrow(svgEl, CX - 30, CY - r - 44, CX + 30, CY - r - 44, { color: COLORS.drive, width: 2.4, label: 'ω' }));
+
+        // —— 啮合区高亮（下方切点）——
+        svgEl.appendChild(circle(CX, rackY, 15, { fill: 'none', stroke: COLORS.hi, 'stroke-width': 1.6, 'stroke-dasharray': '4 3' }));
+
+        // —— 读数 ——
+        const t1 = svg('text', { x: 350, y: 32, 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 13.5, 'font-weight': 600 });
+        t1.textContent = `θ = ${(deg(ang) % 360).toFixed(0)}° · 齿条位移 = ${rackX.toFixed(0)} mm = θ·r（弧长）`;
+        svgEl.appendChild(t1);
+        const t2 = svg('text', { x: 350, y: 52, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+        t2.textContent = '红点（轮齿）与绿点（齿条）初始重合、全程同速分离 → 纯滚动啮合，无滑差';
+        svgEl.appendChild(t2);
+        const t3 = svg('text', { x: CX, y: CY + 8, 'text-anchor': 'middle', fill: 'white', 'font-size': 11, 'font-family': 'monospace', 'font-weight': 700 });
+        t3.textContent = `z=${z}`;
+        svgEl.appendChild(t3);
+        const t4 = svg('text', { x: CX - rackW / 2 + 34, y: rackY + 22, fill: 'white', 'font-size': 11, 'font-family': 'monospace', 'font-weight': 700 });
+        t4.textContent = '齿条（往复）';
+        svgEl.appendChild(t4);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      tabCtls['rack'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 同步带：两带轮（传动比可调）+ 带齿循环 + 红标记随带走
+     * 带速 = ω₁·r₁；两轮转向相同
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('bt-svg');
+      const mount = document.getElementById('bt-controls-mount');
+      const verdictEl = document.getElementById('bt-verdict');
+      let iIdx = 1; // 0→1:2  1→1:1  2→2:1  3→3:1
+      const RATIOS = [
+        { label: '1:2（大带轮从动）', z1: 20, z2: 40 },
+        { label: '1:1（等轮）', z1: 20, z2: 20 },
+        { label: '2:1（小带轮从动）', z1: 40, z2: 20 },
+        { label: '3:1（减速）', z1: 60, z2: 20 },
+      ];
+      const CY = 150;
+      const C1X = 200, C2X = 490;
+      const PULLEY_R = (zz) => 14 + zz * 1.5; // 带轮半径 px
+
+      document.getElementById('bt-i').addEventListener('input', (e) => {
+        iIdx = parseInt(e.target.value);
+        document.getElementById('bt-i-val').textContent = RATIOS[iIdx].label;
+        updateVerdict();
+      });
+
+      function updateVerdict() {
+        const { z1, z2 } = RATIOS[iIdx];
+        const r1 = PULLEY_R(z1), r2 = PULLEY_R(z2);
+        const w1 = 1.0;
+        const w2 = w1 * (r1 / r2);
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML =
+          `<strong>z₁=${z1} / z₂=${z2}（i = ${(z1 / z2).toFixed(2)}）</strong> · 带速 v = ω₁·r₁ 恒定 · ` +
+          `n₂ = n₁·z₁/z₂ → 两轮<strong>转向相同</strong>（带绕外圈）`;
+      }
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+        const { z1, z2 } = RATIOS[iIdx];
+        const r1 = PULLEY_R(z1), r2 = PULLEY_R(z2);
+        const ang1 = phase * TAU * 1.1;
+        const ang2 = -ang1 * (r1 / r2); // 转向相同：上带左移时两轮同向 → 取负号（见下方验证）
+
+        // —— 带路径（两轮外公切）——
+        // 上切线 y = CY - max(r1,r2) 近似；下切线 y = CY + max(r1,r2)（教学近似，标注节线）
+        const rMax = Math.max(r1, r2);
+        const topY = CY - rMax, botY = CY + rMax;
+        // 带线总长（用于标记点循环）：2×中心距 + 2π·r（近似）
+        const span = C2X - C1X;
+        const beltLen = 2 * span + TAU * rMax;
+
+        // —— 带轮绘制 ——
+        const drawPulley = (cx, r, ang, driveFlag, z) => {
+          const g = svg('g', { transform: `translate(${cx},${CY}) rotate(${deg(ang)})` });
+          // 轮齿（梯形小齿沿外缘）
+          const nT = Math.max(8, Math.round(z / 2));
+          let d = '';
+          const pitch = TAU / nT;
+          for (let i = 0; i < nT; i++) {
+            const a = i * pitch;
+            const p0 = { x: (r - 3) * Math.cos(a), y: (r - 3) * Math.sin(a) };
+            const p1 = { x: r * Math.cos(a + pitch * 0.18), y: r * Math.sin(a + pitch * 0.18) };
+            const p2 = { x: r * Math.cos(a + pitch * 0.82), y: r * Math.sin(a + pitch * 0.82) };
+            const p3 = { x: (r - 3) * Math.cos(a + pitch), y: (r - 3) * Math.sin(a + pitch) };
+            d += `M ${p0.x.toFixed(1)},${p0.y.toFixed(1)} L ${p1.x.toFixed(1)},${p1.y.toFixed(1)} L ${p2.x.toFixed(1)},${p2.y.toFixed(1)} L ${p3.x.toFixed(1)},${p3.y.toFixed(1)} `;
+          }
+          g.appendChild(circle(0, 0, r - 3, { fill: '#e9e6dd' }));
+          g.appendChild(svg('path', { d, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.4 }));
+          g.appendChild(line(0, 0, r - 6, 0, { stroke: driveFlag ? COLORS.drive : COLORS.driven, 'stroke-width': 3 }));
+          g.appendChild(circle(0, 0, 7, { fill: COLORS.frame }));
+          svgEl.appendChild(g);
+        };
+        drawPulley(C1X, r1, ang1, true, z1);
+        drawPulley(C2X, r2, ang2, false, z2);
+
+        // —— 带（上/下直线段 + 绕轮弧，带齿朝内）——
+        const drawBeltRun = (y, dir) => {
+          const g = svg('g', {});
+          // 带体
+          g.appendChild(svg('rect', { x: C1X, y: y - 8, width: span, height: 16, fill: COLORS.frameFill, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+          // 带齿（朝内 = 朝向轮）+ 相位随带移动
+          const pitchPx = 13;
+          const vBelt = ang1 * r1; // 带位移 px
+          const shift = ((vBelt * dir) % pitchPx + pitchPx) % pitchPx;
+          for (let x = -pitchPx; x < span + pitchPx; x += pitchPx) {
+            const lx = x - shift;
+            g.appendChild(svg('rect', { x: C1X + lx, y: dir > 0 ? y + 8 : y - 12, width: 6, height: 4, fill: COLORS.frame, stroke: 'none' }));
+          }
+          svgEl.appendChild(g);
+        };
+        // 上段带向左移（dir = -1：齿在下侧 = 朝内）；下段带向右移
+        drawBeltRun(topY, -1);
+        drawBeltRun(botY, 1);
+
+        // —— 绕轮弧段（视觉：外圈描边弧）——
+        svgEl.appendChild(svg('path', {
+          d: `M ${C1X},${CY - r1} A ${r1 + 9} ${r1 + 9} 0 0 1 ${C1X},${CY + r1}`,
+          fill: 'none', stroke: COLORS.ink, 'stroke-width': 1.8, opacity: 0.85,
+        }));
+        svgEl.appendChild(svg('path', {
+          d: `M ${C2X},${CY - r2} A ${r2 + 9} ${r2 + 9} 0 0 0 ${C2X},${CY + r2}`,
+          fill: 'none', stroke: COLORS.ink, 'stroke-width': 1.8, opacity: 0.85,
+        }));
+
+        // —— 红色标记点沿带循环（上段左移 → 左轮弧下行 → 下段右移 → 右轮弧上行）——
+        const vBelt = ang1 * r1; // 已走的带长（px）
+        const s = ((vBelt % beltLen) + beltLen) % beltLen;
+        let mp;
+        const tSpan = span, tArc1 = Math.PI * r1, tArc2 = Math.PI * r2;
+        // 逆时针走（与上段左移一致）：上段右→左，左弧上→下，下段左→右，右弧下→上
+        if (s < tSpan) mp = { x: C2X - s, y: topY };                    // 上段：右→左
+        else if (s < tSpan + tArc1) { const q = (s - tSpan) / tArc1; mp = { x: C1X - r1 * Math.sin(q * Math.PI), y: CY - r1 * Math.cos(q * Math.PI) + 0 }; }
+        else if (s < tSpan + tArc1 + tSpan) mp = { x: C1X + (s - tSpan - tArc1), y: botY }; // 下段：左→右
+        else { const q = (s - tSpan - tArc1 - tSpan) / tArc2; mp = { x: C2X + r2 * Math.sin(q * Math.PI), y: CY + r2 * Math.cos(q * Math.PI) }; }
+        svgEl.appendChild(circle(mp.x, mp.y, 6, { fill: COLORS.hi, stroke: 'white', 'stroke-width': 1.8 }));
+
+        // —— 张紧螺钉（长孔）示意 ——
+        svgEl.appendChild(svg('rect', { x: C2X + r2 + 12, y: CY - 6, width: 40, height: 5, fill: 'none', stroke: COLORS.ref, 'stroke-width': 1.6 }));
+        svgEl.appendChild(circle(C2X + r2 + 32, CY + 8, 4, { fill: COLORS.ref }));
+        const tL = svg('text', { x: C2X + r2 + 32, y: CY + 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10 });
+        tL.textContent = '张紧长孔';
+        svgEl.appendChild(tL);
+
+        // —— 机架支座 ——
+        [C1X, C2X].forEach((cx) => {
+          svgEl.appendChild(svg('polygon', {
+            points: `${cx - 14},${CY + rMax + 40} ${cx + 14},${CY + rMax + 40} ${cx - 9},${CY + rMax + 18} ${cx + 9},${CY + rMax + 18}`,
+            fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+          }));
+        });
+        svgEl.appendChild(ground(svgEl, 110, CY + rMax + 43, 480));
+
+        // —— 箭头：ω₁ 与 ω₂ 同向；带速 ——
+        svgEl.appendChild(arrow(svgEl, C1X - 34, CY - rMax - 30, C1X + 34, CY - rMax - 30, { color: COLORS.drive, width: 2.4, label: 'ω₁' }));
+        svgEl.appendChild(arrow(svgEl, C2X - 34, CY - rMax - 30, C2X + 34, CY - rMax - 30, { color: COLORS.driven, width: 2.4, label: 'ω₂' }));
+        svgEl.appendChild(arrow(svgEl, C2X - 80, topY - 20, C2X - 20, topY - 20, { color: COLORS.hi, width: 2.2, label: '' }));
+        svgEl.appendChild(arrow(svgEl, C1X - 60, topY - 20, C1X - 120, topY - 20, { color: COLORS.hi, width: 2.6, label: 'v带' }));
+
+        // —— 读数 ——
+        const t1 = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 13.5, 'font-weight': 600 });
+        t1.textContent = `v带 = ω₁·r₁ = ω₂·r₂（同带同速）· ω₂/ω₁ = ${(r1 / r2).toFixed(2)} · 转向相同`;
+        svgEl.appendChild(t1);
+        const t2 = svg('text', { x: 350, y: 50, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+        t2.textContent = '红点随带循环一周：上段左移 → 左轮弧下行 → 下段右移 → 右轮弧上行——带齿与轮槽啮合，无滑差';
+        svgEl.appendChild(t2);
+        const t3 = svg('text', { x: C1X, y: CY + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 10.5, 'font-family': 'monospace', 'font-weight': 700 });
+        t3.textContent = `z=${z1}`;
+        svgEl.appendChild(t3);
+        const t4 = svg('text', { x: C2X, y: CY + 4, 'text-anchor': 'middle', fill: 'white', 'font-size': 10.5, 'font-family': 'monospace', 'font-weight': 700 });
+        t4.textContent = `z=${z2}`;
+        svgEl.appendChild(t4);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 7000, onTick: (p) => render(p) });
+      tabCtls['belt'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 气缸：缸体（剖面）+ 活塞杆伸缩 + 进排气口交替高亮 + 限位开关
+     * 单/双作用切换按钮
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('cy-svg');
+      const mount = document.getElementById('cy-controls-mount');
+      const verdictEl = document.getElementById('cy-verdict');
+      const modeBtn = document.getElementById('cy-mode');
+      let dblActing = true;
+
+      modeBtn.addEventListener('click', () => {
+        dblActing = !dblActing;
+        modeBtn.textContent = dblActing ? '切换：双作用气缸' : '切换：单作用气缸（弹簧复位）';
+        updateVerdict();
+      });
+
+      function updateVerdict() {
+        const p = 0.5, D = 32;
+        const F = p * 1e6 * Math.PI * (D / 1000) ** 2 / 4;
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML = dblActing
+          ? `<strong>双作用气缸</strong>：两口交替进排气，双向都能出力 · F = p·πD²/4 = 0.5MPa × π × 32²/4 ≈ <strong>${F.toFixed(0)} N</strong>`
+          : `<strong>单作用气缸</strong>：进气伸出、弹簧复位缩回 · 只有一个口，断气自动回原位（ fail-safe）`;
+      }
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+
+        // 伸缩时间线：0~0.42 伸出 → 0.42~0.58 保持（触发限位）→ 0.58~1 缩回
+        let s; // 0~1 活塞位置
+        const ease = (t) => 0.5 - 0.5 * Math.cos(Math.PI * t);
+        if (phase < 0.42) s = ease(phase / 0.42);
+        else if (phase < 0.58) s = 1;
+        else s = 1 - ease((phase - 0.58) / 0.42);
+        if (!dblActing) {
+          // 单作用：伸出慢（对抗弹簧），缩回快（弹簧推回）
+          if (phase < 0.5) s = ease(phase / 0.5);
+          else s = 1 - ease(Math.min(1, (phase - 0.5) / 0.28));
+        }
+
+        const CY = 150;
+        const boreX = 180, boreW = 300, boreH = 88;
+        const rodLen = 150 * s;
+        const pistonX = boreX + 18 + s * (boreW - 60);
+        const outNow = phase < 0.5 || (dblActing && phase < 0.58);
+
+        // —— 缸体（剖面线 = 缸壁剖切）——
+        // 缸筒壁（上下两条剖面带）
+        svgEl.appendChild(svg('rect', { x: boreX, y: CY - boreH / 2 - 14, width: boreW, height: 14, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+        svgEl.appendChild(svg('rect', { x: boreX, y: CY + boreH / 2, width: boreW, height: 14, fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.8 }));
+        // 缸腔（白色）
+        svgEl.appendChild(svg('rect', { x: boreX, y: CY - boreH / 2, width: boreW, height: boreH, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.6 }));
+
+        // —— 腔内气压高亮（左腔进气=伸出红 / 右腔进气=缩回蓝）——
+        const leftChg = dblActing ? (outNow ? 1 : 0.12) : (phase < 0.5 ? 1 : 0.08);
+        const rightChg = dblActing ? (outNow ? 0.12 : 1) : 0.08;
+        if (dblActing) {
+          svgEl.appendChild(svg('rect', {
+            x: boreX + 1, y: CY - boreH / 2 + 1, width: Math.max(2, pistonX - boreX - 20), height: boreH - 2,
+            fill: outNow ? COLORS.hi : '#2a5c8a', opacity: 0.18 + 0.14 * leftChg,
+          }));
+          svgEl.appendChild(svg('rect', {
+            x: pistonX + 22, y: CY - boreH / 2 + 1, width: Math.max(2, boreX + boreW - pistonX - 23), height: boreH - 2,
+            fill: outNow ? '#2a5c8a' : COLORS.hi, opacity: 0.18 + 0.14 * rightChg,
+          }));
+        } else {
+          svgEl.appendChild(svg('rect', {
+            x: boreX + 1, y: CY - boreH / 2 + 1, width: Math.max(2, pistonX - boreX - 20), height: boreH - 2,
+            fill: COLORS.hi, opacity: 0.1 + 0.18 * leftChg,
+          }));
+        }
+
+        // —— 活塞（从动件橙）+ 活塞杆 ——
+        svgEl.appendChild(svg('rect', { x: pistonX, y: CY - boreH / 2 + 4, width: 20, height: boreH - 8, fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 2, rx: 2 }));
+        const rodX0 = pistonX + 20;
+        svgEl.appendChild(svg('rect', { x: rodX0, y: CY - 7, width: 40 + rodLen, height: 14, fill: COLORS.frameFill, stroke: COLORS.ink, 'stroke-width': 1.8, rx: 3 }));
+        // 杆端连接头
+        svgEl.appendChild(svg('rect', { x: rodX0 + 40 + rodLen, y: CY - 14, width: 22, height: 28, fill: COLORS.frame, rx: 3, stroke: COLORS.ink, 'stroke-width': 1.6 }));
+        svgEl.appendChild(circle(rodX0 + 40 + rodLen + 11, CY, 5, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 2 }));
+
+        // —— 单作用：复位弹簧（锯齿示意）——
+        if (!dblActing) {
+          const sx0 = pistonX + 24, sx1 = boreX + boreW - 14;
+          let sd = `M ${sx0},${CY - 26}`;
+          const n = 8;
+          for (let i = 1; i <= n; i++) {
+            const x = sx0 + ((sx1 - sx0) * i) / (n + 0.5);
+            sd += ` L ${x},${i % 2 ? CY + 26 : CY - 26}`;
+          }
+          sd += ` L ${sx1},${CY}`;
+          svgEl.appendChild(svg('path', { d: sd, fill: 'none', stroke: COLORS.ref, 'stroke-width': 2 }));
+        }
+
+        // —— 进排气口（左/右，高亮交替 + 气流箭头）——
+        const portL = { x: boreX + 34, y: CY - boreH / 2 - 34 };
+        const portR = { x: boreX + boreW - 34, y: CY - boreH / 2 - 34 };
+        // 口座
+        [[portL, dblActing || true], [portR, dblActing]].forEach(([pt, show]) => {
+          if (!show) return;
+          svgEl.appendChild(svg('rect', { x: pt.x - 11, y: pt.y, width: 22, height: 22, fill: COLORS.frame, stroke: COLORS.ink, 'stroke-width': 1.6 }));
+          svgEl.appendChild(circle(pt.x, pt.y - 4, 4.5, { fill: 'white', stroke: COLORS.ink, 'stroke-width': 1.4 }));
+        });
+        // 高亮 + 气流方向
+        const supplyL = dblActing ? outNow : phase < 0.5;
+        const supplyR = dblActing ? !outNow : false;
+        if (supplyL) {
+          svgEl.appendChild(svg('rect', { x: portL.x - 11, y: portL.y, width: 22, height: 22, fill: 'none', stroke: COLORS.hi, 'stroke-width': 2.5 }));
+          svgEl.appendChild(arrow(svgEl, portL.x - 34, portL.y - 26, portL.x - 4, portL.y - 4, { color: COLORS.hi, width: 2.4, label: '进气' }));
+        } else if (dblActing) {
+          svgEl.appendChild(arrow(svgEl, portL.x + 2, portL.y - 6, portL.x - 30, portL.y - 26, { color: COLORS.ref, width: 1.8, label: '排气', dasharray: '3 3' }));
+        }
+        if (supplyR) {
+          svgEl.appendChild(svg('rect', { x: portR.x - 11, y: portR.y, width: 22, height: 22, fill: 'none', stroke: COLORS.hi, 'stroke-width': 2.5 }));
+          svgEl.appendChild(arrow(svgEl, portR.x + 34, portR.y - 26, portR.x + 4, portR.y - 4, { color: COLORS.hi, width: 2.4, label: '进气' }));
+        } else if (dblActing) {
+          svgEl.appendChild(arrow(svgEl, portR.x - 2, portR.y - 6, portR.x + 30, portR.y - 26, { color: COLORS.ref, width: 1.8, label: '排气', dasharray: '3 3' }));
+        }
+
+        // —— 限位开关（两端，到位高亮）——
+        const swL = { x: boreX - 26, y: CY + boreH / 2 + 34 };
+        const swR = { x: boreX + boreW + 26, y: CY + boreH / 2 + 34 };
+        const hitR = s > 0.97;
+        const hitL = s < 0.03 && phase > 0.6;
+        [[swL, hitL], [swR, hitR]].forEach(([pt, hit]) => {
+          svgEl.appendChild(svg('rect', {
+            x: pt.x - 16, y: pt.y - 12, width: 32, height: 24, rx: 3,
+            fill: hit ? COLORS.hi : 'white', stroke: hit ? COLORS.hi : COLORS.ref, 'stroke-width': 2,
+          }));
+          const dot = svg('text', { x: pt.x, y: pt.y + 5, 'text-anchor': 'middle', 'font-size': 12, fill: hit ? 'white' : COLORS.ref, 'font-weight': 700 });
+          dot.textContent = '□';
+          svgEl.appendChild(dot);
+        });
+        const swt1 = svg('text', { x: swL.x, y: swL.y + 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10 });
+        swt1.textContent = '缩回限位';
+        svgEl.appendChild(swt1);
+        const swt2 = svg('text', { x: swR.x, y: swR.y + 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 10 });
+        swt2.textContent = '伸出限位';
+        svgEl.appendChild(swt2);
+        // 连线（开关 → 控制器）
+        svgEl.appendChild(line(swL.x, swL.y - 12, swL.x, CY - boreH / 2 - 40, { stroke: COLORS.ref, 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));
+        svgEl.appendChild(line(swR.x, swR.y - 12, swR.x, CY - boreH / 2 - 40, { stroke: COLORS.ref, 'stroke-width': 1.2, 'stroke-dasharray': '3 3' }));
+
+        // —— 机架：缸体安装支座 ——
+        [boreX + 40, boreX + boreW - 40].forEach((bx) => {
+          svgEl.appendChild(svg('polygon', {
+            points: `${bx - 14},${CY + boreH / 2 + 18} ${bx + 14},${CY + boreH / 2 + 18} ${bx - 9},${CY + boreH / 2 + 4} ${bx + 9},${CY + boreH / 2 + 4}`,
+            fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+          }));
+        });
+        svgEl.appendChild(ground(svgEl, 120, CY + boreH / 2 + 20, 470));
+
+        // —— 活塞杆速度箭头 ——
+        const vdir = phase < 0.5 ? 1 : -1;
+        if (s > 0.02 && s < 0.98) {
+          svgEl.appendChild(arrow(svgEl, rodX0 + 40 + rodLen + 11 + (vdir > 0 ? 16 : -16), CY - 30,
+            rodX0 + 40 + rodLen + 11 + (vdir > 0 ? 56 : -56), CY - 30, { color: COLORS.hi, width: 2.6, label: vdir > 0 ? 'v' : 'v' }));
+        }
+
+        // —— 读数 ——
+        const state = hitR ? '到位：伸出限位触发' : hitL ? '回位：缩回限位触发' : (phase < 0.42 || phase < 0.5) ? (s > 0.9 ? '保持' : '伸出中') : '缩回中';
+        const t1 = svg('text', { x: 350, y: 32, 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 13.5, 'font-weight': 600 });
+        t1.textContent = `${dblActing ? '双作用' : '单作用'}气缸 · 行程 s = ${(s * 100).toFixed(0)}% · ${state}`;
+        svgEl.appendChild(t1);
+        const t2 = svg('text', { x: 350, y: 52, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+        t2.textContent = dblActing
+          ? '左口进气 → 推活塞向右（伸出）；右口进气 → 推回（缩回）。注意有杆腔面积小 → 缩回更快'
+          : '单作用：一个口进气压缩弹簧伸出；排气后弹簧推回——断气自动复位（fail-safe）';
+        svgEl.appendChild(t2);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 5000, onTick: (p) => render(p) });
+      tabCtls['cylinder'] = ctl; ctl.pause();
+    })();
   </script>
 </body>
 </html>

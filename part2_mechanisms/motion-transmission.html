@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>减速与传动 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
 </head>
@@ -9,11 +10,130 @@
   <div class="app">
     <div id="sidebar-mount"></div>
     <main class="main">
-      <h1 class="page-title">减速 & 传动 <span class="en">Transmission</span></h1>
-      <p class="need-hint">
-        <strong>什么时候需要这种机构？</strong> 电机转速太高、力矩太小，而末端需要低转速 + 大力矩。
-        传动机构同时解决"减速"和"传力"两个问题。任何机器人都会用到。
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 06 页 · 运动转换</span>
+          <span class="chip chip-ghost">≈ 25 min</span>
+          <span class="chip chip-ghost">前置：05 夹持拾取</span>
+        </div>
+        <h1 class="ph-title">减速 & 传动 <span class="en">Transmission</span></h1>
+        <p class="ph-lead">
+          <strong>电机的"天然工作点"和任务的"需求点"天生不匹配</strong>——电机空转几千 rpm，任务只要几十 rpm；
+          电机扭矩几 mN·m，任务要几 N·m。传动机构用<strong>减速比 i</strong> 同时换算两者：ω₂ = ω₁/i，<strong>T₂ = T₁·i</strong>。
+          但"选哪种传动"从来不是查表题：齿轮中心距是死是活、要不要自锁、噪音与效率怎么权衡，直接决定你的底盘能不能装下、会不会啸叫。
+          本页先横向对比五条路线，再走完一道 i=20 的两级齿轮设计题。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">齿轮</span>
+          <span class="tag">蜗轮蜗杆</span>
+          <span class="tag">行星轮系</span>
+          <span class="tag">同步带</span>
+          <span class="tag">链传动</span>
+        </div>
+      </header>
+
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">6.1</span>
+        <h2>本页方案横向对比 <span class="sec-sub">五条旋转→旋转路线：一张表定生死</span></h2>
+      </div>
+      <div class="cmp-wrap" data-reveal>
+        <table class="data-table cmp-table">
+          <thead>
+            <tr>
+              <th class="crit">维度</th>
+              <th class="cmp-pick">齿轮</th>
+              <th>蜗轮蜗杆</th>
+              <th>行星轮系</th>
+              <th>同步带</th>
+              <th>链</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="crit">传动比范围</td>
+              <td>单级 1~6（多级任意）</td>
+              <td><strong>单级 30~80</strong></td>
+              <td>单级 ~10（多级任意）</td>
+              <td>1~8</td>
+              <td>1~8</td>
+            </tr>
+            <tr>
+              <td class="crit">中心距灵活性</td>
+              <td><strong>死</strong>（= m(z₁+z₂)/2）</td>
+              <td>死（但轴交角 90°）</td>
+              <td>死（同轴）</td>
+              <td><strong>活</strong>（任意距离）</td>
+              <td><strong>活</strong>（大中心距最佳）</td>
+            </tr>
+            <tr>
+              <td class="crit">噪音</td>
+              <td>中（高速啸叫）</td>
+              <td>低（滑动接触）</td>
+              <td>低（多齿均载）</td>
+              <td><strong>最低</strong></td>
+              <td>高（多边形效应冲击）</td>
+            </tr>
+            <tr>
+              <td class="crit">效率</td>
+              <td><strong>~97%/级</strong></td>
+              <td>50~90%（发热）</td>
+              <td>~95%/级</td>
+              <td>~96%</td>
+              <td>~97%</td>
+            </tr>
+            <tr>
+              <td class="crit">自锁性</td>
+              <td>✗（可反驱动）</td>
+              <td><strong>✓ 单头蜗杆自锁</strong></td>
+              <td>✗</td>
+              <td>✗（断电不保持）</td>
+              <td>✗（断电不保持）</td>
+            </tr>
+            <tr>
+              <td class="crit">精度与回差</td>
+              <td><strong>高</strong>（齿侧隙可调）</td>
+              <td>高</td>
+              <td>高（回差最小）</td>
+              <td>中（张紧影响）</td>
+              <td>低（磨损伸长）</td>
+            </tr>
+            <tr>
+              <td class="crit">成本制造</td>
+              <td>低（齿轮库/生成器）</td>
+              <td>中（铜蜗轮贵）</td>
+              <td><strong>高</strong>（装配条件苛刻）</td>
+              <td><strong>最低</strong>（全标准件）</td>
+              <td>低（标准件）</td>
+            </tr>
+            <tr>
+              <td class="crit">俱乐部适用</td>
+              <td><span class="dots">●●●●○</span> 近距离减速首选</td>
+              <td><span class="dots">●●●○○</span> 要自锁才用</td>
+              <td><span class="dots">●●○○○</span> 直接买模组</td>
+              <td><span class="dots">●●●●●</span> 长距离安静传动</td>
+              <td><span class="dots">●●●○○</span> 大扭矩大跨距</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="cmp-note" data-reveal>
+        <strong>怎么读这张表：</strong><strong>紧凑高效但中心距死</strong>（中心距 = 模数×齿数和的一半，孔位偏了就顶死或啸叫）→ 齿轮，机器人关节与近距离减速的主力；
+        <strong>要大减速 + 自锁</strong>（升降断电不坠）→ 蜗杆，一级顶三级齿轮，代价是效率 40~90% 与发热；
+        <strong>同轴大减速、体积最小</strong> → 行星，但装配条件（z<sub>p</sub>=(z<sub>r</sub>−z<sub>s</sub>)/2 须整数 + 均布）对自制不友好，俱乐部级别建议直接买成品模组；
+        <strong>中心距灵活、安静免润滑</strong> → 同步带，3D 打印机 X/Y 就是答案；<strong>大中心距 + 大扭矩</strong> → 链，但会伸长、有冲击噪音。
+        注意最后两列：同步带与链<strong>断电都不自锁</strong>——想让机器人停在坡上，还得靠蜗杆或刹车。
+      </div>
+
+      <div class="sec-head sm" data-reveal><span class="sec-num">例题</span><h2>一道两级齿轮减速设计题：i = 20</h2></div>
+      <p style="font-size:13.5px; color:var(--ink-soft); margin:0 0 var(--sp-3);" data-reveal>
+        <strong>需求</strong>：底盘电机 3000 rpm 减到轮上 150 rpm（i = 20），输出扭矩要尽量大、结构要装得进底盘。
       </p>
+      <ol class="flow-steps" data-reveal>
+        <li><b>判单级</b>i=20 超限——单级直齿轮实用 <code>≤6</code>（齿数差太大 → 小轮齿数被削、大轮体积爆炸），必须拆级或换原理</li>
+        <li><b>选架构</b>两级直齿轮 <code>4×5</code>；或一级行星（~6 内）多级；或蜗杆一级到位但 η≈40% 发热——<strong>底盘要效率，选两级直齿轮</strong></li>
+        <li><b>定齿数</b>模数 <code>m=1</code>（打印齿轮 <code>m≥1.5</code>）→ 第一级 <code>z₁=20, z₂=80</code>（i=4）＋第二级 <code>z₃=20, z₄=100</code>（i=5），验算 <code>4×5 = 20 ✓</code></li>
+        <li><b>排孔</b>中心距 <code>a = m(z₁+z₂)/2</code> 逐级计算，全部轴孔<strong>在同一块板一次钻孔</strong>，公差 <code>±0.05 mm</code></li>
+      </ol>
 
       <div class="mechanism-tabs" id="tabs">
         <button class="tab active" data-tab="hero">齿轮对 ★</button>
@@ -21,11 +141,13 @@
         <button class="tab" data-tab="planetary">行星轮系</button>
         <button class="tab" data-tab="belt">同步带</button>
         <button class="tab" data-tab="chain">链传动</button>
+        <button class="tab" data-tab="why">为什么轮组要减速</button>
       </div>
 
+      <!-- ===== 齿轮对 hero ===== -->
       <section id="tab-hero" class="tab-panel">
         <div class="stage">
-          <svg id="gr-svg" viewBox="0 0 700 320"></svg>
+          <svg id="gr-svg" viewBox="0 0 700 360"></svg>
           <div class="params">
             <div class="param-row">
               <label>小齿轮齿数 z₁ <span class="val" id="gr-z1-val">20</span></label>
@@ -35,99 +157,212 @@
               <label>大齿轮齿数 z₂ <span class="val" id="gr-z2-val">40</span></label>
               <input type="range" id="gr-z2" min="20" max="80" value="40">
             </div>
+            <div class="param-row">
+              <label>电机扭矩 T₁ <span class="val" id="gr-t1-val">5</span> kg·cm</label>
+              <input type="range" id="gr-t1" min="1" max="20" value="5">
+            </div>
           </div>
-          <div id="gr-controls-mount"></div>
           <div class="verdict" id="gr-verdict"></div>
+          <div id="gr-controls-mount"></div>
         </div>
+
+        <div class="formula-block">
+          <div class="f-title">齿轮三定律</div>
+          <div class="f-eq">i = z₂/z₁　·　ω₂ = ω₁ / i　·　T₂ = T₁ · i × η</div>
+          <div class="f-note">
+            传动比由<strong>齿数比</strong>决定（与直径比等价：节圆直径 = 模数 × 齿数）；
+            转速按 1/i 降，<strong>扭矩按 i 升</strong>（乘效率 η，单级齿轮约 0.97）。
+            外啮合两轮<strong>转向相反</strong>；中心距 = (z₁+z₂)·m/2，装反了齿就顶死。
+            <br><strong>为什么是它 vs 其他</strong>：齿轮的护城河是<strong>单级效率 ~97% + 传动比恒定 + 承载强</strong>——同步带会松弛、链会伸长，只有齿轮的传动比是几何刻死的；
+            它的死穴同样出名：<strong>中心距不灵活</strong>（两轴孔距离必须精确到 ±0.05 mm，孔位钻偏 = 啸叫或顶死）且单级传动比超 6 就不经济。
+            所以近距离、要精度、要效率 → 齿轮；两轴离得远 → 同步带/链；要自锁 → 蜗杆。电机到轮边那几十毫米，几乎总是齿轮的地盘。
+          </div>
+        </div>
+
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>传动比精确、稳定</li><li>效率高（97%+）</li><li>承载能力强</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>噪音（高速时）</li><li>远距离传动结构变大</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>机器人关节减速器</li><li>汽车变速箱</li><li>工业机械主传动</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul><li>传动比精确、恒定</li><li>效率高（单级 ~97%）</li><li>承载强、寿命长</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>高速噪音</li><li>远距离传动结构变大</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>机器人关节减速</li><li>变速箱</li><li>打印件也能做（低载）</li></ul></div>
         </div>
       </section>
 
+      <!-- ===== 蜗轮蜗杆（动画） ===== -->
       <section id="tab-worm" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <g transform="translate(350, 160)">
-              <ellipse cx="-80" cy="0" rx="20" ry="60" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="worm-threads"></g>
-              <circle cx="60" cy="0" r="80" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="worm-gear-teeth"></g>
-              <text x="0" y="-130" text-anchor="middle" fill="#999" font-size="13">蜗杆（左）→ 蜗轮（右）：大减速比 + 自锁</text>
-            </g>
-          </svg>
+          <svg id="wm-svg" viewBox="0 0 700 360"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>蜗轮齿数 z₂ <span class="val" id="wm-z2-val">40</span></label>
+              <input type="range" id="wm-z2" min="20" max="80" value="40">
+            </div>
+            <div class="param-row">
+              <label>蜗杆头数 z₁ <span class="val" id="wm-z1-val">1</span></label>
+              <input type="range" id="wm-z1" min="1" max="4" step="1" value="1">
+            </div>
+          </div>
+          <div class="verdict" id="wm-verdict"></div>
+          <div id="wm-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">自锁：只许进不许退</div>
+          <div class="f-eq">i = z₂ / z₁　　导程角 γ &lt; 当量摩擦角 φ<sub>v</sub> → 自锁</div>
+          <div class="f-note">
+            单头蜗杆（z₁=1）转一整圈，蜗轮只前进<strong>一个齿</strong>——单级就能做到 i = 40~80。
+            更妙的是反向自锁：蜗杆能推动蜗轮，蜗轮却推不动蜗杆——升降机构断电也不会倒转坠落。
+            代价是滑动摩擦大：效率仅 50~90%，发热明显。
+            <br><strong>为什么是它 vs 其他</strong>：四条路线里只有蜗杆能"一级顶三级"（i=40 对应齿轮要三级 4×5×2）并同时<strong>白送自锁</strong>——
+            断电时负载推不动蜗杆，升降机构不需要任何刹车。这笔账要算清楚再选：若你的机构每个循环都在升降，η≈40% 意味着一半以上电能变热，
+            电机被迫加大一档；若只在终点保持位置（低占空比），发热可控，蜗杆几乎是不二之选。<strong>要效率选齿轮/行星，要"停得住"选蜗杆</strong>。
+          </div>
         </div>
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>单级可实现大减速比（30~80）</li><li>结构紧凑</li><li>可自锁（导程角小于摩擦角）</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>摩擦损失大（效率 50~90%）</li><li>发热</li><li>铜蜗轮成本高</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>升降机构（自锁防坠）</li><li>阀门驱动</li><li>电梯</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul><li>单级大减速比（30~80）</li><li>结构紧凑、轴交角 90°</li><li>可自锁（防倒转）</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>摩擦损失大（η 50~90%）</li><li>发热</li><li>铜蜗轮成本高</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>升降机构（自锁防坠）</li><li>阀门驱动</li><li>绞盘/卷扬</li></ul></div>
         </div>
       </section>
 
+      <!-- ===== 行星轮系（动画 + Willis 计算器） ===== -->
       <section id="tab-planetary" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <g transform="translate(350, 160)">
-              <circle r="100" fill="none" stroke="#333" stroke-width="3"/>
-              <circle r="25" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="planets"></g>
-              <text x="0" y="-130" text-anchor="middle" fill="#999" font-size="13">太阳轮 + 行星轮 + 内齿圈 = 紧凑大减速比</text>
-            </g>
-          </svg>
+          <svg id="pl-svg" viewBox="0 0 700 380"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>太阳轮齿数 z<sub>s</sub> <span class="val" id="pl-zs-val">20</span></label>
+              <input type="range" id="pl-zs" min="12" max="36" value="20">
+            </div>
+            <div class="param-row">
+              <label>内齿圈齿数 z<sub>r</sub> <span class="val" id="pl-zr-val">80</span></label>
+              <input type="range" id="pl-zr" min="48" max="100" value="80">
+            </div>
+          </div>
+          <div class="verdict" id="pl-verdict"></div>
+          <div id="pl-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">Willis 公式（内齿圈固定：太阳轮输入 → 系杆输出）</div>
+          <div class="f-eq">i = 1 + z<sub>r</sub> / z<sub>s</sub></div>
+          <div class="f-note">
+            行星轮"自转 + 公转"，妙在<strong>输入输出同轴</strong>、多齿同时受力——同样的减速比，体积比普通齿轮系小得多，
+            承载高得多。这是电动车减速箱、机器人关节模组（RV/谐波之前的入门级）的核心。
+            装配条件：z<sub>p</sub> = (z<sub>r</sub> − z<sub>s</sub>)/2 必须是整数（判定框会实时检查）。
+            <br><strong>为什么是它 vs 其他</strong>：行星的三张牌——<strong>同轴</strong>（输入输出一条线，底盘轴系布置不用拐弯）、<strong>多齿均载</strong>（同样的模数承载翻几倍）、
+            <strong>紧凑</strong>（大减速藏在轮系内部不外扩）。普通齿轮系要三级才到 i=100，行星两级就够且体积小一半。
+            但对俱乐部自制而言它是<strong>最难自己做的</strong>：装配条件、三个行星轮的均布相位、内齿圈加工，三者任一出错整套卡死——
+            实际打法是<strong>买成品行星减速箱，把设计精力留给输出端</strong>。
+          </div>
         </div>
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>同轴输入输出</li><li>结构紧凑，比功率大</li><li>多齿同时受力，承载高</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>设计复杂</li><li>装配精度要求高</li><li>内齿圈加工成本</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>电动车减速箱</li><li>机器人 RV 减速器</li><li>风电齿轮箱</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul><li>同轴输入输出</li><li>紧凑、比功率大</li><li>多齿受力，承载高</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>设计复杂（装配条件）</li><li>加工精度要求高</li><li>内齿圈成本</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>电动车减速箱</li><li>机器人关节模组</li><li>风电齿轮箱</li></ul></div>
         </div>
       </section>
 
+      <!-- ===== 同步带（动画） ===== -->
       <section id="tab-belt" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <g transform="translate(350, 160)">
-              <circle cx="-120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
-              <circle cx="120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
-              <line x1="-120" y1="-50" x2="120" y2="-50" stroke="#666" stroke-width="3"/>
-              <line x1="-120" y1="50" x2="120" y2="50" stroke="#666" stroke-width="3"/>
-              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">同步带传动：远距离、有齿啮合（无滑差）</text>
-            </g>
-          </svg>
+          <svg id="bt-svg" viewBox="0 0 700 320"></svg>
+          <div class="params">
+            <div class="param-row">
+              <label>传动比 i（z₂/z₁） <span class="val" id="bt-i-val">2.0</span></label>
+              <input type="range" id="bt-i" min="1" max="4" step="0.5" value="2">
+            </div>
+          </div>
+          <div id="bt-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">同步带 vs 链：都要张紧，性格相反</div>
+          <div class="f-eq">i = z₂/z₁ = n₁/n₂　　带速 v = ω₁·r₁（两轮表面线速度相同）</div>
+          <div class="f-note">
+            <strong>同步带 vs 链</strong>：两者都靠"齿啮合"保无滑差、都<strong>需要张紧</strong>，但同步带<strong>安静、免润滑</strong>，链能传<strong>更大扭矩</strong>——
+            比赛分拣机器人负载轻，同步带足矣；重载大跨距（底盘传动轴到轮）才轮到链。
+            两者的<strong>断电都不自锁</strong>：带会被负载反向拖动（皮带拉伸弹回）、链会倒转，要停在坡上得靠<strong>蜗杆或刹车</strong>——这是 6.1 表里"自锁性"一行为空的原因。
+            另一个差异藏在维护曲线里：带是"_install 后缓慢松弛"（调一次张紧就好），链是"持续磨损伸长"（要经常补调或换）。
+          </div>
         </div>
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>适合远距离传动</li><li>无齿隙（同步带）</li><li>无需润滑、噪音低</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>长期使用会松弛</li><li>抗冲击能力差</li><li>寿命有限</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机 X/Y 轴</li><li>发动机正时系统</li><li>自动门</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul><li>远距离传动轻巧</li><li>齿啮合无滑差</li><li>无需润滑、安静</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>长期张紧会松弛</li><li>抗冲击差</li><li>寿命有限（张紧件）</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机 X/Y（GT2）</li><li>发动机正时</li><li>轻载长行程直线</li></ul></div>
         </div>
       </section>
 
+      <!-- ===== 链传动（动画） ===== -->
       <section id="tab-chain" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 320">
-            <g transform="translate(350, 160)">
-              <circle cx="-120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
-              <circle cx="120" cy="0" r="50" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="chain-link"></g>
-              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">链传动：大载荷、远距离，无滑差</text>
-            </g>
-          </svg>
+          <svg id="ch-svg" viewBox="0 0 700 320"></svg>
+          <div id="ch-controls-mount"></div>
+        </div>
+        <div class="formula-block">
+          <div class="f-title">链的独门优势与代价</div>
+          <div class="f-eq">i = n₁/n₂ = z₂/z₁　　多边形效应：链节绕轮成多边形 → 瞬时传动比波动</div>
+          <div class="f-note">
+            <strong>为什么还用链</strong>：金属链的<strong>扭矩容量与中心距自由度</strong>是同步带给不了的——大跨距重载（叉车、收割机、摩托车）几乎全是链的领地，
+            且它不怕油污高温。<strong>代价</strong>：多边形效应使瞬时传动比周期波动（冲击噪音的来源）、需要润滑、磨损后持续伸长（要张紧轮补偿）。
+            俱乐部场景的判断很简单：负载轻 + 要安静 → 同步带；要传动轴跨整个底盘传大扭矩 → 链。两者断电都不自锁。
+          </div>
         </div>
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>承载能力大</li><li>无滑差</li><li>远距离传动效率高</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>噪音大</li><li>有齿隙冲击</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>自行车、摩托车</li><li>叉车提升机构</li><li>农业机械（收割机）</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul><li>承载能力大</li><li>无滑差</li><li>远距离效率高</li></ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul><li>需要润滑</li><li>噪音与多边形效应</li><li>链节磨损伸长</li></ul></div>
+          <div class="info-card use"><h4>适用</h4><ul><li>自行车/摩托车</li><li>叉车提升</li><li>农业机械（收割机）</li></ul></div>
         </div>
       </section>
 
-      <div class="robot-callout">
-        <img src="../assets/asabe/stepper-motor.png" alt="stepper">
-        <div class="text">
-          <strong>在我们的机器人上</strong>
-          4 个 42 步进电机直接驱动麦轮——没有用齿轮减速器，靠步进电机本身的扭矩 + PWM 微步控制。
-          如果未来要加负载（如采摘机械臂），就需要在电机和关节之间加一对齿轮减速。
+      <!-- ===== 为什么轮组要减速（现代视角） ===== -->
+      <section id="tab-why" class="tab-panel" style="display:none;">
+        <div class="stage">
+          <h3>一个真实的选型题：电机直驱 vs 减速驱动</h3>
+          <p style="color:var(--ink-soft); font-size:13.5px; margin:0 0 4px;">
+            直流电机空载转速动辄 3000–10000 rpm、扭矩只有几十 mN·m；机器人轮子要的是 100–300 rpm、零点几 N·m。
+            缺口靠<strong>减速箱</strong>填——i = 30 的行星减速箱把 6000 rpm/20 mN·m 变成 200 rpm/0.6 N·m（理想）。
+          </p>
+          <div class="formula-block">
+            <div class="f-title">减速的代价与回报</div>
+            <div class="f-eq">ω₂ = ω₁ / i　　T₂ = T₁ · i · η</div>
+            <div class="f-note">
+              <strong>回报</strong>：扭矩放大 i 倍；速度落到可控区间；反驱动也变难（大 i 接近"断开"负载反冲）。<br>
+              <strong>代价</strong>：齿隙（backlash，换向时有空程）、效率损失、体积重量、噪音。<br>
+              <strong>选型经验</strong>：底盘轮组 i ≈ 10–40（直流减速电机一站式买齐）；关节臂 i ≈ 50–200（多级行星/蜗杆）；
+              需要反向可驱动（腿式机器人）时 i 要小，否则落地冲击全怼进齿轮。
+            </div>
+          </div>
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr><th>方案</th><th>典型组成</th><th>优点</th><th>短板</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>步进直驱</strong>（往届赛车用法）</td>
+                  <td>42 步进 + 麦轮，无减速器</td>
+                  <td>结构最简、开环定位、低速扭矩尚可</td>
+                  <td>高速掉步、共振区、效率低</td>
+                </tr>
+                <tr class="hl">
+                  <td><strong>直流减速 + 编码器</strong>（当前主流）</td>
+                  <td>N20/380 电机 + 行星/齿轮箱 + 磁编码器</td>
+                  <td>闭环、高扭矩密度、PID 可调速度环</td>
+                  <td>需要调参、多一根编码器线</td>
+                </tr>
+                <tr>
+                  <td><strong>无刷 + 减速</strong></td>
+                  <td>云台电机/电动工具电机 + ESC/FOC</td>
+                  <td>效率最高、无刷磨损、安静</td>
+                  <td>驱动复杂、成本高</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="formula-block" style="margin-bottom:0;">
+            <div class="f-title">别忘了悬挂</div>
+            <div class="f-note">
+              现在的轮组普遍做成<strong>"电机 + 弹簧悬挂 + 轮"一体化模块</strong>：弹簧把轮压向地面，
+              场地不平时轮子上下浮动、始终保持接触——不打滑，编码器读数才可信，闭环才成立。
+              这本质上是<strong>用机构（弹性）给控制兜底</strong>，和上一页"柔顺爪"是同一设计哲学。
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div class="page-nav">
         <a href="motion-gripping.html">← 夹持</a>
@@ -139,91 +374,406 @@
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
     import { createControls, svg, line, circle, clear } from './common/controls.js';
-    import { gears, TAU } from './common/math.js';
+    import { gears, gearPhase, wormRatio, willis, deg, TAU } from './common/math.js';
 
     injectSidebar('motion-transmission');
 
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
+    }
     document.querySelectorAll('#tabs .tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
-      });
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
 
-    const grSvg = document.getElementById('gr-svg');
-    const grMount = document.getElementById('gr-controls-mount');
-    const grVerdict = document.getElementById('gr-verdict');
-    let z1 = 20, z2 = 40;
-    const m = 2.5; // 模数 mm
-
-    function updateVerdict() {
-      const g = gears({ m, z1, z2 });
-      grVerdict.className = 'verdict';
-      grVerdict.innerHTML = `<strong>传动比 i = z₂/z₁ = ${z2}/${z1} = ${(g.ratio).toFixed(2)}</strong> · 中心距 = ${g.centerDist.toFixed(1)} mm · 输入 ω₁ → 输出 ω₂ = ω₁/${g.ratio.toFixed(2)}`;
-    }
-    document.getElementById('gr-z1').addEventListener('input', e => { z1 = parseInt(e.target.value); document.getElementById('gr-z1-val').textContent = z1; updateVerdict(); });
-    document.getElementById('gr-z2').addEventListener('input', e => { z2 = parseInt(e.target.value); document.getElementById('gr-z2-val').textContent = z2; updateVerdict(); });
-    updateVerdict();
-
-    // 简化齿轮：画圆+齿
-    function drawGear(cx, cy, r, teethCount, color = '#c8442a', rotation = 0) {
-      const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${rotation})` });
-      // 节圆（淡色）
-      g.appendChild(circle(0, 0, r, { fill: 'white', stroke: '#eee', 'stroke-width': 1 }));
-      // 齿（小矩形分布在圆周）
-      const toothDepth = 5;
-      for (let i = 0; i < teethCount; i++) {
-        const a = (i / teethCount) * 360;
-        const tooth = svg('rect', { x: -3, y: -r - toothDepth, width: 6, height: toothDepth * 2, fill: color, transform: `rotate(${a})` });
-        g.appendChild(tooth);
+    // 通用梯形齿齿轮绘制（带齿数、可着色、可旋转）
+    function gearGroup(r, nTeeth, opts = {}) {
+      const { body = '#fbfaf6', tooth = '#232a31', hub = null } = opts;
+      const g = svg('g');
+      g.appendChild(circle(0, 0, r, { fill: body === 'none' ? '#e9e6dd' : body, stroke: 'none' }));
+      const pitch = TAU / nTeeth;
+      const tw = 2 * Math.PI * r / nTeeth * 0.30; // 齿宽
+      for (let i = 0; i < nTeeth; i++) {
+        const a = i * pitch;
+        const t = svg('rect', { x: -tw / 2, y: -r - 8, width: tw, height: 8, fill: tooth, transform: `rotate(${deg(a)})` });
+        g.appendChild(t);
       }
-      // 中心圆
-      g.appendChild(circle(0, 0, r * 0.85, { fill: 'white', stroke: color, 'stroke-width': 2 }));
-      // 辐条
-      for (let i = 0; i < 4; i++) {
-        const a = (i / 4) * 360;
-        g.appendChild(svg('rect', { x: -2, y: -r * 0.85, width: 4, height: r * 0.7, fill: '#ddd', transform: `rotate(${a})` }));
-      }
-      // 中心轴
-      g.appendChild(circle(0, 0, 6, { fill: '#333' }));
+      if (hub) g.appendChild(circle(0, 0, hub, { fill: '#232a31' }));
       return g;
     }
 
-    function render(phase) {
-      clear(grSvg);
-      const g = gears({ m, z1, z2 });
-      // 主动轮在左，从动轮在右
-      const cx1 = 350 - g.r2;
-      const cx2 = 350 + g.r1;
-      const cy = 160;
-      // 两轮转向相反
-      const ang1 = phase * 360;
-      const ang2 = -phase * 360 * (z1 / z2);
+    /* ============================================================
+     * 齿轮对：啮合相位补偿 + 扭矩放大读数
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('gr-svg');
+      const mount = document.getElementById('gr-controls-mount');
+      const verdictEl = document.getElementById('gr-verdict');
+      let z1 = 20, z2 = 40, T1 = 5;
+      const m = 2.5;
 
-      grSvg.appendChild(drawGear(cx1, cy, g.r1, z1, '#c8442a', ang1));
-      grSvg.appendChild(drawGear(cx2, cy, g.r2, z2, '#2a5c8a', ang2));
+      function updateVerdict() {
+        const g = gears({ m, z1, z2 });
+        const T2 = T1 * g.ratio * 0.97;
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML = `<strong>i = z₂/z₁ = ${z2}/${z1} = ${g.ratio.toFixed(2)}</strong> ·
+          ω₂ = ω₁/${g.ratio.toFixed(2)} · <strong>T₂ = ${T1} × ${g.ratio.toFixed(2)} × 0.97 ≈ ${T2.toFixed(1)} kg·cm</strong>（η≈0.97）<br>
+          中心距 = (z₁+z₂)·m/2 = ${g.centerDist.toFixed(1)} mm · ${z1 % 2 !== 0 ? `z₁ 为奇数 → 从动轮错开半齿（${(180 / z2).toFixed(2)}°）保证啮合` : 'z₁ 为偶数 → 齿对齿槽自然对齐'}`;
+      }
 
-      // 标签
-      const t1 = svg('text', { x: cx1, y: cy + g.r1 + 30, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
-      t1.textContent = `z₁ = ${z1}`;
-      grSvg.appendChild(t1);
-      const t2 = svg('text', { x: cx2, y: cy + g.r2 + 30, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
-      t2.textContent = `z₂ = ${z2}`;
-      grSvg.appendChild(t2);
-      // 速度指示
-      const t3 = svg('text', { x: cx1, y: cy - g.r1 - 25, 'text-anchor':'middle', fill:'#c8442a', 'font-size':13 });
-      t3.textContent = `ω₁ 输入`;
-      grSvg.appendChild(t3);
-      const t4 = svg('text', { x: cx2, y: cy - g.r2 - 25, 'text-anchor':'middle', fill:'#2a5c8a', 'font-size':13 });
-      t4.textContent = `ω₂ = ω₁/${g.ratio.toFixed(2)} 输出`;
-      grSvg.appendChild(t4);
-    }
+      const bind = (id, set) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          set(parseFloat(e.target.value));
+          updateVerdict();
+        });
+      };
+      bind('gr-z1', (v) => { z1 = v; document.getElementById('gr-z1-val').textContent = v; });
+      bind('gr-z2', (v) => { z2 = v; document.getElementById('gr-z2-val').textContent = v; });
+      bind('gr-t1', (v) => { T1 = v; document.getElementById('gr-t1-val').textContent = v; });
 
-    createControls(grMount, {
-      duration: 4000,
-      onTick: (phase) => render(phase),
-    });
+      function render(phase) {
+        clear(svgEl);
+        const g = gears({ m, z1, z2 });
+        const scale = Math.min(1, 110 / Math.max(g.r1, g.r2)); // 防溢出
+        const cx1 = 350 - (g.r2 * scale) * 0.98, cx2 = 350 + (g.r1 * scale) * 0.98;
+        const cy = 170;
+        const ang1 = phase * 360;
+        const ang2 = -phase * 360 * (z1 / z2) + gearPhase(z1, z2);
+
+        const g1G = svg('g', { transform: `translate(${cx1},${cy}) rotate(${ang1})` });
+        g1G.appendChild(gearGroup(g.r1 * scale, z1, { hub: 7 }));
+        g1G.appendChild(line(0, 0, g.r1 * scale - 12, 0, { stroke: '#d9662c', 'stroke-width': 3 }));
+        svgEl.appendChild(g1G);
+        const g2G = svg('g', { transform: `translate(${cx2},${cy}) rotate(${ang2})` });
+        g2G.appendChild(gearGroup(g.r2 * scale, z2, { body: '#e2efec', hub: 7 }));
+        g2G.appendChild(line(0, 0, 0, -(g.r2 * scale - 12), { stroke: '#0e6b5c', 'stroke-width': 3 }));
+        svgEl.appendChild(g2G);
+
+        const lbl = (x, y, t, c) => {
+          const e = svg('text', { x, y, fill: c || '#5a6472', 'font-size': 12, 'text-anchor': 'middle', 'font-family': 'monospace' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(cx1, cy + g.r1 * scale + 28, `z₁ = ${z1}（驱动）`);
+        lbl(cx2, cy + g.r2 * scale + 28, `z₂ = ${z2}（从动）`);
+        lbl(cx1, cy - g.r1 * scale - 14, `T₁ = ${T1} kg·cm`, '#d9662c');
+        lbl(cx2, cy - g.r2 * scale - 14, `T₂ ≈ ${(T1 * g.ratio * 0.97).toFixed(1)} kg·cm`, '#0e6b5c');
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `外啮合转向相反 · 齿对齿槽啮合（${z1 % 2 !== 0 ? '奇数齿相位补偿已应用' : '偶数齿自然对齐'}）`;
+        svgEl.appendChild(t);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 4000, onTick: (p) => render(p) });
+      tabCtls['hero'] = ctl;
+    })();
+
+    /* ============================================================
+     * 蜗轮蜗杆：蜗杆螺旋视觉旋转 → 蜗轮缓慢转动
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('wm-svg');
+      const mount = document.getElementById('wm-controls-mount');
+      const verdictEl = document.getElementById('wm-verdict');
+      let z1 = 1, z2 = 40;
+
+      function updateVerdict() {
+        const i = wormRatio({ zWheel: z2, zThread: z1 });
+        const selfLock = z1 === 1; // 单头大概率自锁（教学近似）
+        verdictEl.className = 'verdict' + (selfLock ? ' good' : '');
+        verdictEl.innerHTML = `<strong>i = z₂/z₁ = ${z2}/${z1} = ${i.toFixed(1)}</strong> ·
+          蜗杆转 ${i.toFixed(0)} 圈 → 蜗轮转 1 圈 ${selfLock ? '· <strong>单头蜗杆导程角小 → 可自锁</strong>（蜗轮推不动蜗杆，断电不倒转）' : '· 多头蜗杆效率高但不自锁'}`;
+      }
+
+      const bind = (id, set) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          set(parseFloat(e.target.value));
+          updateVerdict();
+        });
+      };
+      bind('wm-z2', (v) => { z2 = v; document.getElementById('wm-z2-val').textContent = v; });
+      bind('wm-z1', (v) => { z1 = v; document.getElementById('wm-z1-val').textContent = v; });
+
+      function render(phase) {
+        clear(svgEl);
+        const i = wormRatio({ zWheel: z2, zThread: z1 });
+        const wormCx = 200, wormCy = 175, wormR = 34, wormLen = 130;
+        const wheelCx = 420, wheelCy = 175, wheelR = 105;
+
+        // 蜗杆（圆柱 + 螺旋线视觉）
+        const wormG = svg('g', { transform: `translate(${wormCx},${wormCy})` });
+        wormG.appendChild(svg('ellipse', { cx: 0, cy: 0, rx: wormLen / 2, ry: wormR, fill: '#e2efec', stroke: '#232a31', 'stroke-width': 2 }));
+        // 螺旋线：随 phase 平移的斜线族
+        const nLines = 9;
+        const shift = (phase * wormLen / nLines);
+        for (let k = 0; k < nLines; k++) {
+          const x = -wormLen / 2 + 6 + ((k * wormLen / nLines + shift) % wormLen);
+          wormG.appendChild(line(x - 7, -wormR * 0.85, x + 7, wormR * 0.85, { stroke: '#0e6b5c', 'stroke-width': 2.2 }));
+        }
+        wormG.appendChild(circle(0, 0, 6, { fill: '#232a31' }));
+        svgEl.appendChild(wormG);
+
+        // 蜗轮
+        const i_ratio_display = z1 / z2;
+        const wheelA = phase * 360 * i_ratio_display * 10; // 视觉减速
+        const wheelG = svg('g', { transform: `translate(${wheelCx},${wheelCy}) rotate(${wheelA})` });
+        wheelG.appendChild(gearGroup(wheelR, 32, { body: '#e9e6dd' }));
+        // 蜗轮齿应是斜齿，教学用直齿示意
+        wheelG.appendChild(line(0, 0, wheelR - 16, 0, { stroke: '#8a919b', 'stroke-width': 2 }));
+        wheelG.appendChild(circle(0, 0, 9, { fill: '#232a31' }));
+        svgEl.appendChild(wheelG);
+
+        // 旋转方向箭头
+        const lbl = (x, y, t, c) => {
+          const e = svg('text', { x, y, fill: c || '#5a6472', 'font-size': 12, 'text-anchor': 'middle' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(wormCx, wormCy - wormR - 22, `蜗杆（z₁ = ${z1} 头）`);
+        lbl(wheelCx, wormCy + wheelR + 30, `蜗轮（z₂ = ${z2} 齿）`);
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `蜗杆每转一圈推进蜗轮 ${z1} 齿 → i = ${i.toFixed(1)}（轴交角 90°）`;
+        svgEl.appendChild(t);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 3600, onTick: (p) => render(p) });
+      tabCtls['worm'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 行星轮系：太阳轮 + 3 行星轮 + 内齿圈 + 系杆
+     * 内齿圈固定；系杆输出 i = 1 + zr/zs
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('pl-svg');
+      const mount = document.getElementById('pl-controls-mount');
+      const verdictEl = document.getElementById('pl-verdict');
+      let zs = 20, zr = 80;
+
+      function updateVerdict() {
+        const zpNeeded = (zr - zs) / 2;
+        const assemblyOK = Number.isInteger(zpNeeded) && zpNeeded > 2;
+        const i = willis({ zs, zp: zpNeeded, zr }).ratio;
+        verdictEl.className = 'verdict' + (assemblyOK ? '' : ' bad');
+        verdictEl.innerHTML = `<strong>i = 1 + z<sub>r</sub>/z<sub>s</sub> = 1 + ${zr}/${zs} = ${i.toFixed(2)}</strong> ·
+          行星轮齿数 z<sub>p</sub> = (z<sub>r</sub>−z<sub>s</sub>)/2 = ${zpNeeded}
+          ${assemblyOK ? '✓ 整数，可均匀装配' : '✗ 非整数或过小——不满足装配条件，调整齿数'}`;
+      }
+
+      const bind = (id, set) => {
+        document.getElementById(id).addEventListener('input', (e) => {
+          set(parseFloat(e.target.value));
+          updateVerdict();
+        });
+      };
+      bind('pl-zs', (v) => { zs = v; document.getElementById('pl-zs-val').textContent = v; });
+      bind('pl-zr', (v) => { zr = v; document.getElementById('pl-zr-val').textContent = v; });
+
+      function render(phase) {
+        clear(svgEl);
+        const zp = (zr - zs) / 2;
+        const m = 2.2;
+        const rs = (m * zs) / 2, rp = (m * zp) / 2, rr = (m * zr) / 2;
+        const cx = 350, cy = 190;
+        const carrierA = phase * TAU;              // 系杆角（输出）
+        const sunA = carrierA * (1 + zr / zs);     // 太阳轮角（输入，快）
+        const scale = Math.min(1, 150 / (rr + 12));
+
+        // 内齿圈（固定）：外圈 + 内齿
+        const ringG = svg('g', {});
+        ringG.appendChild(circle(cx, cy, (rr + 10) * scale, { fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 2 }));
+        const nRing = zr;
+        for (let i = 0; i < nRing; i++) {
+          const a = (i / nRing) * TAU;
+          const rIn = (rr + 2) * scale;
+          const x = cx + rIn * Math.cos(a), y = cy + rIn * Math.sin(a);
+          const tw = 2 * Math.PI * rIn / nRing * 0.3;
+          ringG.appendChild(svg('rect', {
+            x: x - tw / 2, y: y - 3.5, width: tw, height: 7,
+            fill: '#232a31', transform: `rotate(${deg(a) + 90} ${x} ${y})`,
+          }));
+        }
+        svgEl.appendChild(ringG);
+
+        // 系杆（转动的托架）：连到 3 个行星轮心
+        const N = 3;
+        const planets = [];
+        for (let k = 0; k < N; k++) {
+          const a = carrierA + (k / N) * TAU;
+          planets.push({
+            x: cx + (rs + rp) * scale * Math.cos(a),
+            y: cy + (rs + rp) * scale * Math.sin(a),
+            a,
+          });
+        }
+        svgEl.appendChild(svg('path', {
+          d: `M ${cx},${cy} L ${planets[0].x},${planets[0].y} L ${planets[1].x},${planets[1].y} L ${planets[2].x},${planets[2].y} Z`,
+          fill: 'rgba(217,102,44,0.15)', stroke: '#d9662c', 'stroke-width': 2, 'stroke-dasharray': '5 3',
+        }));
+
+        // 太阳轮（输入）
+        const sunG = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(sunA)})` });
+        sunG.appendChild(gearGroup(rs * scale, zs, { body: '#e2efec' }));
+        sunG.appendChild(line(0, 0, rs * scale - 8, 0, { stroke: '#0e6b5c', 'stroke-width': 3 }));
+        sunG.appendChild(circle(0, 0, 7, { fill: '#232a31' }));
+        svgEl.appendChild(sunG);
+
+        // 行星轮（自转 = 系杆角 × (1 + zs/zp)... 教学近似：行星自转角 = -carrierA × (rs/rp) + sunA × ...）
+        // 简化视觉：行星自转 = sunA × (zs/zp) - carrierA × ((rs + rp)/rp)
+        planets.forEach(p => {
+          const pg = svg('g', { transform: `translate(${p.x},${p.y}) rotate(${deg(sunA * zs / zp - carrierA * (rs + rp) / rp)})` });
+          pg.appendChild(gearGroup(rp * scale, Math.max(8, Math.round(zp)), { body: '#fbfaf6' }));
+          pg.appendChild(circle(0, 0, 4.5, { fill: '#232a31' }));
+          svgEl.appendChild(pg);
+        });
+
+        const lbl = (x, y, t, c, anchor) => {
+          const e = svg('text', { x, y, fill: c || '#5a6472', 'font-size': 12, 'text-anchor': anchor || 'middle', 'font-family': 'monospace' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(cx, cy - (rr + 10) * scale - 14, `内齿圈 z_r = ${zr}（固定）`);
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `太阳轮 z_s = ${zs}（输入，快）→ 系杆（输出，慢）i = 1 + z_r/z_s = ${(1 + zr / zs).toFixed(2)}`;
+        svgEl.appendChild(t);
+        const t2 = svg('text', { x: 350, y: 50, 'text-anchor': 'middle', fill: '#8a919b', 'font-size': 11.5 });
+        t2.textContent = '虚线三角 = 系杆（行星轮托架，输出轴）';
+        svgEl.appendChild(t2);
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      tabCtls['planetary'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 同步带：两带轮 + 齿带平移（标记点验证无滑差）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('bt-svg');
+      const mount = document.getElementById('bt-controls-mount');
+      let ratio = 2;
+
+      document.getElementById('bt-i').addEventListener('input', (e) => {
+        ratio = parseFloat(e.target.value);
+        document.getElementById('bt-i-val').textContent = ratio.toFixed(1);
+      });
+
+      function render(phase) {
+        clear(svgEl);
+        const r1 = 42, r2 = r1 * ratio;
+        const cx1 = 350 - (r1 + 40), cx2 = 350 + (r2 + 40);
+        const cy = 155;
+        const a1 = phase * TAU;
+        const beltTravel = a1 * r1; // 带移动弧长 = 轮 1 转角 × r1
+
+        // 带轮
+        [[cx1, r1, a1, '#0e6b5c', 'z₁'], [cx2, r2, -a1 * r1 / r2, '#2a5c8a', 'z₂']].forEach(([cx, r, ang, color, lab]) => {
+          const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(ang)})` });
+          g.appendChild(circle(0, 0, r, { fill: '#fbfaf6', stroke: '#232a31', 'stroke-width': 2 }));
+          const nT = Math.max(10, Math.round(r / 4.5));
+          for (let i = 0; i < nT; i++) {
+            const a = (i / nT) * TAU;
+            const tw = 2 * Math.PI * r / nT * 0.3;
+            g.appendChild(svg('rect', { x: -tw / 2, y: -r - 4, width: tw, height: 4, fill: '#232a31', transform: `rotate(${deg(a)})` }));
+          }
+          g.appendChild(line(0, 0, r - 10, 0, { stroke: color, 'stroke-width': 3 }));
+          g.appendChild(circle(0, 0, 6, { fill: '#232a31' }));
+          svgEl.appendChild(g);
+          const t = svg('text', { x: cx, y: cy + r + 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-family': 'monospace' });
+          t.textContent = lab; svgEl.appendChild(t);
+        });
+
+        // 带（上下两条直线 + 齿，平移循环）
+        const yTop = cy - r1, yBot = cy + r1; // 带与两轮相切（近似取 r1，因为大轮更大用切线近似）
+        // 实际切线：两轮不等径 → 公切线斜。教学用水平近似（r2 大时上带应贴 r2 顶部）
+        const yTopA = cy - r2, yBotA = cy + r2;
+        [[yTopA, cx1 - r1 - 20, cx2 + r2 + 20, 1], [yBotA, cx1 - r1 - 20, cx2 + r2 + 20, 1]].forEach(([y, x1, x2]) => {
+          svgEl.appendChild(line(x1, y, x2, y, { stroke: '#5a6472', 'stroke-width': 5 }));
+          // 齿（随带平移）
+          const pitch = 14;
+          const off = ((beltTravel % pitch) + pitch) % pitch;
+          for (let x = x1 + off; x < x2; x += pitch) {
+            svgEl.appendChild(line(x, y + (y < cy ? 2.5 : -2.5), x, y + (y < cy ? 7 : -7), { stroke: '#5a6472', 'stroke-width': 2 }));
+          }
+        });
+
+        // 标记点（红色，随带走，验证无滑差）
+        const mkX = ((beltTravel % 500) + 500) % 500 + (cx1 - r1 - 20);
+        if (mkX < cx2 + r2 + 20) {
+          svgEl.appendChild(circle(mkX, yTopA - 4, 5, { fill: '#d9662c' }));
+        }
+
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `i = ${ratio.toFixed(1)} · 带速 = ω₁·r₁（红点随带走）→ 两轮表面线速度相同 = 无滑差`;
+        svgEl.appendChild(t);
+      }
+
+      const ctl = createControls(mount, { duration: 4000, onTick: (p) => render(p) });
+      tabCtls['belt'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 链传动：两链轮 + 链节循环移动
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('ch-svg');
+      const mount = document.getElementById('ch-controls-mount');
+
+      function render(phase) {
+        clear(svgEl);
+        const r1 = 48, r2 = 76;
+        const cx1 = 220, cx2 = 500, cy = 160;
+        const a1 = phase * TAU;
+
+        // 链轮（齿形简化）
+        [[cx1, r1, a1], [cx2, r2, -a1 * r1 / r2]].forEach(([cx, r, ang]) => {
+          const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(ang)})` });
+          g.appendChild(circle(0, 0, r, { fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 2 }));
+          const nT = Math.round(r / 7);
+          for (let i = 0; i < nT; i++) {
+            const a = (i / nT) * TAU;
+            g.appendChild(svg('polygon', {
+              points: '0,-2 5,-9 -5,-9', fill: '#232a31',
+              transform: `rotate(${deg(a)}) translate(0 ${-r})`,
+            }));
+          }
+          g.appendChild(circle(0, 0, 8, { fill: '#232a31' }));
+          svgEl.appendChild(g);
+        });
+
+        // 链（上下两段 + 半圆绕轮，链节随平移）
+        const pitch = 15;
+        const travel = a1 * r1;
+        const yT = cy - r1 - 4, yB = cy + r1 + 4;
+        const xL = cx1, xR = cx2;
+        // 上段 + 下段
+        [[yT, 1], [yB, -1]].forEach(([y]) => {
+          svgEl.appendChild(line(xL, y, xR, y, { stroke: '#8a919b', 'stroke-width': 2 }));
+          const off = ((travel % pitch) + pitch) % pitch;
+          for (let x = xL + off; x < xR; x += pitch) {
+            svgEl.appendChild(circle(x, y, 3.2, { fill: 'none', stroke: '#232a31', 'stroke-width': 1.6 }));
+          }
+        });
+        // 绕轮弧段
+        [[cx1, r1 + 4, a1], [cx2, r2 + 4, -a1 * r1 / r2]].forEach(([cx, r, ang]) => {
+          const n = Math.round((TAU * r) / pitch);
+          for (let i = 0; i < n; i++) {
+            const a = ang + (i / n) * TAU;
+            svgEl.appendChild(circle(cx + r * Math.cos(a), cy + r * Math.sin(a), 3.2, { fill: 'none', stroke: '#232a31', 'stroke-width': 1.6 }));
+          }
+        });
+
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `链节沿两轮循环移动 · i = r₂/r₁ = ${(r2 / r1).toFixed(2)}（承载大但需润滑）`;
+        svgEl.appendChild(t);
+      }
+
+      const ctl = createControls(mount, { duration: 4000, onTick: (p) => render(p) });
+      tabCtls['chain'] = ctl; ctl.pause();
+    })();
   </script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>间歇运动 · 机构设计 Part 2</title>
   <link rel="stylesheet" href="common/style.css">
 </head>
@@ -9,103 +10,352 @@
   <div class="app">
     <div id="sidebar-mount"></div>
     <main class="main">
-      <h1 class="page-title">间歇运动 <span class="en">Intermittent Motion</span></h1>
-      <p class="need-hint">
-        <strong>什么时候需要这种运动？</strong> 主动件连续转，从动件需要"动—停—动—停"——例如分度转盘、上料机构、计数器。
-        工程上有一整套经典机构来实现这个目的。
+      <header class="page-hero" data-reveal>
+        <div class="ph-kicker">
+          <span class="chip">第 04 页 · 运动转换</span>
+          <span class="chip chip-ghost">≈ 22 min</span>
+          <span class="chip chip-ghost">前置：03 摆动</span>
+        </div>
+        <h1 class="ph-title">连续转 → 间歇动 <span class="en">Intermittent Motion</span></h1>
+        <p class="ph-lead">
+          <strong>电机擅长连续旋转，任务却常要"动—停—动"：转 45° 停一下、推一格停一下。</strong>
+          两条实现路线：<strong>机械锁合</strong>——把停歇节奏刻进几何（槽轮 / 棘轮 / 不完全齿轮，一个电机搞定、节奏出厂即定、断电也不乱步）；
+          <strong>数字控制</strong>——电机说停就停（步进 / 闭环，节奏由代码实时决定）。
+          本页先用一张对比表把四条路线的分度精度、动停比可调性与成本摆在一起，再逐个拆开几何、公式与制作公差。
+        </p>
+        <div class="ph-tags">
+          <span class="tag">槽轮机构</span>
+          <span class="tag">棘轮</span>
+          <span class="tag">不完全齿轮</span>
+          <span class="tag">步进 · 数字控制</span>
+        </div>
+      </header>
+
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">4.1</span>
+        <h2>本页方案横向对比 <span class="sec-sub">四条"停"的路线：三条机械锁合 + 一条数字控制</span></h2>
+      </div>
+      <div class="cmp-wrap" data-reveal>
+        <table class="data-table cmp-table">
+          <thead>
+            <tr>
+              <th class="crit">维度</th>
+              <th class="cmp-pick">槽轮</th>
+              <th>棘轮</th>
+              <th>不完全齿轮</th>
+              <th>步进 · 数字控制</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="crit">分度精度</td>
+              <td><strong>几何锁定，最准</strong>（误差不累积）</td>
+              <td>中等（爪与齿面间隙晃动）</td>
+              <td>几何锁定，准</td>
+              <td>良好——但掉步无告警</td>
+            </tr>
+            <tr>
+              <td class="crit">动停比可调性</td>
+              <td>定死：=(n−2)/(n+2)，<strong>由槽数决定</strong></td>
+              <td>可微调（改摆角 / 棘爪数）</td>
+              <td>较自由（留齿弧长任意设计）</td>
+              <td><strong>任意可调</strong>（改代码即换节奏）</td>
+            </tr>
+            <tr>
+              <td class="crit">高速性能</td>
+              <td>入槽零冲击，设计好可中速</td>
+              <td>差（爪敲齿硬冲击）</td>
+              <td>差（首齿啮入速度突跳）</td>
+              <td>好（受矩频曲线限制）</td>
+            </tr>
+            <tr>
+              <td class="crit">噪音与冲击</td>
+              <td><strong>最安静</strong>（ω₂ 从 0 连续起步）</td>
+              <td>咔哒声明显</td>
+              <td>啮入有敲击</td>
+              <td>安静（低速有共振区）</td>
+            </tr>
+            <tr>
+              <td class="crit">控制复杂度</td>
+              <td>零控制（单电机直转）</td>
+              <td>零控制（只需摆动源）</td>
+              <td>零控制</td>
+              <td>要驱动器 + 代码</td>
+            </tr>
+            <tr>
+              <td class="crit">成本</td>
+              <td>两片激光切割件</td>
+              <td><strong>最低</strong>（超简单）</td>
+              <td>较高（需完整齿轮库再切段）</td>
+              <td>电机 + 驱动板</td>
+            </tr>
+            <tr>
+              <td class="crit">俱乐部适用</td>
+              <td><span class="dots">●●●●○</span> 分度机构首选</td>
+              <td><span class="dots">●●●○○</span> 超越离合 / 手动棘锁</td>
+              <td><span class="dots">●●○○○</span> 相位调试麻烦</td>
+              <td><span class="dots">●●●●○</span> 节奏要变就用它</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="cmp-note" data-reveal>
+        <strong>怎么读这张表：</strong>要"精确分度"（转塔、多工位、每步等角）→ <strong>槽轮</strong>，几何把精度锁死、一个连续转的电机就能带；
+        要"随时可停 / 手推才动"（超越离合、防倒转）→ <strong>棘轮</strong>；动停比想在 CAD 里自由设计 → <strong>不完全齿轮</strong>，代价是首齿硬冲击与相位调试；
+        节奏要按现场改、要跟传感器联动 → <strong>步进数字方案</strong>，任意可调但开环怕丢步（页内"机械 vs 数字"tab 的扰动实验演示了这一点）。
+      </div>
+
+      <div class="sec-head sm" data-reveal><span class="sec-num">例题</span><h2>一道槽轮设计题走完整个流程</h2></div>
+      <p style="font-size:13.5px; color:var(--ink-soft); margin:0 0 var(--sp-3);" data-reveal>
+        <strong>需求</strong>：8 工位转塔分度，每循环 2 s（动 + 停共 2 s），单电机连续旋转驱动。
       </p>
+      <ol class="flow-steps" data-reveal>
+        <li><b>定槽数</b>8 工位 → 步进角 45° → <code>n = 360°/45° = 8</code> 槽；中心距 <code>C = R/sin(π/n)</code>，锁止盘半径由 C 与轮缘半径推定</li>
+        <li><b>验节奏</b>动停比 = <code>(n−2)/(n+2) = 6/10 = 0.6</code> → 每循环 2 s 中动 0.75 s / 停 1.25 s，节奏偏"慢快慢"可接受，进入下一步</li>
+        <li><b>零冲击条件</b>拨销入槽瞬间，销速度必须沿<strong>槽中心线</strong>（垂直分量为 0）——这在几何上自动满足 λ = R/C = sin(π/n)，装配时靠同轴度保证</li>
+        <li><b>定公差</b>锁止弧与槽的径向间隙取 <code>0.1~0.2 mm</code>：太紧卡死（锁止盘顶住轮缘转不动），太松晃（分度精度丢失）</li>
+      </ol>
 
       <div class="mechanism-tabs" id="tabs">
         <button class="tab active" data-tab="hero">槽轮机构 ★</button>
         <button class="tab" data-tab="ratchet">棘轮机构</button>
         <button class="tab" data-tab="partial">不完全齿轮</button>
-        <button class="tab" data-tab="stepper">步进电机</button>
+        <button class="tab" data-tab="digital">机械 vs 数字</button>
       </div>
 
+      <!-- ===== 槽轮 hero：真实锁止弧 + 分步五步 + ω₂ 同步曲线 ===== -->
       <section id="tab-hero" class="tab-panel">
         <div class="stage">
-          <svg id="gv-svg" viewBox="0 0 700 380"></svg>
+          <svg id="gv-svg" viewBox="0 0 700 470"></svg>
           <div class="params">
             <div class="param-row">
               <label>槽数 n <span class="val" id="gv-n-val">4</span></label>
               <input type="range" id="gv-n" min="3" max="8" step="1" value="4">
             </div>
+            <div class="param-row">
+              <label>主动轮转速 ω₁ <span class="val" id="gv-w-val">60</span> rpm</label>
+              <input type="range" id="gv-w" min="20" max="180" step="10" value="60">
+            </div>
           </div>
+          <div class="verdict" id="gv-verdict"></div>
           <div id="gv-controls-mount"></div>
+          <div id="gv-steps-mount"></div>
         </div>
+
+        <div class="formula-block">
+          <div class="f-title">槽轮的三个核心公式</div>
+          <div class="f-eq">C = R / sin(π/n)　　tanβ = λ·sinφ / (1 − λ·cosφ)　　λ = R/C</div>
+          <div class="f-note">
+            <strong>几何条件</strong>：中心距 C 由"销入槽无冲击"决定——入槽瞬间销的速度方向恰好沿槽中心线（相切），
+            这要求 λ = R/C = sin(π/n)。<br>
+            <strong>运动规律</strong>：φ 是主动销相对两轴心连线的角度，β 是从动轮转角。
+            正切关系保证 <strong>入槽与出槽瞬间 ω₂ = 0</strong>——速度连续、理论上零冲击（对上图曲线）。
+            <br><strong>锁止</strong>：停歇期靠<strong>锁止弧</strong>——从动轮轮缘的凹弧与主动轮锁止盘凸弧同心贴合，
+            从动轮被几何卡死，想转都转不了。
+            <br><strong>为什么是它 vs 其他</strong>：同样做"动—停—动"，棘轮和不完全齿轮的啮入瞬间都有速度突跳（硬冲击），只有槽轮的 ω₂ 从 0 连续起步——所以中速批量循环的分度机构几乎都用槽轮；
+            它的代价是动停比被槽数 n 定死（换节奏 = 换零件），这一点输给步进数字方案，但换来的是<strong>零控制、零掉步风险</strong>——断电重启位置依然正确。
+          </div>
+        </div>
+
+        <div class="dual-card">
+          <div class="info-card note">
+            <h4>机械设计</h4>
+            <ul>
+              <li>槽数 n 定死分度：n=4 → 动 90°/停 270°；n=6 → 动 60°/停 300°</li>
+              <li>n 越多停歇占比越大、峰值角速度越小（曲线变平）</li>
+              <li>槽与销配合留 0.1~0.2 mm 间隙（既活又不旷）</li>
+            </ul>
+          </div>
+          <div class="info-card use">
+            <h4>机械制造</h4>
+            <ul>
+              <li>槽轮可用<strong>激光切割亚克力</strong>：锁止弧与槽在 CAD 里一次画出</li>
+              <li>主动轮的销用<strong>螺丝 + 铜套</strong>（铰接同款做法）</li>
+              <li>配合精度靠切缝 kerf 与实配孔径控制（见工程实现页）</li>
+            </ul>
+          </div>
+        </div>
+
         <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>主动件连续转动，从动件精确分度</li><li>结构紧凑，刚性好</li><li>每个周期定位准确</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>启动/停止瞬间有冲击</li><li>高速时噪音大</li><li>槽数确定后分度角固定</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>转塔式包装机</li><li>ATM 出钞机构</li><li>分度工作台</li><li>电影放映机抓片</li></ul></div>
+          <div class="info-card good"><h4>优点</h4><ul>
+            <li>入/出槽速度从 0 连续变化，无硬冲击</li>
+            <li>停歇由锁止弧几何锁定，分度重复性极好</li>
+            <li>单电机驱动，无需控制</li>
+          </ul></div>
+          <div class="info-card bad"><h4>缺点</h4><ul>
+            <li>槽数定死 → 分度角不可调</li>
+            <li>中段角速度峰值可达 ω₁ 的数倍（n=4 时 2.41 倍）</li>
+            <li>高速时销与槽冲击磨损加剧</li>
+          </ul></div>
+          <div class="info-card use"><h4>适用</h4><ul>
+            <li>转塔包装机、分度工作台</li>
+            <li>ATM 出钞、电影放映机抓片</li>
+            <li>节奏固定不变的批量循环</li>
+          </ul></div>
         </div>
       </section>
 
+      <!-- ===== 棘轮 ===== -->
       <section id="tab-ratchet" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 380">
-            <g transform="translate(350, 200)">
-              <circle r="100" fill="white" stroke="#333" stroke-width="2"/>
-              <g id="ratchet-teeth"></g>
-              <circle r="10" fill="#333"/>
-              <path d="M 0,-120 L 60,-100 L 0,-80 Z" fill="#c8442a" stroke="#333" stroke-width="1.5"/>
-              <text x="0" y="-140" text-anchor="middle" fill="#999" font-size="13">棘爪（推动）</text>
-              <path d="M -40,-50 L -100,-30 L -45,-10 Z" fill="#2a5c8a" stroke="#333" stroke-width="1.5"/>
-              <text x="-110" y="-20" text-anchor="middle" fill="#999" font-size="13">止回爪</text>
-            </g>
-          </svg>
+          <svg id="rt-svg" viewBox="0 0 700 430"></svg>
+          <div id="rt-controls-mount"></div>
+          <div id="rt-steps-mount"></div>
         </div>
-        <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>单向传动（防反转）</li><li>结构简单</li><li>能实现"摆动→单向间歇转"</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>有齿隙噪音</li><li>冲击大</li><li>承载有限</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>自行车后轴（早期）</li><li>棘轮扳手</li><li>提升机防反转</li><li>打簧机械</li></ul></div>
+        <div class="formula-block">
+          <div class="f-title">棘轮 vs 槽轮 · 冲击的本质区别</div>
+          <div class="f-note">
+            棘爪啮入齿槽的瞬间速度<strong>不为零</strong>（硬冲击）——噪音与磨损天然大于槽轮；
+            槽轮入槽瞬间 ω₂ 从 0 连续起步（软启动）。但棘轮把"摆动变单向间歇转"的能力独一无二，
+            且<strong>齿数 = 分辨率</strong>（60 齿 = 6°/齿），需要极小步进时依然常用。
+            自行车塔基、棘轮扳手每天都在用它。
+            <br><strong>棘轮 vs 槽轮</strong>：棘轮是<strong>"随时可停"的间歇</strong>（超越离合器原理——外圈反转时滚柱/棘爪自动楔紧，一个方向锁死、另一个方向自由滑过），
+            槽轮是<strong>"精确分度"的间歇</strong>——要转 45° 停一下、每步等角、误差不累积，用槽轮；
+            要"手推才动、松手就停"（防倒转、脚踏回落、输送带逆转止动），用棘轮。齿数即分辨率：60 齿 = 6°/齿，需要极小步进角时它反而不可替代。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note"><h4>机械设计</h4><ul>
+            <li>齿形：工作面陡（传力）、非工作面缓（爪易滑回）</li>
+            <li>止回爪 + 板簧保证爪始终贴齿</li>
+            <li>分度角 = 360°/齿数，不可调</li>
+          </ul></div>
+          <div class="info-card use"><h4>机械制造</h4><ul>
+            <li>棘轮轮廓同样适合<strong>激光切割</strong></li>
+            <li>爪可用 3D 打印 PLA（轻载）或切割钢板（重载）</li>
+            <li>板簧用现成压缩簧改造或钢琴丝自制</li>
+          </ul></div>
         </div>
       </section>
 
+      <!-- ===== 不完全齿轮 ===== -->
       <section id="tab-partial" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 380">
-            <g transform="translate(350, 200)">
-              <circle r="110" fill="white" stroke="#333" stroke-width="2"/>
-              <path d="M 0,-80 A 80,80 0 0 1 70,-40 L 0,0 Z" fill="#c8442a" opacity="0.4"/>
-              <text x="0" y="-120" text-anchor="middle" fill="#999" font-size="13">主动轮只有一段齿</text>
-              <text x="0" y="140" text-anchor="middle" fill="#999" font-size="13">其余时间脱离啮合 → 从动停歇</text>
-            </g>
-          </svg>
+          <svg id="pg-svg" viewBox="0 0 700 430"></svg>
+          <div id="pg-controls-mount"></div>
+          <div id="pg-steps-mount"></div>
         </div>
-        <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>制造相对容易（齿廓熟悉）</li><li>传动比可设计</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>啮入/啮出冲击大</li><li>需要专门定位装置</li><li>重载不适用</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>计数器</li><li>程序控制</li><li>轻载分度</li></ul></div>
+        <div class="formula-block">
+          <div class="f-title">不完全齿轮：啮合角自己设计</div>
+          <div class="f-note">
+            把主动轮的齿只留一段，其余是光滑锁止弧——<strong>有齿段啮合时从动轮 1:1 转动，无齿段锁止停歇</strong>。
+            与槽轮的区别：分度角由"留多少齿"决定（更自由），但<strong>啮入瞬间速度突跳</strong>（齿顶接触即有速度，硬冲击），
+            高速场合不如槽轮。锁止弧与从动轮凹弧配合防越程。
+            <br><strong>为什么选它 / 不选它</strong>：它的独特价值是<strong>动停比可在 CAD 里任意设计</strong>（留多少齿就动多少），这是槽数定死的槽轮做不到的；
+            但代价是加工与调试——你得先有完整齿轮库才能"切掉一段再补锁止弧"，装配时首末齿相位靠手工反复对，俱乐部条件下出错率高，所以适用评分只有两星。
+          </div>
+        </div>
+        <div class="dual-card">
+          <div class="info-card note"><h4>机械设计</h4><ul>
+            <li>停歇比 = 无齿弧长占比，可任意设计</li>
+            <li>首齿做修缘（齿顶削尖）减轻啮入冲击</li>
+            <li>需要从动侧锁止凹弧防惯性越程</li>
+          </ul></div>
+          <div class="info-card use"><h4>机械制造</h4><ul>
+            <li>齿形可用齿轮库生成后<strong>切掉一段</strong>再补锁止弧</li>
+            <li>激光切割 / 3D 打印均可</li>
+            <li>轻载场合（计数、程控）够用</li>
+          </ul></div>
         </div>
       </section>
 
-      <section id="tab-stepper" class="tab-panel" style="display:none;">
+      <!-- ===== 机械 vs 数字 ===== -->
+      <section id="tab-digital" class="tab-panel" style="display:none;">
         <div class="stage">
-          <svg viewBox="0 0 700 380">
-            <g transform="translate(350, 200)">
-              <rect x="-60" y="-60" width="120" height="120" fill="#2a5c8a" stroke="#333" stroke-width="2" rx="4"/>
-              <circle r="40" fill="white" stroke="#333" stroke-width="2"/>
-              <line x1="0" y1="0" x2="0" y2="-40" stroke="#c8442a" stroke-width="4"/>
-              <text x="0" y="5" text-anchor="middle" font-size="13">步进</text>
-              <text x="0" y="100" text-anchor="middle" fill="#999" font-size="13">电脉冲 → 离散角位移</text>
-            </g>
-          </svg>
+          <h3>同一个"停"，三种实现 · 对比动画</h3>
+          <p style="color:var(--ink-soft); font-size:13px; margin:0 0 8px;">
+            目标：转到 90° 停住。左：机械锁止（槽轮几何）｜中：步进开环（脉冲停）｜右：直流+编码器闭环（PID 拉）。
+            <strong>点击"注入扰动"看三者差异。</strong>
+          </p>
+          <svg id="dg-svg" viewBox="0 0 700 330"></svg>
+          <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+            <button class="btn" id="dg-perturb">⚡ 注入扰动（撞一下）</button>
+            <button class="btn secondary" id="dg-reset">↺ 重置</button>
+          </div>
+          <div id="dg-controls-mount"></div>
         </div>
-        <div class="info-grid">
-          <div class="info-card good"><h4>优点</h4><ul><li>开环定位精确</li><li>软件控制灵活</li><li>无需机械结构</li></ul></div>
-          <div class="info-card bad"><h4>缺点</h4><ul><li>低速会抖动</li><li>失步风险（过载时）</li><li>需专门驱动器</li></ul></div>
-          <div class="info-card use"><h4>适用</h4><ul><li>3D 打印机</li><li>CNC 机床</li><li>我们的 42 步进电机</li></ul></div>
+        <div class="data-table-wrap" style="margin-top:16px;">
+          <table class="data-table">
+            <thead><tr><th>维度</th><th>机械锁止（槽轮）</th><th>步进开环</th><th>直流 + 编码器闭环</th></tr></thead>
+            <tbody>
+              <tr><td><strong>怎么停</strong></td><td>锁止弧几何卡死</td><td>脉冲停发 = 停</td><td>PID 刹车到目标</td></tr>
+              <tr><td><strong>停止精度</strong></td><td>几何精度（加工定）</td><td>良好（不掉步时）</td><td>高（编码器验证）</td></tr>
+              <tr><td><strong>遇扰动</strong></td><td>撞歪了？停歇结束才回位</td><td class="hl"><strong>掉步无告警</strong>，误差保持</td><td class="hl"><strong>编码器发现 → 拉回</strong></td></tr>
+              <tr><td><strong>换节奏</strong></td><td>换零件</td><td>改代码</td><td>改代码</td></tr>
+              <tr><td><strong>成本</strong></td><td>零件加工</td><td>最低</td><td>编码器 + 调参</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="formula-block" style="margin-bottom:0;">
+          <div class="f-title">选型直觉</div>
+          <div class="f-note">
+            节奏永远不变、要一个电机带多工位 → <strong>机械锁合</strong>；
+            节奏要按现场改 → <strong>数字控制</strong>。而数字控制内部再选：
+            低速轻载图省事 → 步进（留 50% 裕度）；要可靠可验证 → 闭环。
+            详见「传感与控制」页的底层原理。
+            <br><strong>对比结论（并入 4.1 表）</strong>：上方扰动实验给出了表格里"遇扰动"一行的实感——机械锁合被撞歪要等下一循环几何回位；
+            步进开环掉步后误差永久保持且<strong>控制器毫无察觉</strong>；闭环靠编码器发现并拉回。所以分度精度这一行，
+            槽轮赢在"几何保证、不看运气"，步进赢在"可调但怕丢步"，选型时先问负载会不会撞、节奏会不会改。
+          </div>
         </div>
       </section>
 
-      <div class="robot-callout">
-        <img src="../assets/asabe/mobility-chassis.png" alt="chassis">
-        <div class="text">
-          <strong>在我们的机器人上</strong>
-          我们没有用机械式间歇机构，而是用<strong>步进电机直接驱动</strong>实现"动—停—动"——比如检测到鸡蛋时立即停车，
-          这是数字控制相对于机械间歇机构的优势：停的位置由传感器实时决定，而不是结构死定。
+      <div class="sec-head" data-reveal>
+        <span class="sec-num">4.2</span>
+        <h2>驱动与安装 <span class="sec-sub">拨盘轴 = 电机轴：同轴度是这套机构的生命线</span></h2>
+      </div>
+      <div class="drive-card" data-reveal>
+        <div class="dc-head"><svg class="ic"><use href="#i-motor"></use></svg> 驱动与安装 · 间歇机构</div>
+        <div class="dc-grid">
+          <div class="dc-item">
+            <h4>电机放哪</h4>
+            <p><strong>输入轴（拨盘轴）就是电机轴</strong>：电机 + 减速器法兰直装在机架上，拨盘装在电机输出轴上（D 形孔紧配 + 顶丝定位于平位处）。
+            两轴心连线必须与槽轮几何的 C 严格一致——<em>拨销入槽偏了就顶</em>，同轴度超差是槽轮机构"转不动 / 啮入异响"的第一原因。</p>
+          </div>
+          <div class="dc-item">
+            <h4>直驱还是传动</h4>
+            <p><strong>低速</strong>（棘轮、低速分度）：电机直驱即可；<strong>槽轮转速较高</strong>时，电机先经<em>同步带减速</em>再接拨盘——
+            同步带同时隔离了啮入冲击的反扭矩传回电机轴，保护减速器。停歇期锁止弧咬死时反扭矩尖峰最大，这一隔离非常值得。</p>
+          </div>
+          <div class="dc-item">
+            <h4>电机座与对零</h4>
+            <p>电机法兰孔直接钻在<em>同一块机架板</em>上（与槽轮轴孔一次装夹钻出）；<em>锁止弧与拨销的相位</em>没有加工保证手段——
+            装配时手动"对零"：拨销转至槽口、确认锁止盘缺口正好让开轮缘，再锁紧顶丝。装完先手转一圈验证无顶死。</p>
+          </div>
         </div>
       </div>
+
+      <div class="sec-head sm" data-reveal>
+        <span class="sec-num">4.3</span>
+        <h2>实物制作 <span class="sec-sub">槽轮 / 棘轮两片激光切割件 + 标准件转动副</span></h2>
+      </div>
+      <div class="build-card" data-reveal>
+        <div class="bc-head"><svg class="ic"><use href="#i-print"></use></svg> 实物制作 · 间歇机构</div>
+        <div class="bc-grid">
+          <div class="bc-main">
+            <p>槽轮与拨盘是<strong>两片平面轮廓件</strong>——锁止弧、径向槽、拨销孔全部在 CAD 里一次画出，激光切割一次成形。
+            拨销本身就是一个<strong>转动副</strong>：销在槽内是滚动+滑动混合接触，套上铜套能显著降低磨损与噪音。</p>
+            <a class="bc-link" href="chassis.html">转动副规范 → 底盘与悬挂 · 铰接设计（铜套）<br>
+              <span style="font-size:12px; color:var(--ink-soft);">为什么用铜套不直接螺丝+螺母：面接触不硌坏切割件孔、拧到死不依赖手感、更接近理想铰</span></a>
+          </div>
+          <table class="bc-params">
+            <tbody>
+              <tr><td>槽轮/拨盘</td><td>激光切割亚克力 3~5 mm</td></tr>
+              <tr><td>kerf 补偿</td><td>0.1~0.2 mm（轮廓内缩）</td></tr>
+              <tr><td>拨销</td><td>M4/M5 螺丝 + 铜套（转动副）</td></tr>
+              <tr><td>锁止弧间隙</td><td>径向 0.1~0.2 mm</td></tr>
+              <tr><td>轴孔</td><td>Ø6.4 + 铜套 Ø6×5</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <figure class="photo-fig" data-reveal>
+        <img src="assets/asabe/stepper-motor.png" alt="42 步进电机：方形法兰 + 四角安装孔 + 输出轴">
+        <figcaption><strong>驱动源实物（42 步进电机）</strong>——方形安装法兰、四角螺纹孔、输出轴。
+        数字间歇路线里它"电机 + 驱动器"就是全部传动链；机械锁合路线里它也可以当连续旋转的输入源，
+        区别只在：节奏是刻在槽轮几何里，还是写在代码里。</figcaption>
+      </figure>
 
       <div class="page-nav">
         <a href="motion-oscillation.html">← 摆动</a>
@@ -117,104 +367,494 @@
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
     import { createControls, svg, line, circle, clear } from './common/controls.js';
-    import { TAU } from './common/math.js';
+    import { geneva, genevaDriven, deg, TAU } from './common/math.js';
+    import { COLORS, hatchPattern, ground, pinJoint, arrow, bar, stepControls, syncCurve } from './common/draw.js';
 
     injectSidebar('motion-intermittent');
 
-    document.querySelectorAll('#tabs .tab').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
-        document.getElementById('tab-' + btn.dataset.tab).style.display = 'block';
-      });
-    });
-
-    const gvSvg = document.getElementById('gv-svg');
-    const gvCtlMount = document.getElementById('gv-controls-mount');
-    let nSlots = 4;
-
-    document.getElementById('gv-n').addEventListener('input', (e) => {
-      nSlots = parseInt(e.target.value);
-      document.getElementById('gv-n-val').textContent = nSlots;
-    });
-
-    function render(phase) {
-      clear(gvSvg);
-      const driverCx = 200, driverCy = 200;
-      const drivenCx = 500, drivenCy = 200;
-      const R = 100;       // 主动销旋转半径
-      const slotR = 100;   // 从动轮半径
-
-      const slotAngle = TAU / nSlots;
-      const driveRatio = 0.5; // 主动销转一圈，有 50% 时间在啮合
-
-      // 标准化相位到 [0, 1)
-      const p = ((phase % 1) + 1) % 1;
-      const driverAngle = p * TAU - Math.PI; // 从左侧开始
-
-      // 主动销位置（相对驱动轴中心）
-      const pinX = driverCx + R * Math.cos(driverAngle);
-      const pinY = driverCy + R * Math.sin(driverAngle);
-
-      // 判断是否在啮合区（pin 距离 driven 较近的一侧）
-      const distToDriven = Math.hypot(pinX - drivenCx, pinY - drivenCy);
-
-      // 啮合区：当 pin 处于两轮之间时
-      const engaging = pinX > driverCx && pinX < drivenCx && distToDriven < slotR + 30;
-
-      // 从动轮转角（仅在啮合时累积）
-      // 简化：在啮合相位内线性转动 slotAngle
-      let drivenAngle = 0;
-      if (engaging) {
-        // 啮合进度
-        const engagePhase = (Math.cos(driverAngle) + 1) / 2; // 0~1
-        drivenAngle = -slotAngle / 2 + engagePhase * slotAngle;
-      }
-
-      // 画从动轮（带槽）
-      const drivenGroup = svg('g', { transform: `translate(${drivenCx},${drivenCy}) rotate(${drivenAngle * 180 / Math.PI})` });
-      // 外圆
-      drivenGroup.appendChild(circle(0, 0, slotR, { fill: 'white', stroke: '#333', 'stroke-width': 2 }));
-      // 锁止弧（在外圆上）
-      // 槽（从中心向外辐射）
-      for (let i = 0; i < nSlots; i++) {
-        const a = i * slotAngle;
-        const x1 = 0, y1 = 0;
-        const x2 = slotR * Math.cos(a), y2 = slotR * Math.sin(a);
-        drivenGroup.appendChild(line(x1, y1, x2, y2, { stroke: '#2a5c8a', 'stroke-width': 6 }));
-      }
-      drivenGroup.appendChild(circle(0, 0, 15, { fill: '#333' }));
-      gvSvg.appendChild(drivenGroup);
-
-      // 画主动轮（带圆销 + 圆弧锁止盘）
-      const driverGroup = svg('g', { transform: `translate(${driverCx},${driverCy})` });
-      // 锁止盘（半径较小的圆，避免干涉从动轮槽）
-      driverGroup.appendChild(circle(0, 0, R * 0.6, { fill: '#eee', stroke: '#333', 'stroke-width': 2 }));
-      // 圆销
-      driverGroup.appendChild(circle(R * Math.cos(driverAngle), R * Math.sin(driverAngle), 8, { fill: '#c8442a', stroke: '#333', 'stroke-width': 2 }));
-      // 中心轴
-      driverGroup.appendChild(circle(0, 0, 6, { fill: '#333' }));
-      gvSvg.appendChild(driverGroup);
-
-      // 标签
-      const t = svg('text', { x: 350, y: 40, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
-      t.textContent = engaging
-        ? `啮合中：从动轮转动 ${slotAngle * 180 / Math.PI}° / 主动一圈`
-        : `静止期：从动轮被锁止盘定位`;
-      gvSvg.appendChild(t);
-
-      const t2 = svg('text', { x: driverCx, y: driverCy + 130, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
-      t2.textContent = '主动轮（连续转）';
-      gvSvg.appendChild(t2);
-      const t3 = svg('text', { x: drivenCx, y: drivenCy + 130, 'text-anchor':'middle', fill:'#555', 'font-size':12 });
-      t3.textContent = `从动轮（${nSlots} 槽 → ${nSlots} 分度）`;
-      gvSvg.appendChild(t3);
+    const tabCtls = {};
+    function activateTab(name) {
+      document.querySelectorAll('#tabs .tab').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      Object.values(tabCtls).forEach(c => { if (c) c.pause(); });
+      if (tabCtls[name]) tabCtls[name].play();
     }
-
-    createControls(gvCtlMount, {
-      duration: 6000,
-      onTick: (phase) => render(phase),
+    document.querySelectorAll('#tabs .tab').forEach(btn => {
+      btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
+
+    /* ============================================================
+     * 槽轮：真实锁止弧轮廓 + 分步五步 + ω₂ 同步曲线
+     * 几何全部按公式计算（不写死）：
+     *   C = R/sin(π/n)（无冲击条件）
+     *   轮缘半径 r₂ = √(C²+R²−2CR·cosα) + 间隙
+     *   槽间锁止凹弧：圆心 = 局部 O₁（方向 π−π/n、距离 C），半径 r_d
+     *   主动轮锁止盘半径 = r_d − 间隙
+     * 相位约定：phase 0 = 停歇中点；啮合窗以 phase 0.5 为中心（与分步对齐）
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('gv-svg');
+      const mount = document.getElementById('gv-controls-mount');
+      const stepsMount = document.getElementById('gv-steps-mount');
+      const verdictEl = document.getElementById('gv-verdict');
+      let n = 4, rpm = 60;
+      const R = 62;      // 销回转半径
+      const PIN_R = 9;   // 销半径
+
+      document.getElementById('gv-n').addEventListener('input', (e) => {
+        n = parseInt(e.target.value);
+        document.getElementById('gv-n-val').textContent = n;
+        updateVerdict();
+      });
+      document.getElementById('gv-w').addEventListener('input', (e) => {
+        rpm = parseInt(e.target.value);
+        document.getElementById('gv-w-val').textContent = rpm;
+        updateVerdict();
+      });
+
+      function updateVerdict() {
+        const geo = geneva({ n, R });
+        verdictEl.className = 'verdict';
+        verdictEl.innerHTML = `<strong>n = ${n}</strong> · 中心距 C = R/sin(π/n) = ${(geo.C / R).toFixed(2)}R ·
+          步进角 ${deg(geo.motionAngle).toFixed(0)}° · 一个循环：动 ${deg(2 * geo.alpha).toFixed(0)}° / 停 ${deg(geo.dwellArc).toFixed(0)}°
+          （动占 ${((2 * geo.alpha / TAU) * 100).toFixed(0)}%）· 每步耗时 ${(60 / rpm).toFixed(2)} s`;
+      }
+
+      // 峰值角速度比（预扫一个啮合窗）
+      function peakRatio(geo) {
+        let mx = 0;
+        for (let i = 0; i <= 100; i++) {
+          const phi = -geo.alpha + (2 * geo.alpha) * (i / 100);
+          mx = Math.max(mx, genevaDriven({ n, driverAngle: phi }).ratio);
+        }
+        return mx;
+      }
+
+      const F = (v) => v.toFixed(2);
+
+      function render(phase) {
+        clear(svgEl);
+        const hid = hatchPattern(svgEl);
+        const geo = geneva({ n, R });
+        const C = geo.C, alpha = geo.alpha, slotAngle = TAU / n;
+
+        // —— 几何（公式计算）——
+        const r2 = Math.sqrt(C * C + R * R - 2 * C * R * Math.cos(alpha)) + 6; // 轮缘（槽口）半径
+        const slotHalf = PIN_R + 2.5;                                          // 槽半宽
+        const hubR = Math.min(15, Math.max(3, C - R - PIN_R - 6));             // 中心毂（n=3 时槽极深 → 毂很小，真实物理）
+        const slotInner = Math.max(Math.min(hubR + 4, 6), C - R - PIN_R - 3);  // 槽底半径（下限 6，n=3 允许轻微视觉重叠）
+        const nu = Math.asin(Math.min(0.85, slotHalf / r2));                   // 槽口半角
+        const rd = Math.sqrt(C * C + r2 * r2 - 2 * C * r2 * Math.cos(Math.PI / n - nu)); // 锁止弧半径（圆心 O₁）
+        const lockDiskR = rd - 1.6;                                            // 主动轮锁止盘半径
+
+        // —— 相位：φ = 销相对销心连线的角；phase 0 → φ=π（停歇中点）——
+        const phi = phase * TAU + Math.PI;
+        const res = genevaDriven({ n, driverAngle: phi });
+
+        const drvC = { x: 195, y: 225 };
+        const drvnC = { x: 195 + C, y: 225 };
+
+        // 啮合期从动轮角 = −β（绘图角度约定）；停歇锁在 −半槽角（n 重对称 → 循环回绕无缝）
+        const drivenA = res.engaged ? -res.beta : -slotAngle / 2;
+
+        // ---- 从动轮轮廓：n 个槽 + 槽间锁止凹弧 ----
+        const corners = [];
+        for (let i = 0; i < n; i++) {
+          const a = Math.PI + i * slotAngle;
+          corners.push({
+            a,
+            plus: { x: r2 * Math.cos(a + nu), y: r2 * Math.sin(a + nu) },   // 口角（朝下一槽侧）
+            minus: { x: r2 * Math.cos(a - nu), y: r2 * Math.sin(a - nu) },  // 口角（朝上一槽侧）
+          });
+        }
+        let path = '';
+        for (let i = 0; i < n; i++) {
+          const c = corners[i];
+          const cs = Math.cos(c.a), sn = Math.sin(c.a);
+          const pxv = -sn, pyv = cs;
+          const pInM = { x: slotInner * cs - slotHalf * pxv, y: slotInner * sn - slotHalf * pyv };
+          const pInP = { x: slotInner * cs + slotHalf * pxv, y: slotInner * sn + slotHalf * pyv };
+          if (i === 0) path += `M ${F(c.minus.x)},${F(c.minus.y)} `;
+          path += `L ${F(pInM.x)},${F(pInM.y)} `;
+          path += `A ${F(slotInner)} ${F(slotInner)} 0 0 1 ${F(pInP.x)},${F(pInP.y)} `;
+          path += `L ${F(c.plus.x)},${F(c.plus.y)} `;
+          const nxt = corners[(i + 1) % n];
+          path += `A ${F(rd)} ${F(rd)} 0 0 1 ${F(nxt.minus.x)},${F(nxt.minus.y)} `;
+        }
+        path += 'Z';
+
+        const drG = svg('g', { transform: `translate(${drvnC.x},${drvnC.y}) rotate(${deg(drivenA)})` });
+        drG.appendChild(svg('path', { d: path, fill: '#e9e6dd', stroke: COLORS.ink, 'stroke-width': 2.2 }));
+        drG.appendChild(circle(0, 0, hubR, { fill: COLORS.frame }));
+        drG.appendChild(circle(0, 0, hubR * 0.35, { fill: COLORS.bg }));
+        for (let i = 0; i < n; i++) {
+          const a = Math.PI + i * slotAngle;
+          drG.appendChild(line(Math.cos(a) * (hubR + 3), Math.sin(a) * (hubR + 3), Math.cos(a) * (hubR + 12), Math.sin(a) * (hubR + 12), { stroke: COLORS.ref, 'stroke-width': 1.5 }));
+        }
+        svgEl.appendChild(drG);
+
+        // ---- 主动轮：锁止盘（缺口对准销）+ 圆销 ----
+        const gapHalf = Math.PI / n + 0.12;
+        const drvG = svg('g', { transform: `translate(${drvC.x},${drvC.y}) rotate(${deg(phi)})` });
+        const g0 = gapHalf, g1 = TAU - gapHalf;
+        const dDisk = `M ${F(lockDiskR * Math.cos(g0))},${F(lockDiskR * Math.sin(g0))} ` +
+          `A ${F(lockDiskR)} ${F(lockDiskR)} 0 1 1 ${F(lockDiskR * Math.cos(g1))},${F(lockDiskR * Math.sin(g1))} L 0,0 Z`;
+        drvG.appendChild(svg('path', { d: dDisk, fill: COLORS.frameFill, stroke: COLORS.ink, 'stroke-width': 2 }));
+        drvG.appendChild(svg('path', { d: dDisk, fill: `url(#${hid})`, stroke: 'none', opacity: 0.3 }));
+        drvG.appendChild(circle(R, 0, PIN_R, { fill: COLORS.driven, stroke: COLORS.ink, 'stroke-width': 2 }));
+        drvG.appendChild(circle(R, 0, 3.5, { fill: COLORS.ink }));
+        drvG.appendChild(circle(0, 0, 6, { fill: COLORS.ink }));
+        svgEl.appendChild(drvG);
+
+        // ---- 机架：剖面支座 + 地面 + 中心连线（点划线） ----
+        svgEl.appendChild(line(drvC.x, drvC.y, drvnC.x, drvnC.y, { stroke: COLORS.ref, 'stroke-width': 1, 'stroke-dasharray': '10 4 2 4' }));
+        [drvC, drvnC].forEach((c) => {
+          svgEl.appendChild(svg('polygon', {
+            points: `${c.x - 16},${c.y + 26} ${c.x + 16},${c.y + 26} ${c.x - 10},${c.y + 12} ${c.x + 10},${c.y + 12}`,
+            fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+          }));
+        });
+        svgEl.appendChild(ground(svgEl, 100, 251, 480));
+
+        // ---- 销速度矢量（切向） ----
+        if (res.engaged) {
+          const pinW = { x: drvC.x + R * Math.cos(phi), y: drvC.y + R * Math.sin(phi) };
+          const vpx = -Math.sin(phi), vpy = Math.cos(phi);
+          svgEl.appendChild(arrow(svgEl, pinW.x, pinW.y, pinW.x + vpx * 30, pinW.y + vpy * 30, { color: COLORS.hi, width: 2.6, label: 'v销' }));
+        }
+
+        // ---- 从动轮角速度矢量（长度∝ω₂） ----
+        if (res.engaged && res.ratio > 0.05) {
+          const rr = r2 - 10;
+          const tAng = -Math.PI / 2;
+          const len = 14 + 20 * Math.min(2.5, res.ratio);
+          svgEl.appendChild(arrow(svgEl, drvnC.x + Math.cos(tAng) * rr, drvnC.y + Math.sin(tAng) * rr,
+            drvnC.x + Math.cos(tAng) * (rr + len), drvnC.y + Math.sin(tAng) * (rr + len),
+            { color: COLORS.driven, width: 2.6, label: 'ω₂' }));
+        }
+
+        // ---- ω₂/ω₁ 同步曲线（右下，与分步相位对齐） ----
+        svgEl.appendChild(syncCurve(svgEl, {
+          x: 470, y: 452, w: 190, h: 62, t: phase,
+          fn: (t) => {
+            const r = genevaDriven({ n, driverAngle: t * TAU + Math.PI });
+            return r.engaged ? r.ratio : 0;
+          },
+          yLabel: 'ω₂/ω₁', xLabel: '主动轮角 φ',
+          title: '从动轮角速度（入槽 0 → 峰值 → 出槽 0 → 停歇 0）',
+          yMax: peakRatio(geo) * 1.1, yMin: 0, color: COLORS.drive,
+        }));
+
+        // ---- 标注 ----
+        const lbl = (x, y, t, c) => {
+          const e = svg('text', { x, y, fill: c || '#5a6472', 'font-size': 12, 'text-anchor': 'middle', 'font-family': 'monospace' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(drvC.x, drvC.y + 48, '主动轮（连续转）', COLORS.ink);
+        lbl(drvnC.x, drvnC.y + r2 + 26, `从动轮（${n} 槽）`, COLORS.ink);
+        const phiDeg = ((deg(phi) % 360) + 360) % 360;
+        const mid = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: res.engaged ? COLORS.drive : COLORS.ref, 'font-size': 13.5, 'font-weight': 600 });
+        mid.textContent = res.engaged
+          ? `啮合中：φ=${phiDeg > 180 ? (phiDeg - 360).toFixed(0) : phiDeg.toFixed(0)}° ω₂/ω₁=${res.ratio.toFixed(2)}`
+          : '停歇：锁止弧同心贴合，从动轮被几何卡死（ω₂ = 0）';
+        svgEl.appendChild(mid);
+        // 高亮：锁止时圈出贴合区（固定朝 O₁ 方向）
+        if (!res.engaged) {
+          const hx = drvnC.x - (r2 - 16), hy = drvnC.y;
+          svgEl.appendChild(circle(hx, hy, 15, { fill: 'none', stroke: COLORS.hi, 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
+          svgEl.appendChild(arrow(svgEl, hx + 44, hy - 34, hx + 14, hy - 10, { color: COLORS.hi, width: 1.8, label: '锁止' }));
+        }
+      }
+
+      updateVerdict();
+      const ctl = createControls(mount, { duration: 7000, onTick: (phase) => render(phase) });
+
+      // 分步五步（at 值与啮合窗 [0.5−α/2π, 0.5+α/2π] 对齐）
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.02, title: '① 停歇 · 锁止弧贴合', desc: '从动轮轮缘的<strong>凹弧</strong>与主动轮<strong>锁止盘凸弧</strong>同心贴合（都以 O₁ 为圆心）——从动轮想转，弧面就顶住。这就是"几何卡死"。' },
+          { at: 0.375, title: '② 销入槽 · ω₂ = 0 起步', desc: '销到达槽口。因为 C = R/sin(π/n) 的几何条件，销速度<strong>恰好沿槽中心线</strong>（垂直分量=0）——没有侧向敲击，从动轮从零速平滑起步。' },
+          { at: 0.5, title: '③ 中段 · ω₂ 峰值', desc: '销在槽内滑动，推动从动轮加速。n=4 时角速度比峰值 <strong>2.41</strong>——看右下曲线尖峰与 ω₂ 矢量最长。' },
+          { at: 0.625, title: '④ 销出槽 · ω₂ 归零', desc: '销离开槽口，从动轮速度恰好回到 0（对称性）——不存在甩出速度，所以无需刹车。' },
+          { at: 0.70, title: '⑤ 重新锁止', desc: '下一个锁止弧转到位、贴合——一个循环结束，从动轮精确步进了 360°/n，误差不累积（几何保证）。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 150);
+      tabCtls['hero'] = ctl;
+    })();
+
+    /* ============================================================
+     * 棘轮：真实齿形（工作面陡/非工作面缓）+ 板簧 + 分步三步
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('rt-svg');
+      const mount = document.getElementById('rt-controls-mount');
+      const stepsMount = document.getElementById('rt-steps-mount');
+      const N_TEETH = 12;
+
+      function render(phase) {
+        clear(svgEl);
+        const cx = 360, cy = 215, r = 110;
+        // 推程 0~0.42 转 1 齿；回程 0.5~0.95 摆回
+        const drive = phase < 0.5 ? 0.5 - 0.5 * Math.cos(Math.PI * (phase / 0.5)) : 0.5 + 0.5 * Math.cos(Math.PI * ((phase - 0.5) / 0.5));
+        const ratchetA = drive * (TAU / N_TEETH);
+
+        // 棘轮（真实齿形：工作面径向陡、背坡缓）
+        const rG = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(-ratchetA)})` });
+        let d = '';
+        for (let i = 0; i < N_TEETH; i++) {
+          const a0 = (i / N_TEETH) * TAU;
+          const pitch = TAU / N_TEETH;
+          // 齿顶点
+          const tipA = a0 + pitch * 0.45;
+          const pTip = { x: r * Math.cos(tipA), y: r * Math.sin(tipA) };
+          // 工作面（陡，近似径向）从齿根直接上到齿顶
+          const rootA = a0 + pitch * 0.10;
+          const pRoot = { x: (r - 20) * Math.cos(rootA), y: (r - 20) * Math.sin(rootA) };
+          // 下一齿的根（背坡缓降）
+          const nextRootA = a0 + pitch + pitch * 0.10;
+          const pNextRoot = { x: (r - 20) * Math.cos(nextRootA), y: (r - 20) * Math.sin(nextRootA) };
+          d += `M ${pRoot.x},${pRoot.y} L ${pTip.x},${pTip.y} L ${pNextRoot.x},${pNextRoot.y} `;
+        }
+        rG.appendChild(circle(0, 0, r - 20, { fill: '#e9e6dd' }));
+        rG.appendChild(svg('path', { d, fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 2 }));
+        rG.appendChild(line(0, 0, r - 26, 0, { stroke: COLORS.ref, 'stroke-width': 2 }));
+        rG.appendChild(circle(0, 0, 10, { fill: COLORS.frame }));
+        svgEl.appendChild(rG);
+
+        // 摆杆 + 驱动棘爪
+        const pivot = { x: cx - 155, y: cy - 85 };
+        const armA0 = Math.atan2((cy - 35) - pivot.y, (cx - 25) - pivot.x);
+        const swing = 0.5 * (1 - Math.cos(TAU * phase)) * 0.5;
+        const armA = armA0 - 0.24 + swing * 0.48;
+        const armLen = 158;
+        const tip = { x: pivot.x + armLen * Math.cos(armA), y: pivot.y + armLen * Math.sin(armA) };
+        svgEl.appendChild(bar(pivot.x, pivot.y, tip.x, tip.y, { color: COLORS.drive, th: 8 }));
+        // 爪（贴工作面形状）
+        svgEl.appendChild(svg('polygon', {
+          points: `${tip.x},${tip.y} ${tip.x - 30},${tip.y + 10} ${tip.x - 22},${tip.y - 15}`,
+          fill: COLORS.drive, stroke: COLORS.ink, 'stroke-width': 1.6,
+        }));
+        svgEl.appendChild(pinJoint(pivot.x, pivot.y, 7));
+
+        // 板簧（驱动爪背压）
+        const sprAnchor = { x: pivot.x + 20, y: pivot.y - 55 };
+        let sd = `M ${sprAnchor.x},${sprAnchor.y}`;
+        for (let i = 1; i <= 5; i++) sd += ` L ${sprAnchor.x + 10 + i * 5},${sprAnchor.y + 20 + ((i % 2) ? -6 : 6)}`;
+        sd += ` L ${tip.x - 45},${tip.y - 22}`;
+        svgEl.appendChild(svg('path', { d: sd, fill: 'none', stroke: COLORS.ref, 'stroke-width': 2 }));
+        const sLbl = svg('text', { x: sprAnchor.x + 5, y: sprAnchor.y - 8, fill: COLORS.ref, 'font-size': 10.5 });
+        sLbl.textContent = '板簧（压爪贴齿）';
+        svgEl.appendChild(sLbl);
+
+        // 止回爪 + 板簧
+        const pawlPivot = { x: cx - 165, y: cy + 100 };
+        const pawlTip = { x: cx - r * 0.8, y: cy + r * 0.5 };
+        svgEl.appendChild(bar(pawlPivot.x, pawlPivot.y, pawlTip.x, pawlTip.y, { color: '#2a5c8a', th: 6 }));
+        svgEl.appendChild(svg('polygon', {
+          points: `${pawlTip.x},${pawlTip.y} ${pawlTip.x + 22},${pawlTip.y - 14} ${pawlTip.x + 5},${pawlTip.y - 18}`,
+          fill: '#2a5c8a', stroke: COLORS.ink, 'stroke-width': 1.6,
+        }));
+        svgEl.appendChild(pinJoint(pawlPivot.x, pawlPivot.y, 7));
+        const pLbl = svg('text', { x: pawlPivot.x - 10, y: pawlPivot.y + 30, fill: '#5a6472', 'font-size': 11, 'text-anchor': 'end' });
+        pLbl.textContent = '止回爪（防倒转）';
+        svgEl.appendChild(pLbl);
+
+        // 机架地面
+        svgEl.appendChild(ground(svgEl, 120, 330, 480));
+
+        // 标注
+        const pushing = phase < 0.5;
+        const t = svg('text', { x: 360, y: 30, 'text-anchor': 'middle', fill: pushing ? COLORS.drive : COLORS.ref, 'font-size': 13.5, 'font-weight': 600 });
+        t.textContent = pushing ? `推程：爪贴工作面（陡边）推动棘轮 +${deg(TAU / N_TEETH).toFixed(0)}°` : '回程：爪滑过背坡（缓边），止回爪锁住棘轮';
+        svgEl.appendChild(t);
+        // 工作面/背坡高亮标注（固定角度齿）
+        if (pushing) {
+          const ha = -ratchetA + 0.5;
+          const hx = cx + (r - 10) * Math.cos(ha), hy = cy + (r - 10) * Math.sin(ha);
+          svgEl.appendChild(arrow(svgEl, hx + 55, hy - 45, hx + 8, hy - 8, { color: COLORS.hi, width: 1.8, label: '工作面(陡)' }));
+        }
+      }
+
+      const ctl = createControls(mount, { duration: 4200, onTick: (p) => render(p) });
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.15, title: '① 推程 · 爪贴工作面', desc: '摆杆顺时针摆动时，爪钩住齿的<strong>工作面（陡边）</strong>，像棘轮扳手一样把棘轮推转一个齿距。' },
+          { at: 0.44, title: '② 越顶换向', desc: '摆杆到达极限，爪滑到下一齿顶。注意<strong>止回爪</strong>已钩住下方齿——棘轮不能倒退。' },
+          { at: 0.72, title: '③ 回程 · 爪滑背坡', desc: '摆杆回摆，驱动爪沿<strong>背坡（缓边）</strong>滑过齿顶弹回原位——只摆不推。板簧保证爪始终贴齿不跳。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 200);
+      tabCtls['ratchet'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 不完全齿轮：有齿段 1:1 啮合 / 无齿段锁止，分步三步
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('pg-svg');
+      const mount = document.getElementById('pg-controls-mount');
+      const stepsMount = document.getElementById('pg-steps-mount');
+
+      function gearArc(r, nTeeth, a0, a1) {
+        let d = '';
+        const pitch = (a1 - a0) / nTeeth;
+        for (let i = 0; i < nTeeth; i++) {
+          const b0 = a0 + i * pitch;
+          const p0 = { x: r * Math.cos(b0), y: r * Math.sin(b0) };
+          const pTip = { x: (r + 9) * Math.cos(b0 + pitch * 0.5), y: (r + 9) * Math.sin(b0 + pitch * 0.5) };
+          const p1 = { x: r * Math.cos(b0 + pitch), y: r * Math.sin(b0 + pitch) };
+          d += `M ${p0.x},${p0.y} L ${pTip.x},${pTip.y} L ${p1.x},${p1.y} `;
+        }
+        return d;
+      }
+
+      function render(phase) {
+        clear(svgEl);
+        const r1 = 80, r2 = 80;
+        const c1 = { x: 210, y: 220 }, c2 = { x: 210 + r1 + r2, y: 220 };
+        const drvA = phase * TAU;
+        const toothSegHalf = Math.PI * 0.5;         // 有齿段半弧
+        const inMesh = Math.sin(drvA) > -0.25;       // 近似啮合窗口
+        const drivenA = inMesh ? drvA : 0;           // 教学近似：啮合窗口内 1:1
+
+        // 主动轮（有齿段 + 锁止盘缺口）
+        const g1 = svg('g', { transform: `translate(${c1.x},${c1.y}) rotate(${deg(drvA)})` });
+        g1.appendChild(circle(0, 0, r1, { fill: '#e9e6dd' }));
+        g1.appendChild(svg('path', { d: gearArc(r1, 11, -toothSegHalf, toothSegHalf), fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 2 }));
+        g1.appendChild(svg('path', {
+          d: `M ${r1 * Math.cos(toothSegHalf)},${r1 * Math.sin(toothSegHalf)} A ${r1} ${r1} 0 0 1 ${r1 * Math.cos(-toothSegHalf)},${r1 * Math.sin(-toothSegHalf)}`,
+          fill: 'none', stroke: COLORS.ink, 'stroke-width': 2.4,
+        }));
+        g1.appendChild(line(0, 0, r1 - 18, 0, { stroke: COLORS.drive, 'stroke-width': 3 }));
+        g1.appendChild(circle(0, 0, 8, { fill: COLORS.frame }));
+        svgEl.appendChild(g1);
+
+        // 从动轮（全周齿 + 锁止凹弧）
+        const g2 = svg('g', { transform: `translate(${c2.x},${c2.y}) rotate(${deg(-drivenA)})` });
+        g2.appendChild(circle(0, 0, r2, { fill: '#e9e6dd' }));
+        g2.appendChild(svg('path', { d: gearArc(r2, 22, 0, TAU), fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 1.8 }));
+        g2.appendChild(line(0, 0, 0, -(r2 - 18), { stroke: COLORS.driven, 'stroke-width': 3 }));
+        g2.appendChild(circle(0, 0, 8, { fill: COLORS.frame }));
+        svgEl.appendChild(g2);
+
+        // 机架
+        const hid = hatchPattern(svgEl);
+        [c1, c2].forEach((c) => {
+          svgEl.appendChild(svg('polygon', {
+            points: `${c.x - 15},${c.y + 30} ${c.x + 15},${c.y + 30} ${c.x - 9},${c.y + 14} ${c.x + 9},${c.y + 14}`,
+            fill: `url(#${hid})`, stroke: COLORS.ink, 'stroke-width': 1.6,
+          }));
+        });
+        svgEl.appendChild(ground(svgEl, 130, 252, 440));
+
+        // 啮合区高亮
+        if (inMesh) {
+          svgEl.appendChild(circle((c1.x + r1 + c2.x - r2) / 2, 220, 20, { fill: 'none', stroke: COLORS.hi, 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
+        }
+
+        const lbl = (x, y, t) => {
+          const e = svg('text', { x, y, fill: '#5a6472', 'font-size': 12, 'text-anchor': 'middle', 'font-family': 'monospace' });
+          e.textContent = t; svgEl.appendChild(e);
+        };
+        lbl(c1.x, c1.y + 58, '主动轮（只有一段齿）');
+        lbl(c2.x, c2.y + 58, '从动轮（全周齿）');
+        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: inMesh ? COLORS.drive : COLORS.ref, 'font-size': 13.5, 'font-weight': 600 });
+        t.textContent = inMesh ? '啮合中：齿对齿 1:1 转动（红圈=啮合区）' : '脱啮：光滑锁止弧顶住从动轮凹弧 → 停歇';
+        svgEl.appendChild(t);
+      }
+
+      const ctl = createControls(mount, { duration: 5200, onTick: (p) => render(p) });
+      const sc = stepControls(stepsMount, {
+        ctl,
+        steps: [
+          { at: 0.05, title: '① 首齿啮入', desc: '主动轮首齿接触从动轮齿。注意：接触瞬间从动轮<strong>立即获得速度</strong>（速度突跳=硬冲击），这是它与槽轮的本质差异。' },
+          { at: 0.22, title: '② 连续啮合', desc: '有齿段内就是一对普通齿轮，1:1 匀速传动。停歇比在 CAD 里由"留多少齿"自由决定——比槽轮灵活。' },
+          { at: 0.55, title: '③ 末齿脱啮 + 锁止', desc: '末齿离开后，主动轮<strong>光滑锁止弧</strong>滑入从动轮凹弧，几何顶住——从动轮停歇，等待下一圈。' },
+        ],
+      });
+      setInterval(() => sc.syncFromPhase(ctl.getPhase()), 200);
+      tabCtls['partial'] = ctl; ctl.pause();
+    })();
+
+    /* ============================================================
+     * 机械 vs 数字：三方案同目标对比 + 扰动注入
+     * ============================================================ */
+    (function () {
+      const svgEl = document.getElementById('dg-svg');
+      const mount = document.getElementById('dg-controls-mount');
+      let perturbAt = null; // phase when perturbed
+
+      document.getElementById('dg-perturb').addEventListener('click', () => { perturbAt = 0.35; });
+      document.getElementById('dg-reset').addEventListener('click', () => { perturbAt = null; });
+
+      function render(phase) {
+        clear(svgEl);
+        const panels = [
+          { x: 120, name: '机械锁止（槽轮）', color: COLORS.frame },
+          { x: 350, name: '步进 · 开环', color: COLORS.drive },
+          { x: 580, name: '直流+编码器 · 闭环', color: COLORS.driven },
+        ];
+        const TARGET = Math.PI / 2;
+        const perturbed = perturbAt !== null && phase >= perturbAt;
+        const sinceP = perturbed ? (phase - perturbAt) : 0;
+
+        panels.forEach((p, idx) => {
+          let ang, note, noteColor;
+          if (idx === 0) {
+            // 机械：扰动后偏一个角度，直到下一循环才被几何带回
+            ang = phase < 0.3 ? (phase / 0.3) * TARGET : TARGET;
+            if (perturbed) ang = TARGET - 0.5 * (sinceP < 0.08 ? sinceP / 0.08 : 1);
+            note = perturbed ? '撞歪 → 等下一循环几何回位' : phase < 0.3 ? '销驱动转 90°' : '锁止弧锁定';
+            noteColor = perturbed ? COLORS.hi : COLORS.ref;
+          } else if (idx === 1) {
+            // 步进开环：扰动后误差保持
+            ang = phase < 0.3 ? (phase / 0.3) * TARGET : TARGET;
+            if (perturbed) ang = TARGET - 0.5; // 偏了回不来
+            note = perturbed ? '掉步 → 误差保持（控制器不知道！）' : '脉冲到 → 停';
+            noteColor = perturbed ? COLORS.hi : COLORS.drive;
+          } else {
+            // 闭环：扰动后被 PID 拉回（指数收敛）
+            ang = phase < 0.3 ? (1 - Math.exp(-phase / 0.06)) * TARGET : TARGET;
+            if (perturbed) {
+              const drop = 0.5 * Math.exp(-sinceP / 0.08);
+              ang = TARGET - drop;
+            }
+            note = perturbed ? (sinceP < 0.2 ? '编码器发现偏差 → PID 拉回中' : '已恢复 ✓ 误差消除') : 'PID 刹车到目标';
+            noteColor = perturbed ? (sinceP < 0.2 ? COLORS.driven : COLORS.good) : COLORS.driven;
+          }
+          // 面板：表盘 + 指针
+          svgEl.appendChild(circle(p.x, 140, 52, { fill: '#fbfaf6', stroke: COLORS.ink, 'stroke-width': 2 }));
+          // 90° 目标刻度
+          const tx = p.x + 40 * Math.cos(-TARGET + Math.PI / 2), ty = 140 - 40 * Math.sin(-TARGET + Math.PI / 2);
+          // 指针从竖直起转 ang
+          const na = -Math.PI / 2 + ang;
+          svgEl.appendChild(line(p.x, 140, p.x + 42 * Math.cos(na), 140 + 42 * Math.sin(na), { stroke: perturbed ? COLORS.hi : p.color, 'stroke-width': 4, 'stroke-linecap': 'round' }));
+          svgEl.appendChild(circle(p.x, 140, 5, { fill: COLORS.ink }));
+          // 目标标记
+          svgEl.appendChild(circle(p.x + 44 * Math.cos(-Math.PI / 2 + TARGET), 140 + 44 * Math.sin(-Math.PI / 2 + TARGET), 4, { fill: COLORS.good }));
+          // 名称
+          const t1 = svg('text', { x: p.x, y: 30, 'text-anchor': 'middle', fill: '#232a31', 'font-size': 12.5, 'font-weight': 600 });
+          t1.textContent = p.name; svgEl.appendChild(t1);
+          // 状态
+          const t2 = svg('text', { x: p.x, y: 215, 'text-anchor': 'middle', fill: noteColor, 'font-size': 11 });
+          t2.textContent = note; svgEl.appendChild(t2);
+          // 角度读数
+          const t3 = svg('text', { x: p.x, y: 236, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11, 'font-family': 'monospace' });
+          t3.textContent = `θ = ${(ang * 180 / Math.PI).toFixed(0)}° / 目标 90°`; svgEl.appendChild(t3);
+        });
+        // 提示
+        const t = svg('text', { x: 350, y: 290, 'text-anchor': 'middle', fill: perturbAt === null ? COLORS.ref : COLORS.hi, 'font-size': 12.5 });
+        t.textContent = perturbAt === null ? '绿点 = 目标 90°。播放后点「注入扰动」看三种方案的反应' : '扰动已注入——对比三个指针的恢复行为';
+        svgEl.appendChild(t);
+      }
+
+      const ctl = createControls(mount, { duration: 6000, onTick: (p) => render(p) });
+      tabCtls['digital'] = ctl; ctl.pause();
+    })();
   </script>
 </body>
 </html>
