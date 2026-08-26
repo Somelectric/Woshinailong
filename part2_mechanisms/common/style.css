@@ -667,7 +667,7 @@ table.data-table .hl td { background: var(--accent-2-soft) !important; font-weig
 .dof-stage-wrap > svg { width: 100%; height: auto; }
 .dof-anim-mount:empty { display: none; }
 .dof-anim-mount .controls { margin-top: 14px; }
-.dof-anim-mount .dof-weld { margin-top: 10px; align-self: flex-start; }
+.dof-anim-mount .dof-weld, .dof-anim-mount .dof-remove { margin-top: 10px; align-self: flex-start; }
 
 /* === Index 首页 === */
 .index-wrap {

@@ -151,10 +151,10 @@
     const dofSvg = document.getElementById('dof-svg');
     const animMount = document.getElementById('dof-anim-mount');
 
-    // 当前正在运行的动画控制器（仅「凸轮+滚子」预设用）；切换预设时需 pause 掉
-    let rollerCtl = null;
-    function stopRollerAnim() {
-      if (rollerCtl) { rollerCtl.pause(); rollerCtl = null; }
+    // 当前正在运行的预设动画控制器（凸轮+滚子 / 平行四边形）；切换预设时需 pause 掉
+    let presetAnimCtl = null;
+    function stopPresetAnim() {
+      if (presetAnimCtl) { presetAnimCtl.pause(); presetAnimCtl = null; }
       animMount.innerHTML = '';
     }
 
@@ -416,7 +416,7 @@
           // 控制条 + 焊死切换
           mount.innerHTML = '<div class="dof-anim-ctl"></div><button class="btn secondary dof-weld" type="button">🧊 焊死滚子（验证局部自由度）</button>';
           const ctl = createControls(mount.querySelector('.dof-anim-ctl'), { duration:5400, onTick:(p) => render(p * TAU) });
-          rollerCtl = ctl;
+          presetAnimCtl = ctl;
           const weldBtn = mount.querySelector('.dof-weld');
           weldBtn.addEventListener('click', () => {
             welded = !welded;
@@ -430,40 +430,78 @@
         // 平行四边形 + 冗余杆：直接数 F=0（虚约束多算 1 个 P_L），有效 F=1
         n: 4, pL: 6, pH: 0,
         effF: 1,
-        meaning: '<strong>陷阱！</strong>直接数：n=4，P<sub>L</sub>=6 → F = 12−12 = <strong>0</strong>？<br>但中间那根杆与连杆平行等长——它加的约束是<strong>虚约束</strong>（拆掉运动不变）→ 有效 <strong>F = 1</strong>。冗余杆的真正作用：防"反平行"翻转 + 双点受力。',
-        draw: (svgEl) => {
-          const A = { x: 150, y: 240 }, B = { x: 450, y: 240 };
-          const C = { x: 190, y: 110 }, D = { x: 490, y: 110 };
-          const E = { x: 320, y: 175 }; // 冗余杆中点铰
-          svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#333', 'stroke-width':3 }));
-          [[A,'A'],[B,'B'],[C,'C'],[D,'D'],[E,'E']].forEach(([p, lab]) => {
-            svgEl.appendChild(circle(p.x, p.y, 6.5, { fill:'white', stroke:'#333', 'stroke-width':2 }));
-            const t = svg('text', { x: p.x, y: p.y - 12, 'text-anchor':'middle', fill:'#555', 'font-size':11, 'font-family':'monospace' });
-            t.textContent = lab; svgEl.appendChild(t);
+        meaning: '<strong>陷阱！</strong>直接数：n=4，P<sub>L</sub>=6 → F = 12−12 = <strong>0</strong>？<br>但中间那根杆与连杆平行等长——它加的约束是<strong>虚约束</strong>（拆掉运动不变）→ 有效 <strong>F = 1</strong>。冗余杆的真正作用：防"反平行"翻转 + 双点受力。<br>👇 看动画：点「拆掉冗余杆」——机构运动完全不变，证明这 1 个约束是虚的。',
+        anim(svgEl, mount) {
+          const A = { x: 150, y: 168 }, B = { x: 450, y: 168 }; // 机架铰（曲柄整周转，取中高）
+          const L = 105;                    // 侧杆长 AC = BD
+          const TH0 = -70 * Math.PI / 180;  // 起始相位（右上，接近原图姿态）
+          let removed = false;              // 是否拆掉冗余杆
+
+          function render(phase) {
+            clear(svgEl);
+            const th = TH0 + phase * TAU;
+            const u = { x: Math.cos(th), y: Math.sin(th) };
+            const C = { x: A.x + L * u.x, y: A.y + L * u.y };
+            const D = { x: B.x + L * u.x, y: B.y + L * u.y };   // BD ∥ AC → ABCD 恒为平行四边形
+            const E = { x: (A.x + C.x) / 2, y: (A.y + C.y) / 2 }; // 冗余杆铰：严格取 AC 中点
+            const F = { x: (B.x + D.x) / 2, y: (B.y + D.y) / 2 }; // 与 BD 中点 → EF 恒 ∥ AB ∥ CD
+
+            // C/D 轨迹圆（虚线）
+            [A, B].forEach(p => svgEl.appendChild(circle(p.x, p.y, L, { fill:'none', stroke:'#e3e0d6', 'stroke-width':1, 'stroke-dasharray':'4 4' })));
+
+            // 机架 A—B + 支座
+            svgEl.appendChild(line(A.x, A.y, B.x, B.y, { stroke:'#333', 'stroke-width':3 }));
+            [A, B].forEach(p => {
+              svgEl.appendChild(svg('polygon', { points: `${p.x-18},${p.y+5} ${p.x+18},${p.y+5} ${p.x+13},${p.y+19} ${p.x-13},${p.y+19}`, fill:'#333' }));
+            });
+
+            // 三根活动杆：AC、BD（曲柄，绿）+ CD（连杆，平移不自转，蓝）
+            svgEl.appendChild(line(A.x, A.y, C.x, C.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
+            svgEl.appendChild(line(B.x, B.y, D.x, D.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
+            svgEl.appendChild(line(C.x, C.y, D.x, D.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
+
+            // 冗余杆 EF（虚线，铰在两根侧杆中点上，随机构一起运动）
+            if (!removed) {
+              svgEl.appendChild(line(E.x, E.y, F.x, F.y, { stroke:'#d9662c', 'stroke-width':4, 'stroke-dasharray':'7 4' }));
+            }
+
+            // 铰：A/B（机架）、C/D（连杆）；装冗余杆时另有 E/F
+            const joints = [[A,'A','#333',6.5],[B,'B','#333',6.5],[C,'C','#333',6.5],[D,'D','#333',6.5]];
+            if (!removed) joints.push([E,'E','#d9662c',5.5],[F,'F','#d9662c',5.5]);
+            joints.forEach(([p, lab, col, r]) => {
+              svgEl.appendChild(circle(p.x, p.y, r, { fill:'white', stroke:col, 'stroke-width':2 }));
+              const t = svg('text', { x:p.x, y:p.y - 11, 'text-anchor':'middle', fill:'#555', 'font-size':11, 'font-family':'monospace' });
+              t.textContent = lab; svgEl.appendChild(t);
+            });
+
+            // 顶部状态 + 底部说明
+            const top = svg('text', { x:300, y:22, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+            top.textContent = `平行四边形机构 · 曲柄转过 θ = ${(phase * 360).toFixed(0)}° · 连杆 CD 平移（自身不转）`;
+            svgEl.appendChild(top);
+            const cap = svg('text', { x:300, y:306, 'text-anchor':'middle', fill:removed ? '#0e6b5c' : '#d9662c', 'font-size':12.5 });
+            cap.textContent = removed
+              ? '拆掉冗余杆：曲柄照转、连杆照旧平移 → 约束是「虚」的，有效 F = 1'
+              : '冗余杆 EF 恒 ∥ AB ∥ CD → 约束与四杆完全重复 = 虚约束（直接数 F=0）';
+            svgEl.appendChild(cap);
+          }
+
+          // 控制条 + 拆杆切换
+          mount.innerHTML = '<div class="dof-anim-ctl"></div><button class="btn secondary dof-remove" type="button">🗑 拆掉冗余杆（验证虚约束）</button>';
+          const ctl = createControls(mount.querySelector('.dof-anim-ctl'), { duration:5000, onTick: render });
+          presetAnimCtl = ctl;
+          const rmBtn = mount.querySelector('.dof-remove');
+          rmBtn.addEventListener('click', () => {
+            removed = !removed;
+            rmBtn.textContent = removed ? '🔧 装回冗余杆' : '🗑 拆掉冗余杆（验证虚约束）';
+            rmBtn.classList.toggle('secondary', !removed);
+            render(ctl.getPhase());
           });
-          svgEl.appendChild(line(A.x, A.y, C.x, C.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
-          svgEl.appendChild(line(B.x, B.y, D.x, D.y, { stroke:'#0e6b5c', 'stroke-width':5 }));
-          svgEl.appendChild(line(C.x, C.y, D.x, D.y, { stroke:'#2a5c8a', 'stroke-width':5 }));
-          // 冗余杆（平行于 CD，铰在 AC/BD 中点）
-          const M1 = { x: (A.x + C.x) / 2 + 40, y: (A.y + C.y) / 2 - 8 };
-          const M2 = { x: (B.x + D.x) / 2 - 40, y: (B.y + D.y) / 2 - 8 };
-          svgEl.appendChild(line(M1.x, M1.y, M2.x, M2.y, { stroke:'#d9662c', 'stroke-width':4, 'stroke-dasharray':'7 4' }));
-          svgEl.appendChild(circle(M1.x, M1.y, 5.5, { fill:'white', stroke:'#d9662c', 'stroke-width':2.5 }));
-          svgEl.appendChild(circle(M2.x, M2.y, 5.5, { fill:'white', stroke:'#d9662c', 'stroke-width':2.5 }));
-          svgEl.appendChild(svg('polygon', { points: `${A.x-18},${A.y+5} ${A.x+18},${A.y+5} ${A.x+13},${A.y+19} ${A.x-13},${A.y+19}`, fill:'#333' }));
-          svgEl.appendChild(svg('polygon', { points: `${B.x-18},${B.y+5} ${B.x+18},${B.y+5} ${B.x+13},${B.y+19} ${B.x-13},${B.y+19}`, fill:'#333' }));
-          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
-          t.textContent = '平行四边形 + 冗余杆：直接数 F=0，有效 F=1';
-          svgEl.appendChild(t);
-          const t2 = svg('text', { x: 300, y: 300, 'text-anchor':'middle', fill:'#d9662c', 'font-size':12.5 });
-          t2.textContent = '虚线杆拆掉运动不变 → 虚约束（但防翻转、分担载荷）';
-          svgEl.appendChild(t2);
         }
       },
     };
 
     function renderPreset(name) {
-      stopRollerAnim();
+      stopPresetAnim();
       const preset = PRESETS[name];
       clear(dofSvg);
       if (preset.anim) preset.anim(dofSvg, animMount);
