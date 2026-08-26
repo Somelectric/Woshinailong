@@ -662,6 +662,12 @@ table.data-table .hl td { background: var(--accent-2-soft) !important; font-weig
   font-size: 14px;
   margin: 12px 0;
 }
+/* 自由度页面：动画舞台 + 控制条 */
+.dof-stage-wrap { display: flex; flex-direction: column; min-width: 0; }
+.dof-stage-wrap > svg { width: 100%; height: auto; }
+.dof-anim-mount:empty { display: none; }
+.dof-anim-mount .controls { margin-top: 14px; }
+.dof-anim-mount .dof-weld { margin-top: 10px; align-self: flex-start; }
 
 /* === Index 首页 === */
 .index-wrap {

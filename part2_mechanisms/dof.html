@@ -53,7 +53,10 @@
       <div class="stage">
         <h3 style="margin:0 0 16px; font-size:18px;">交互计算器 · 试试看</h3>
         <div class="dof-playground">
-          <svg id="dof-svg" viewBox="0 0 600 320" style="background:#fafaf7; border-radius:4px;"></svg>
+          <div class="dof-stage-wrap">
+            <svg id="dof-svg" viewBox="0 0 600 320" style="background:#fafaf7; border-radius:4px;"></svg>
+            <div id="dof-anim-mount" class="dof-anim-mount"></div>
+          </div>
           <div class="dof-stats">
             <div style="font-size:13px; color:var(--ink-soft);">当前机构的自由度</div>
             <div class="big-number" id="dof-f">3</div>
@@ -140,12 +143,20 @@
 
   <script type="module">
     import { injectSidebar } from './common/sidebar.js';
-    import { svg, line, circle, clear, toSvg } from './common/controls.js';
-    import { TAU } from './common/math.js';
+    import { svg, line, circle, clear, toSvg, createControls } from './common/controls.js';
+    import { TAU, deg, camLaw } from './common/math.js';
 
     injectSidebar('dof');
 
     const dofSvg = document.getElementById('dof-svg');
+    const animMount = document.getElementById('dof-anim-mount');
+
+    // 当前正在运行的动画控制器（仅「凸轮+滚子」预设用）；切换预设时需 pause 掉
+    let rollerCtl = null;
+    function stopRollerAnim() {
+      if (rollerCtl) { rollerCtl.pause(); rollerCtl = null; }
+      animMount.innerHTML = '';
+    }
 
     const PRESETS = {
       arm: {
@@ -292,36 +303,127 @@
         // 凸轮 + 滚子从动件：直接数 F=2（滚子自转多算 1），有效 F=1
         n: 3, pL: 3, pH: 1,
         effF: 1,
-        meaning: '<strong>陷阱！</strong>直接数：n=3（凸轮/从动杆/滚子），P<sub>L</sub>=3，P<sub>H</sub>=1（凸轮副）→ F = 9−6−1 = <strong>2</strong>？<br>但滚子自转是<strong>局部自由度</strong>（焊死滚子运动不变）→ 有效 <strong>F = 1，1 个原动件</strong>即可。滚子的作用只是把滑动摩擦换成滚动摩擦。',
-        draw: (svgEl) => {
-          const camC = { x: 160, y: 230 };
-          const stemX = 430;
-          // 凸轮（蛋形）
-          let d = '';
-          for (let i = 0; i <= 72; i++) {
-            const a = (i / 72) * TAU;
-            const rb = 62 + 26 * Math.max(0, Math.sin(a));
-            const px = camC.x + rb * Math.cos(a), py = camC.y - rb * Math.sin(a);
-            d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1);
+        meaning: '<strong>陷阱！</strong>直接数：n=3（凸轮/从动杆/滚子），P<sub>L</sub>=3，P<sub>H</sub>=1（凸轮副）→ F = 9−6−1 = <strong>2</strong>？<br>但滚子自转是<strong>局部自由度</strong>（焊死滚子运动不变）→ 有效 <strong>F = 1，1 个原动件</strong>即可。滚子的作用只是把滑动摩擦换成滚动摩擦。<br>👇 看动画：点下方「焊死滚子」——从动杆升降完全不变，证明这 1 个自由度是局部的。',
+        anim(svgEl, mount) {
+          const O1 = { x: 230, y: 240 };   // 凸轮中心
+          const r0 = 50, h = 34, RR = 15;  // 基圆 / 升程 / 滚子半径
+          const BF = -Math.PI / 2;         // 从动件方向：滚子在凸轮正上方
+          const DWELL = 0.40;              // 停歇段占比（升-停-回-停）
+          const beta = Math.PI * (1 - DWELL);
+          const delta = Math.PI * DWELL;   // 2β + 2δ = 2π
+          let welded = false;
+
+          const contactR = (phi) => r0 + h * camLaw(phi, beta, delta);
+
+          // 滚子自转角（沿凸轮廓形纯滚动近似：ψ ≈ −∫rb dφ / RR）
+          function rollerSpin(phi) {
+            const N = 72;
+            let acc = 0, prev = contactR(0);
+            for (let i = 1; i <= N; i++) {
+              const r = contactR((i / N) * phi);
+              acc += 0.5 * (prev + r) * (phi / N);
+              prev = r;
+            }
+            return -acc / RR;
           }
-          d += 'Z';
-          svgEl.appendChild(svg('path', { d, fill:'#e2efec', stroke:'#0e6b5c', 'stroke-width':2 }));
-          svgEl.appendChild(circle(camC.x, camC.y, 6, { fill:'#333' }));
-          svgEl.appendChild(svg('polygon', { points: `${camC.x-14},${camC.y+14} ${camC.x+14},${camC.y+14} ${camC.x},${camC.y}`, fill:'#333' }));
-          // 从动杆（竖直导路）
-          svgEl.appendChild(line(stemX - 40, 130, stemX - 40, 300, { stroke:'#c9c6b9', 'stroke-width':3 }));
-          svgEl.appendChild(line(stemX + 40, 130, stemX + 40, 300, { stroke:'#c9c6b9', 'stroke-width':3 }));
-          svgEl.appendChild(svg('rect', { x: stemX - 34, y: 120, width: 68, height: 46, fill:'#2a5c8a', rx:4, stroke:'#1a2540', 'stroke-width':2 }));
-          // 滚子
-          svgEl.appendChild(circle(stemX, 185, 22, { fill:'white', stroke:'#d9662c', 'stroke-width':3 }));
-          svgEl.appendChild(circle(stemX, 185, 4, { fill:'#d9662c' }));
-          svgEl.appendChild(line(stemX, 166, stemX, 142, { stroke:'#2a5c8a', 'stroke-width':8 }));
-          const t = svg('text', { x: 300, y: 30, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
-          t.textContent = '凸轮 + 从动杆 + 滚子：直接数 F=2，有效 F=1';
-          svgEl.appendChild(t);
-          const t2 = svg('text', { x: 300, y: 300, 'text-anchor':'middle', fill:'#d9662c', 'font-size':12.5 });
-          t2.textContent = '滚子自转 ↔ 从动杆升降 无关 → 局部自由度，减 1';
-          svgEl.appendChild(t2);
+          function phaseName(phi) {
+            const x = ((phi % TAU) + TAU) % TAU;
+            if (x < beta) return '升程 ↑';
+            if (x < beta + delta) return '远休（停歇）';
+            if (x < 2 * beta + delta) return '回程 ↓';
+            return '近休（停歇）';
+          }
+
+          function render(phi) {
+            clear(svgEl);
+            const lift = h * camLaw(phi, beta, delta);
+            const rb = r0 + lift;
+            const rcx = O1.x;
+            const rcy = O1.y - (rb + RR);   // 滚子中心（正上方）
+
+            // —— 机架：顶板地面符号 + 两条固定导轨（移动副的固定部分）——
+            svgEl.appendChild(line(O1.x - 64, 40, O1.x + 64, 40, { stroke:'#3a3f45', 'stroke-width':2.5 }));
+            for (let gx = O1.x - 58; gx <= O1.x + 58; gx += 10) {
+              svgEl.appendChild(line(gx, 40, gx - 7, 47, { stroke:'#3a3f45', 'stroke-width':1 }));
+            }
+            svgEl.appendChild(line(O1.x - 24, 40, O1.x - 24, 130, { stroke:'#8a919b', 'stroke-width':3 }));
+            svgEl.appendChild(line(O1.x + 24, 40, O1.x + 24, 130, { stroke:'#8a919b', 'stroke-width':3 }));
+            for (let y = 48; y <= 122; y += 12) {
+              svgEl.appendChild(line(O1.x - 24, y, O1.x - 31, y + 7, { stroke:'#8a919b', 'stroke-width':1 }));
+              svgEl.appendChild(line(O1.x + 24, y, O1.x + 31, y + 7, { stroke:'#8a919b', 'stroke-width':1 }));
+            }
+
+            // —— 凸轮（绕 O1 旋转；group 内 +y 向下，故 BF=−π/2 指向正上方）——
+            const camG = svg('g', { transform:`translate(${O1.x},${O1.y}) rotate(${deg(BF - phi)})` });
+            camG.appendChild(circle(0, 0, r0, { fill:'none', stroke:'#d9c2bd', 'stroke-width':1, 'stroke-dasharray':'4 4' }));
+            let d = '';
+            for (let i = 0; i <= 96; i++) {
+              const a = (i / 96) * TAU;
+              const rr = r0 + h * camLaw(a, beta, delta);
+              d += (i ? 'L' : 'M') + (rr * Math.cos(a)).toFixed(1) + ',' + (rr * Math.sin(a)).toFixed(1);
+            }
+            d += 'Z';
+            camG.appendChild(svg('path', { d, fill:'#fde7e0', stroke:'#c8442a', 'stroke-width':2 }));
+            camG.appendChild(line(0, 0, r0 * 0.85, 0, { stroke:'#7a2218', 'stroke-width':2.5 })); // 转向标记
+            camG.appendChild(circle(0, 0, 5, { fill:'#333' }));
+            svgEl.appendChild(camG);
+            // 凸轮轴支座（机架一部分，固定）
+            svgEl.appendChild(svg('polygon', { points:`${O1.x - 16},${O1.y + 15} ${O1.x + 16},${O1.y + 15} ${O1.x},${O1.y}`, fill:'#3a3f45' }));
+
+            // —— 从动杆：滑块（在导轨内上下平移）+ 茎 + 滚子销 ——
+            const sliderY = rcy - 92;
+            svgEl.appendChild(svg('rect', { x:O1.x - 21, y:sliderY, width:42, height:26, fill:'#2a5c8a', rx:3, stroke:'#1a2540', 'stroke-width':1.5 }));
+            svgEl.appendChild(line(O1.x, sliderY + 26, O1.x, rcy, { stroke:'#2a5c8a', 'stroke-width':7 }));
+
+            // —— 滚子（含转向标记；焊死时标记固定朝上，自由时累计转动）——
+            const psi = welded ? -Math.PI / 2 : rollerSpin(phi);
+            const rollerG = svg('g', { transform:`translate(${rcx},${rcy}) rotate(${deg(psi)})` });
+            rollerG.appendChild(circle(0, 0, RR, { fill:'white', stroke:'#d9662c', 'stroke-width':2.5 }));
+            rollerG.appendChild(line(0, 0, RR, 0, { stroke:'#d9662c', 'stroke-width':2.5 }));
+            rollerG.appendChild(line(0, 0, -RR * 0.6, 0, { stroke:'#d9662c', 'stroke-width':1.5, opacity:0.5 }));
+            rollerG.appendChild(circle(0, 0, 3, { fill:'#d9662c' }));
+            svgEl.appendChild(rollerG);
+
+            // 接触点（高副·点接触）标注
+            const contactY = O1.y - rb;
+            svgEl.appendChild(circle(O1.x, contactY, 2.5, { fill:'#7a2218' }));
+
+            // —— 构件标注 ——
+            const lbl = (x, y, t, c, anchor='start') => {
+              const e = svg('text', { x, y, fill:c || '#555', 'font-size':12, 'font-family':'monospace', 'text-anchor':anchor });
+              e.textContent = t; svgEl.appendChild(e);
+            };
+            lbl(O1.x - 70, O1.y + 4, '凸轮', '#c8442a', 'end');
+            lbl(O1.x + 34, sliderY + 14, '从动杆', '#2a5c8a');
+            lbl(O1.x + 34, rcy + 4, '滚子', '#d9662c');
+            lbl(O1.x, 22, '机架·导轨', '#3a3f45', 'middle');
+            lbl(O1.x + 34, contactY + 4, '点接触·高副', '#7a2218');
+
+            // 顶部状态条
+            const spinDeg = welded ? '0°（焊死）' : (deg(((psi % TAU) + TAU) % TAU)).toFixed(0) + '°';
+            const top = svg('text', { x:300, y:22, 'text-anchor':'middle', fill:'#999', 'font-size':13 });
+            top.textContent = `${phaseName(phi)} · 从动杆升程 s = ${lift.toFixed(0)} mm · 滚子转角 ${spinDeg}`;
+            svgEl.appendChild(top);
+
+            // 底部模式说明
+            const cap = svg('text', { x:300, y:306, 'text-anchor':'middle', fill:welded ? '#0e6b5c' : '#d9662c', 'font-size':12.5 });
+            cap.textContent = welded
+              ? '滚子焊死后：从动杆升降 完全不变 → 这 1 个自由度是「局部」的，应从 F 中减去'
+              : '滚子自转（橙色标记）↔ 从动杆升降 相互独立 → 局部自由度，减 1';
+            svgEl.appendChild(cap);
+          }
+
+          // 控制条 + 焊死切换
+          mount.innerHTML = '<div class="dof-anim-ctl"></div><button class="btn secondary dof-weld" type="button">🧊 焊死滚子（验证局部自由度）</button>';
+          const ctl = createControls(mount.querySelector('.dof-anim-ctl'), { duration:5400, onTick:(p) => render(p * TAU) });
+          rollerCtl = ctl;
+          const weldBtn = mount.querySelector('.dof-weld');
+          weldBtn.addEventListener('click', () => {
+            welded = !welded;
+            weldBtn.textContent = welded ? '🔄 放开滚子' : '🧊 焊死滚子（验证局部自由度）';
+            weldBtn.classList.toggle('secondary', !welded);
+            render(ctl.getPhase() * TAU);
+          });
         }
       },
       parallelogram: {
@@ -361,9 +463,11 @@
     };
 
     function renderPreset(name) {
+      stopRollerAnim();
       const preset = PRESETS[name];
       clear(dofSvg);
-      preset.draw(dofSvg);
+      if (preset.anim) preset.anim(dofSvg, animMount);
+      else preset.draw(dofSvg);
 
       const F = 3 * preset.n - 2 * preset.pL - preset.pH;
       document.getElementById('dof-n').textContent = preset.n;
