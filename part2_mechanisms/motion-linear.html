@@ -1163,7 +1163,7 @@
         const t1 = svg('text', { x: 350, y: 32, 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 13.5, 'font-weight': 600 });
         t1.textContent = `${dblActing ? '双作用' : '单作用'}气缸 · 行程 s = ${(s * 100).toFixed(0)}% · ${state}`;
         svgEl.appendChild(t1);
-        const t2 = svg('text', { x: 350, y: 52, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
+        const t2 = svg('text', { x: 350, y: 305, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 11.5 });
         t2.textContent = dblActing
           ? '左口进气 → 推活塞向右（伸出）；右口进气 → 推回（缩回）。注意有杆腔面积小 → 缩回更快'
           : '单作用：一个口进气压缩弹簧伸出；排气后弹簧推回——断气自动复位（fail-safe）';
