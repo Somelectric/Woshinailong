@@ -770,27 +770,73 @@
     })();
 
     /* ============================================================
-     * 链传动：两链轮 + 链节循环移动
+     * 链传动：两链轮 + 链（正确外公切线几何；链节循环移动）
+     * 链路 = 上外公切线 → 大轮包角圆弧 → 下外公切线 → 小轮包角圆弧
      * ============================================================ */
     (function () {
       const svgEl = document.getElementById('ch-svg');
       const mount = document.getElementById('ch-controls-mount');
+      const PITCH = 15; // 链节距（链节与轮齿统一）
 
       function render(phase) {
         clear(svgEl);
-        const r1 = 48, r2 = 76;
+        const r1 = 48, r2 = 76;          // 链轮半径（绘制基准）
+        const R1 = r1 + 4, R2 = r2 + 4;  // 链销中心半径（滚子贴轮缘外）
         const cx1 = 220, cx2 = 500, cy = 160;
-        const a1 = phase * TAU;
+        const D = cx2 - cx1;             // 中心距
+        const dr = R2 - R1;              // 半径差
+        const phi = Math.asin(Math.max(-1, Math.min(1, dr / D))); // 外公切线倾角
+        const cp = Math.cos(phi), sp = Math.sin(phi);
 
-        // 链轮（齿形简化）
-        [[cx1, r1, a1], [cx2, r2, -a1 * r1 / r2]].forEach(([cx, r, ang]) => {
+        // 四个公切点（SVG 坐标）：上、下各一条外公切线，同时切两轮
+        const P1t = { x: cx1 - R1 * sp, y: cy - R1 * cp };
+        const P2t = { x: cx2 - R2 * sp, y: cy - R2 * cp };
+        const P1b = { x: cx1 - R1 * sp, y: cy + R1 * cp };
+        const P2b = { x: cx2 - R2 * sp, y: cy + R2 * cp };
+
+        // 包角：大轮 π+2φ（>π，绕远侧），小轮 π−2φ（<π）
+        const Lspan = Math.sqrt(Math.max(0, D * D - dr * dr));   // 公切线长
+        const wrapL = R2 * (Math.PI + 2 * phi);
+        const wrapS = R1 * (Math.PI - 2 * phi);
+        const Ltot = 2 * Lspan + wrapL + wrapS;
+
+        const aP2t = Math.atan2(P2t.y - cy, P2t.x - cx2);
+        const aP1b = Math.atan2(P1b.y - cy, P1b.x - cx1);
+
+        // 沿链路取点 s∈[0,Ltot)
+        // 路径顺序：上平段 → 大轮包角(顺时针) → 下平段 → 小轮包角(顺时针)
+        function chainPoint(s) {
+          s = ((s % Ltot) + Ltot) % Ltot;
+          if (s < Lspan) {
+            const t = s / Lspan;
+            return { x: P1t.x + (P2t.x - P1t.x) * t, y: P1t.y + (P2t.y - P1t.y) * t };
+          } else if (s < Lspan + wrapL) {
+            const t = (s - Lspan) / wrapL;
+            const th = aP2t + t * (Math.PI + 2 * phi);
+            return { x: cx2 + R2 * Math.cos(th), y: cy + R2 * Math.sin(th) };
+          } else if (s < 2 * Lspan + wrapL) {
+            const t = (s - Lspan - wrapL) / Lspan;
+            return { x: P2b.x + (P1b.x - P2b.x) * t, y: P2b.y + (P1b.y - P2b.y) * t };
+          } else {
+            const t = (s - 2 * Lspan - wrapL) / wrapS;
+            const th = aP1b + t * (Math.PI - 2 * phi);
+            return { x: cx1 + R1 * Math.cos(th), y: cy + R1 * Math.sin(th) };
+          }
+        }
+
+        const a1 = phase * TAU;
+        const travel = a1 * R1; // 链速 = ω₁·R₁（=ω₂·R₂，无滑差）
+
+        // —— 链轮（开口链：同向转动，ω₂ = ω₁·R₁/R₂；齿数按节距取→可与链节啮合）——
+        const z1 = Math.max(9, Math.round((TAU * R1) / PITCH));
+        const z2 = Math.max(9, Math.round((TAU * R2) / PITCH));
+        [[cx1, r1, a1, z1], [cx2, r2, a1 * R1 / R2, z2]].forEach(([cx, r, ang, z]) => {
           const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(ang)})` });
           g.appendChild(circle(0, 0, r, { fill: '#e9e6dd', stroke: '#232a31', 'stroke-width': 2 }));
-          const nT = Math.round(r / 7);
-          for (let i = 0; i < nT; i++) {
-            const a = (i / nT) * TAU;
+          for (let i = 0; i < z; i++) {
+            const a = ((i + 0.5) / z) * TAU; // 半齿距偏移：齿落在两链节之间
             g.appendChild(svg('polygon', {
-              points: '0,-2 5,-9 -5,-9', fill: '#232a31',
+              points: '0,-9 4,-2 -4,-2', fill: '#232a31',
               transform: `rotate(${deg(a)}) translate(0 ${-r})`,
             }));
           }
@@ -798,30 +844,23 @@
           svgEl.appendChild(g);
         });
 
-        // 链（上下两段 + 半圆绕轮，链节随平移）
-        const pitch = 15;
-        const travel = a1 * r1;
-        const yT = cy - r1 - 4, yB = cy + r1 + 4;
-        const xL = cx1, xR = cx2;
-        // 上段 + 下段
-        [[yT, 1], [yB, -1]].forEach(([y]) => {
-          svgEl.appendChild(line(xL, y, xR, y, { stroke: '#8a919b', 'stroke-width': 2 }));
-          const off = ((travel % pitch) + pitch) % pitch;
-          for (let x = xL + off; x < xR; x += pitch) {
-            svgEl.appendChild(circle(x, y, 3.2, { fill: 'none', stroke: '#232a31', 'stroke-width': 1.6 }));
-          }
-        });
-        // 绕轮弧段
-        [[cx1, r1 + 4, a1], [cx2, r2 + 4, -a1 * r1 / r2]].forEach(([cx, r, ang]) => {
-          const n = Math.round((TAU * r) / pitch);
-          for (let i = 0; i < n; i++) {
-            const a = ang + (i / n) * TAU;
-            svgEl.appendChild(circle(cx + r * Math.cos(a), cy + r * Math.sin(a), 3.2, { fill: 'none', stroke: '#232a31', 'stroke-width': 1.6 }));
-          }
-        });
+        // —— 链路（外公切线 + 两段包角圆弧，闭合）——
+        const chainPath = `M ${P1t.x.toFixed(1)} ${P1t.y.toFixed(1)} ` +
+          `L ${P2t.x.toFixed(1)} ${P2t.y.toFixed(1)} ` +
+          `A ${R2} ${R2} 0 1 1 ${P2b.x.toFixed(1)} ${P2b.y.toFixed(1)} ` +
+          `L ${P1b.x.toFixed(1)} ${P1b.y.toFixed(1)} ` +
+          `A ${R1} ${R1} 0 0 1 ${P1t.x.toFixed(1)} ${P1t.y.toFixed(1)} Z`;
+        svgEl.appendChild(svg('path', { d: chainPath, fill: 'none', stroke: '#8a919b', 'stroke-width': 2 }));
+
+        // —— 链节（销/滚子沿整条链路按节距分布，随链速平移）——
+        const s0 = ((travel % PITCH) + PITCH) % PITCH;
+        for (let s = s0; s < Ltot; s += PITCH) {
+          const p = chainPoint(s);
+          svgEl.appendChild(circle(p.x, p.y, 3.2, { fill: 'none', stroke: '#232a31', 'stroke-width': 1.6 }));
+        }
 
         const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
-        t.textContent = `链节沿两轮循环移动 · i = r₂/r₁ = ${(r2 / r1).toFixed(2)}（承载大但需润滑）`;
+        t.textContent = `链节沿两轮循环移动 · i = z₂/z₁ = ${z2}/${z1} ≈ ${(z2 / z1).toFixed(2)}（承载大但需润滑）`;
         svgEl.appendChild(t);
       }
 
