@@ -649,7 +649,8 @@
     })();
 
     /* ============================================================
-     * 同步带：两带轮 + 齿带平移（标记点验证无滑差）
+     * 同步带：两带轮 + 齿带（正确外公切线几何；标记点验证无滑差）
+     * 带路 = 上外公切线 → 大轮包角圆弧 → 下外公切线 → 小轮包角圆弧
      * ============================================================ */
     (function () {
       const svgEl = document.getElementById('bt-svg');
@@ -661,53 +662,106 @@
         document.getElementById('bt-i-val').textContent = ratio.toFixed(1);
       });
 
+      const PITCH = 14; // 齿距：带与两轮统一，使齿距≈一致→可见啮合
+
       function render(phase) {
         clear(svgEl);
-        const r1 = 42, r2 = r1 * ratio;
-        const cx1 = 350 - (r1 + 40), cx2 = 350 + (r2 + 40);
-        const cy = 155;
-        const a1 = phase * TAU;
-        const beltTravel = a1 * r1; // 带移动弧长 = 轮 1 转角 × r1
+        const r1 = 34, r2 = r1 * ratio;
+        const cx1 = 350 - (r1 + 38), cx2 = 350 + (r2 + 38);
+        const cy = 168;
+        const D = cx2 - cx1;                 // 中心距
+        const dr = r2 - r1;                  // 半径差
+        const phi = Math.asin(Math.max(-1, Math.min(1, dr / D))); // 外公切线倾角
+        const cp = Math.cos(phi), sp = Math.sin(phi);
 
-        // 带轮
-        [[cx1, r1, a1, '#0e6b5c', 'z₁'], [cx2, r2, -a1 * r1 / r2, '#2a5c8a', 'z₂']].forEach(([cx, r, ang, color, lab]) => {
-          const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(ang)})` });
-          g.appendChild(circle(0, 0, r, { fill: '#fbfaf6', stroke: '#232a31', 'stroke-width': 2 }));
-          const nT = Math.max(10, Math.round(r / 4.5));
-          for (let i = 0; i < nT; i++) {
-            const a = (i / nT) * TAU;
-            const tw = 2 * Math.PI * r / nT * 0.3;
-            g.appendChild(svg('rect', { x: -tw / 2, y: -r - 4, width: tw, height: 4, fill: '#232a31', transform: `rotate(${deg(a)})` }));
+        // 四个公切点（SVG 坐标）：上、下各一条外公切线，同时切两轮
+        const P1t = { x: cx1 - r1 * sp, y: cy - r1 * cp };
+        const P2t = { x: cx2 - r2 * sp, y: cy - r2 * cp };
+        const P1b = { x: cx1 - r1 * sp, y: cy + r1 * cp };
+        const P2b = { x: cx2 - r2 * sp, y: cy + r2 * cp };
+
+        // 包角：大轮 π+2φ（>π，绕远侧），小轮 π−2φ（<π，绕远侧）
+        const Lspan = Math.sqrt(Math.max(0, D * D - dr * dr));   // 公切线长
+        const wrapL = r2 * (Math.PI + 2 * phi);
+        const wrapS = r1 * (Math.PI - 2 * phi);
+        const Ltot = 2 * Lspan + wrapL + wrapS;
+
+        // 切点在各自轮上的 SVG 角（atan2(dy,dx)，dy=y-cy）
+        const aP2t = Math.atan2(P2t.y - cy, P2t.x - cx2);
+        const aP1b = Math.atan2(P1b.y - cy, P1b.x - cx1);
+
+        // 沿带节线取点 s∈[0,Ltot)：返回坐标 + 朝带内侧的单位法向
+        // 路径顺序：上平段 → 大轮包角(顺时针) → 下平段 → 小轮包角(顺时针)
+        function beltPoint(s) {
+          s = ((s % Ltot) + Ltot) % Ltot;
+          if (s < Lspan) {
+            const t = s / Lspan;
+            const x = P1t.x + (P2t.x - P1t.x) * t, y = P1t.y + (P2t.y - P1t.y) * t;
+            const Tx = (P2t.x - P1t.x) / Lspan, Ty = (P2t.y - P1t.y) / Lspan;
+            return { x, y, ix: -Ty, iy: Tx };
+          } else if (s < Lspan + wrapL) {
+            const t = (s - Lspan) / wrapL;
+            const th = aP2t + t * (Math.PI + 2 * phi);
+            const x = cx2 + r2 * Math.cos(th), y = cy + r2 * Math.sin(th);
+            return { x, y, ix: -(x - cx2) / r2, iy: -(y - cy) / r2 };
+          } else if (s < 2 * Lspan + wrapL) {
+            const t = (s - Lspan - wrapL) / Lspan;
+            const x = P2b.x + (P1b.x - P2b.x) * t, y = P2b.y + (P1b.y - P2b.y) * t;
+            const Tx = (P1b.x - P2b.x) / Lspan, Ty = (P1b.y - P2b.y) / Lspan;
+            return { x, y, ix: -Ty, iy: Tx };
+          } else {
+            const t = (s - 2 * Lspan - wrapL) / wrapS;
+            const th = aP1b + t * (Math.PI - 2 * phi);
+            const x = cx1 + r1 * Math.cos(th), y = cy + r1 * Math.sin(th);
+            return { x, y, ix: -(x - cx1) / r1, iy: -(y - cy) / r1 };
           }
-          g.appendChild(line(0, 0, r - 10, 0, { stroke: color, 'stroke-width': 3 }));
-          g.appendChild(circle(0, 0, 6, { fill: '#232a31' }));
-          svgEl.appendChild(g);
-          const t = svg('text', { x: cx, y: cy + r + 26, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-family': 'monospace' });
-          t.textContent = lab; svgEl.appendChild(t);
-        });
-
-        // 带（上下两条直线 + 齿，平移循环）
-        const yTop = cy - r1, yBot = cy + r1; // 带与两轮相切（近似取 r1，因为大轮更大用切线近似）
-        // 实际切线：两轮不等径 → 公切线斜。教学用水平近似（r2 大时上带应贴 r2 顶部）
-        const yTopA = cy - r2, yBotA = cy + r2;
-        [[yTopA, cx1 - r1 - 20, cx2 + r2 + 20, 1], [yBotA, cx1 - r1 - 20, cx2 + r2 + 20, 1]].forEach(([y, x1, x2]) => {
-          svgEl.appendChild(line(x1, y, x2, y, { stroke: '#5a6472', 'stroke-width': 5 }));
-          // 齿（随带平移）
-          const pitch = 14;
-          const off = ((beltTravel % pitch) + pitch) % pitch;
-          for (let x = x1 + off; x < x2; x += pitch) {
-            svgEl.appendChild(line(x, y + (y < cy ? 2.5 : -2.5), x, y + (y < cy ? 7 : -7), { stroke: '#5a6472', 'stroke-width': 2 }));
-          }
-        });
-
-        // 标记点（红色，随带走，验证无滑差）
-        const mkX = ((beltTravel % 500) + 500) % 500 + (cx1 - r1 - 20);
-        if (mkX < cx2 + r2 + 20) {
-          svgEl.appendChild(circle(mkX, yTopA - 4, 5, { fill: '#d9662c' }));
         }
 
-        const t = svg('text', { x: 350, y: 30, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
-        t.textContent = `i = ${ratio.toFixed(1)} · 带速 = ω₁·r₁（红点随带走）→ 两轮表面线速度相同 = 无滑差`;
+        const a1 = phase * TAU;
+        const beltTravel = a1 * r1; // 带移动弧长 = ω₁·r₁（=ω₂·r₂，无滑差）
+
+        // —— 带体：沿节线的外公切线 + 两段包角圆弧，闭合粗描边 ——
+        const beltPath = `M ${P1t.x.toFixed(1)} ${P1t.y.toFixed(1)} ` +
+          `L ${P2t.x.toFixed(1)} ${P2t.y.toFixed(1)} ` +
+          `A ${r2} ${r2} 0 1 1 ${P2b.x.toFixed(1)} ${P2b.y.toFixed(1)} ` +
+          `L ${P1b.x.toFixed(1)} ${P1b.y.toFixed(1)} ` +
+          `A ${r1} ${r1} 0 0 1 ${P1t.x.toFixed(1)} ${P1t.y.toFixed(1)} Z`;
+        svgEl.appendChild(svg('path', { d: beltPath, fill: 'none', stroke: '#c9c6b9', 'stroke-width': 9, 'stroke-linejoin': 'round' }));
+
+        // —— 带齿（沿整条带节线，朝内侧短齿；随 beltTravel 平移）——
+        const s0 = ((beltTravel % PITCH) + PITCH) % PITCH;
+        for (let s = s0; s < Ltot; s += PITCH) {
+          const p = beltPoint(s);
+          const L = 5.5;
+          svgEl.appendChild(line(p.x, p.y, p.x + p.ix * L, p.y + p.iy * L, { stroke: '#3a3f45', 'stroke-width': 2 }));
+        }
+
+        // —— 带轮（齿外突；齿数按 PITCH 取，齿距≈带齿距→啮合）——
+        const drawPulley = (cx, r, ang, color, lab) => {
+          const g = svg('g', { transform: `translate(${cx},${cy}) rotate(${deg(ang)})` });
+          g.appendChild(circle(0, 0, r, { fill: '#fbfaf6', stroke: '#232a31', 'stroke-width': 2 }));
+          const nT = Math.max(8, Math.round(2 * Math.PI * r / PITCH));
+          for (let i = 0; i < nT; i++) {
+            const a = (i / nT) * TAU;
+            const tw = 2 * Math.PI * r / nT * 0.35;
+            g.appendChild(svg('rect', { x: -tw / 2, y: -r - 5, width: tw, height: 5, fill: '#232a31', transform: `rotate(${deg(a)})` }));
+          }
+          g.appendChild(line(0, 0, r - 9, 0, { stroke: color, 'stroke-width': 3 }));
+          g.appendChild(circle(0, 0, 5.5, { fill: '#232a31' }));
+          svgEl.appendChild(g);
+          const t = svg('text', { x: cx, y: cy + r + 24, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 12, 'font-family': 'monospace' });
+          t.textContent = lab; svgEl.appendChild(t);
+        };
+        // 开口带：两轮同向转动（ω₂ = ω₁·r₁/r₂）
+        drawPulley(cx1, r1, a1, '#0e6b5c', 'z₁');
+        drawPulley(cx2, r2, a1 * r1 / r2, '#2a5c8a', 'z₂');
+
+        // —— 红色标记点（随带走，验证无滑差）——
+        const mk = beltPoint(beltTravel);
+        svgEl.appendChild(circle(mk.x, mk.y, 5, { fill: '#d9662c', stroke: 'white', 'stroke-width': 1.5 }));
+
+        const t = svg('text', { x: 350, y: 28, 'text-anchor': 'middle', fill: '#5a6472', 'font-size': 13 });
+        t.textContent = `i = ${ratio.toFixed(1)} · 带速 v = ω₁·r₁（红点随带走）→ 两轮表面线速度相同 = 无滑差`;
         svgEl.appendChild(t);
       }
 
